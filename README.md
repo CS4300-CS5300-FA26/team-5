@@ -43,4 +43,16 @@ binge_and_bosses/manage.py runserver
 
 ## Sprint Plan
 
+| Sprint  | Deliverables |  
+|---|---|
+| 1  | User accounts (with sign up & log-in), game search with third-party API integration, view games (database & Backlog CRUD), Basic UI navigation  | 
+| 2  | Add games, set status, rate & review games | 
+| 3  | Review games, friend connections, profile customization, review ratings from friends | 
+| 4  | AI Recommendations (AI API integration using backlog as context; one line recommendation), Friend activity | 
 ## AI Usage Log
+
+| Date       | AI        | Use  |
+| --- | --- | --- |
+| 09/28/2026 | Pardot AI | Used to refine sprint 0-2 on it's concluding stages to reformat logi UI diagrams and storyboards |
+| 10/04/2026 | Pardot AI | Advice on Django secret key implementation and avoiding a push to render |
+
