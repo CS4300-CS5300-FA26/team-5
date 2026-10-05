@@ -55,4 +55,5 @@ binge_and_bosses/manage.py runserver
 | --- | --- | --- |
 | 09/28/2026 | Pardot AI | Used to refine sprint 0-2 on it's concluding stages to reformat logi UI diagrams and storyboards |
 | 10/04/2026 | Pardot AI | Advice on Django secret key implementation and avoiding a push to render |
+| 10/04/2026 | Pardot AI | Django app deployment instructions post settings.py modification | 
 
