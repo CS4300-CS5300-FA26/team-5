@@ -41,6 +41,16 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 binge_and_bosses/manage.py runserver
 ```
 
+## How to run the tests
+After Steps 1–3, run the tests from the `binge_and_bosses/` directory (the one containing `manage.py`):
+```bash
+cd binge_and_bosses
+python3 manage.py test
+```
+Django creates a temporary test database and deletes it afterward, so the tests do not change `db.sqlite3`. Leave `DATABASE_URL` unset so the tests use local SQLite; never point tests at the production database.
+
+Note: running `binge_and_bosses/manage.py test` from the repository root finds 0 tests, so `cd` into `binge_and_bosses/` first.
+
 ## Sprint Plan
 
 | Sprint  | Deliverables |  
@@ -57,4 +67,5 @@ binge_and_bosses/manage.py runserver
 | 10/04/2026 | Pardot AI | Advice on Django secret key implementation and avoiding a push to render |
 | 10/04/2026 | Pardot AI | Django app deployment instructions post settings.py modification | 
 | 10/05/2026 | Claude | Render deployment debugging | 
+| 10/06/2026 | Claude Code (Claude Opus 5.5) | Generated the landing page tests in `games/tests.py` (a saved game appears on the home page; the empty-list message appears when there are no games) and the README test instructions, and ran them locally. Submitted in a pull request for teammate review before merging. |
 
