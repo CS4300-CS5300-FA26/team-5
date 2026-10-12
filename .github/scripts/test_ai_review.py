@@ -21,13 +21,13 @@ def make_repo(test):
     return git("rev-parse", "HEAD").strip()
 
 
-def commit_files(files):
+def commit_files(files, message="change"):
     for path, text in files.items():
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "w") as f:
             f.write(text)
     git("add", "-A")
-    git("commit", "-q", "-m", "change")
+    git("commit", "-q", "-m", message)
     return git("rev-parse", "HEAD").strip()
 
 
@@ -50,10 +50,10 @@ class LoadGuideTests(unittest.TestCase):
 class GetCommitMessagesTests(unittest.TestCase):
     def test_lists_pr_commits_oldest_first_with_full_messages(self):
         base = make_repo(self)
-        commit_files({"a.py": "1\n"})
-        git("commit", "-q", "--allow-empty", "-m", "Second change", "-m", "Explains why.")
+        commit_files({"a.py": "1\n"}, message="Add a.py")
+        git("commit", "-q", "--allow-empty", "-m", "Update docs", "-m", "Explains why.")
         log = ai_review.get_commit_messages(base, "HEAD")
-        self.assertLess(log.index("change"), log.index("Second change"))
+        self.assertLess(log.index("Add a.py"), log.index("Update docs"))
         self.assertIn("Explains why.", log)
         self.assertNotIn("base", log)
 
