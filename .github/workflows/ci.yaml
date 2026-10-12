@@ -24,4 +24,4 @@ jobs:
 
       - name: Enforce 80% coverage
         working-directory: binge_and_bosses
-        run: coverage report --fail-under=80
+        run: coverage report -m --fail-under=80
