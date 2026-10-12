@@ -1,7 +1,46 @@
+import os
+import subprocess
+import tempfile
 import unittest
 from unittest import mock
 
 import ai_review
+
+
+class GetDiffTests(unittest.TestCase):
+    def test_excludes_generated_files_at_any_depth(self):
+        repo = tempfile.mkdtemp()
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(repo)
+
+        def git(*args):
+            cmd = ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args]
+            return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
+
+        git("init", "-q")
+        git("commit", "-q", "--allow-empty", "-m", "base")
+        base = git("rev-parse", "HEAD").strip()
+        generated = [
+            "staticfiles/admin.css",
+            "app/staticfiles/site.js",
+            "db.sqlite3",
+            "app/db.sqlite3",
+            "uv.lock",
+            "app/vendor.min.js",
+            "app/vendor.min.css",
+        ]
+        for path in ["app/views.py", "app/static/site.css", *generated]:
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            with open(path, "w") as f:
+                f.write("x\n")
+        git("add", "-A")
+        git("commit", "-q", "-m", "change")
+
+        diff = ai_review.get_diff(base, "HEAD")
+        self.assertIn("app/views.py", diff)
+        self.assertIn("app/static/site.css", diff)  # only staticfiles/ is excluded
+        for path in generated:
+            self.assertNotIn(path, diff)
 
 
 class TruncateDiffTests(unittest.TestCase):
