@@ -20,6 +20,8 @@ REASONING_EFFORT = "medium"
 MAX_OUTPUT_TOKENS = 16000
 # Roughly 40k tokens: plenty for a reviewable PR, and a cap on cost for a huge one.
 MAX_DIFF_CHARS = 150_000
+# Earlier discussion beyond this is dropped, oldest first.
+MAX_DISCUSSION_CHARS = 30_000
 
 # Generated or binary files that only add noise to a review.
 EXCLUDED_PATHS = [
@@ -53,6 +55,11 @@ def get_diff(base, head):
     return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
 
 
+def get_commit_messages(base, head):
+    cmd = ["git", "log", "--reverse", "--format=%h %an%n%B", f"{base}..{head}"]
+    return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.strip()
+
+
 def truncate_diff(diff, limit=MAX_DIFF_CHARS):
     """Return (diff, was_truncated), cutting at a line boundary."""
     if len(diff) <= limit:
@@ -60,11 +67,17 @@ def truncate_diff(diff, limit=MAX_DIFF_CHARS):
     return diff[: diff.rfind("\n", 0, limit) + 1], True
 
 
-def build_input(title, body, diff, truncated):
+def build_input(title, body, diff, truncated, commits="", previous_review=None, discussion=""):
     parts = [
         f"Pull request title: {title}",
         f"Pull request description:\n{body or '(none)'}",
     ]
+    if commits:
+        parts.append(f"Commits, oldest first:\n{commits}")
+    if previous_review:
+        parts.append(f"Your previous review of this pull request:\n{previous_review}")
+    if discussion:
+        parts.append(f"Discussion on the pull request by teammates, oldest first:\n{discussion}")
     if truncated:
         parts.append(
             f"NOTE: the diff exceeded {MAX_DIFF_CHARS} characters and was cut off. "
@@ -145,28 +158,59 @@ def post_review(repo, pr_number, token, body, commit_id):
     )
 
 
-def list_reviews(repo, pr_number, token):
-    reviews, page = [], 1
+def get_paginated(url, token):
+    items, page = [], 1
     while True:
-        batch = request_json(
-            f"https://api.github.com/repos/{repo}/pulls/{pr_number}/reviews"
-            f"?per_page=100&page={page}",
-            token=token,
-        )
-        reviews += batch
+        batch = request_json(f"{url}?per_page=100&page={page}", token=token)
+        items += batch
         if len(batch) < 100:
-            return reviews
+            return items
         page += 1
+
+
+def list_reviews(repo, pr_number, token):
+    return get_paginated(f"https://api.github.com/repos/{repo}/pulls/{pr_number}/reviews", token)
+
+
+def is_bot_review(review):
+    return review["user"]["login"] == BOT_LOGIN and REVIEW_MARKER in (review["body"] or "")
+
+
+def keep_latest(text, limit):
+    if len(text) <= limit:
+        return text
+    return "(earlier discussion omitted)\n" + text[-limit:]
+
+
+def get_conversation(repo, pr_number, token):
+    """Return (the bot's latest review, human discussion as text), so a new review
+    can skip points that were already fixed or answered."""
+    api = f"https://api.github.com/repos/{repo}"
+    reviews = list_reviews(repo, pr_number, token)
+    bot_reviews = [r for r in reviews if is_bot_review(r)]
+    previous = bot_reviews[-1]["body"] if bot_reviews else None
+
+    entries = []
+    for review in reviews:
+        if review["user"]["type"] != "Bot" and (review["body"] or "").strip():
+            entries.append((review["submitted_at"], review["user"]["login"], "review", review["body"]))
+    for comment in get_paginated(f"{api}/issues/{pr_number}/comments", token):
+        if comment["user"]["type"] != "Bot":
+            entries.append((comment["created_at"], comment["user"]["login"], "comment", comment["body"]))
+    for comment in get_paginated(f"{api}/pulls/{pr_number}/comments", token):
+        if comment["user"]["type"] != "Bot":
+            where = f"{comment['path']}:{comment.get('line') or comment.get('original_line')}"
+            entries.append((comment["created_at"], comment["user"]["login"], f"comment on {where}", comment["body"]))
+
+    entries.sort(key=lambda entry: entry[0])
+    discussion = "\n\n".join(f"@{who} ({kind}, {when}):\n{body}" for when, who, kind, body in entries)
+    return previous, keep_latest(discussion, MAX_DISCUSSION_CHARS)
 
 
 def collapse_previous_reviews(repo, pr_number, token, keep_id):
     """Hide the bot's older reviews as outdated so only the latest stays open."""
     for review in list_reviews(repo, pr_number, token):
-        if (
-            review["id"] == keep_id
-            or review["user"]["login"] != BOT_LOGIN
-            or REVIEW_MARKER not in (review["body"] or "")
-        ):
+        if review["id"] == keep_id or not is_bot_review(review):
             continue
         result = request_json(
             "https://api.github.com/graphql",
@@ -187,7 +231,16 @@ def main():
     env = os.environ
     diff, truncated = truncate_diff(get_diff(env["BASE_SHA"], env["HEAD_SHA"]))
     instructions = load_guide(env["BASE_SHA"])
-    user_input = build_input(env.get("PR_TITLE", ""), env.get("PR_BODY", ""), diff, truncated)
+    commits = get_commit_messages(env["BASE_SHA"], env["HEAD_SHA"])
+    previous, discussion = None, ""
+    if env.get("GITHUB_TOKEN") and env.get("PR_NUMBER"):
+        try:
+            previous, discussion = get_conversation(env["REPO"], env["PR_NUMBER"], env["GITHUB_TOKEN"])
+        except urllib.error.URLError as err:
+            print(f"::warning::Reviewing without earlier discussion: {err}")
+    user_input = build_input(
+        env.get("PR_TITLE", ""), env.get("PR_BODY", ""), diff, truncated, commits, previous, discussion
+    )
 
     if "--dry-run" in sys.argv:
         print(instructions, "\n" + "=" * 80 + "\n", user_input)

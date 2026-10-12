@@ -47,6 +47,17 @@ class LoadGuideTests(unittest.TestCase):
             self.assertEqual(ai_review.load_guide(base), "new guide")
 
 
+class GetCommitMessagesTests(unittest.TestCase):
+    def test_lists_pr_commits_oldest_first_with_full_messages(self):
+        base = make_repo(self)
+        commit_files({"a.py": "1\n"})
+        git("commit", "-q", "--allow-empty", "-m", "Second change", "-m", "Explains why.")
+        log = ai_review.get_commit_messages(base, "HEAD")
+        self.assertLess(log.index("change"), log.index("Second change"))
+        self.assertIn("Explains why.", log)
+        self.assertNotIn("base", log)
+
+
 class GetDiffTests(unittest.TestCase):
     def test_excludes_generated_files_at_any_depth(self):
         base = make_repo(self)
@@ -138,8 +149,16 @@ class PostReviewTests(unittest.TestCase):
         self.assertEqual(payload, {"body": "body", "event": "COMMENT", "commit_id": "abc123"})
 
 
-def review(id, login=ai_review.BOT_LOGIN, body=ai_review.REVIEW_MARKER):
-    return {"id": id, "node_id": f"node{id}", "user": {"login": login}, "body": body}
+def user(login):
+    return {"login": login, "type": "Bot" if login.endswith("[bot]") else "User"}
+
+
+def review(id, login=ai_review.BOT_LOGIN, body=ai_review.REVIEW_MARKER, at="2026-10-12T10:00:00Z"):
+    return {"id": id, "node_id": f"node{id}", "user": user(login), "body": body, "submitted_at": at}
+
+
+def comment(login, body, at, **extra):
+    return {"user": user(login), "body": body, "created_at": at, **extra}
 
 
 class CollapsePreviousReviewsTests(unittest.TestCase):
@@ -170,6 +189,80 @@ class CollapsePreviousReviewsTests(unittest.TestCase):
                 mock.patch("builtins.print") as printed:
             ai_review.collapse_previous_reviews("org/repo", "5", "tok", keep_id=5)
         self.assertIn("::warning::", printed.call_args.args[0])
+
+
+class GetConversationTests(unittest.TestCase):
+    def conversation(self, reviews, issue_comments=(), inline_comments=()):
+        def fake_request(url, payload=None, token=None, method=None):
+            if not url.endswith("page=1"):
+                return []  # everything fits on the first page
+            if "/reviews" in url:
+                return reviews
+            if "/issues/5/comments" in url:
+                return list(issue_comments)
+            if "/pulls/5/comments" in url:
+                return list(inline_comments)
+            raise AssertionError(url)
+
+        with mock.patch.object(ai_review, "request_json", side_effect=fake_request):
+            return ai_review.get_conversation("org/repo", "5", "tok")
+
+    def test_previous_review_is_the_bots_latest(self):
+        older = review(1, body=ai_review.REVIEW_MARKER + " first")
+        latest = review(2, body=ai_review.REVIEW_MARKER + " second")
+        previous, _ = self.conversation([older, latest])
+        self.assertIn("second", previous)
+
+    def test_no_previous_review_on_first_run(self):
+        previous, discussion = self.conversation([])
+        self.assertIsNone(previous)
+        self.assertEqual(discussion, "")
+
+    def test_discussion_is_humans_only_in_time_order(self):
+        reviews = [
+            review(1, at="2026-10-12T10:00:00Z"),
+            review(2, login="lsometrico", body="Looks good to me", at="2026-10-12T12:00:00Z"),
+            review(3, login="RyanR04", body="", at="2026-10-12T12:30:00Z"),  # approval, no text
+        ]
+        issue_comments = [
+            comment("xamspanda", "Not changing the trigger", "2026-10-12T11:00:00Z"),
+            comment("dependabot[bot]", "bot noise", "2026-10-12T11:30:00Z"),
+        ]
+        inline = [comment("Carlos-Luc", "Why 300s?", "2026-10-12T13:00:00Z",
+                          path=".github/scripts/ai_review.py", line=98)]
+        _, discussion = self.conversation(reviews, issue_comments, inline)
+
+        self.assertNotIn("bot noise", discussion)
+        self.assertNotIn(ai_review.REVIEW_MARKER, discussion)
+        self.assertNotIn("RyanR04", discussion)
+        order = [discussion.index(text) for text in
+                 ("Not changing the trigger", "Looks good to me", "Why 300s?")]
+        self.assertEqual(order, sorted(order))
+        self.assertIn("@xamspanda", discussion)
+        self.assertIn("comment on .github/scripts/ai_review.py:98", discussion)
+
+    def test_long_discussion_keeps_the_latest(self):
+        comments = [comment("xamspanda", f"note {i:03}" + "x" * 500, f"2026-10-12T10:{i % 60:02}:{i // 60:02}Z")
+                    for i in range(100)]
+        _, discussion = self.conversation([], comments)
+        self.assertLessEqual(len(discussion), ai_review.MAX_DISCUSSION_CHARS + 40)
+        self.assertTrue(discussion.startswith("(earlier discussion omitted)"))
+        self.assertIn("note 099", discussion)
+
+
+class BuildInputContextTests(unittest.TestCase):
+    def test_includes_commits_previous_review_and_discussion(self):
+        text = ai_review.build_input("t", "b", "+x", False, commits="abc1 Fix bug",
+                                     previous_review="Must fix: X", discussion="@a: done")
+        for part in ("Fix bug", "Your previous review", "Must fix: X", "@a: done"):
+            self.assertIn(part, text)
+        self.assertLess(text.index("@a: done"), text.index("Diff:"))
+
+    def test_omits_empty_sections(self):
+        text = ai_review.build_input("t", "b", "+x", False)
+        self.assertNotIn("previous review", text)
+        self.assertNotIn("Discussion", text)
+        self.assertNotIn("Commits", text)
 
 
 if __name__ == "__main__":

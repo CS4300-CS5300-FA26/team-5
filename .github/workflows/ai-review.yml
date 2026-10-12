@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: read
+  issues: read  # PR conversation comments use the issues API
   pull-requests: write
 
 # A new push to the same PR cancels the review of the older commit.
