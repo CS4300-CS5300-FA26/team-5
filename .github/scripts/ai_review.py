@@ -1,0 +1,201 @@
+"""Advisory AI review of a pull request, posted as a comment-only PR review.
+
+Run by .github/workflows/ai-review.yml. Uses only the standard library so the
+workflow has no third-party dependencies to install or trust.
+
+Local preview (prints the prompt instead of calling the API):
+    BASE_SHA=main~1 HEAD_SHA=main python .github/scripts/ai_review.py --dry-run
+"""
+
+import json
+import os
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+MODEL = "gpt-6-luna"
+REASONING_EFFORT = "medium"
+MAX_OUTPUT_TOKENS = 16000
+# Roughly 40k tokens: plenty for a reviewable PR, and a cap on cost for a huge one.
+MAX_DIFF_CHARS = 150_000
+
+# Generated or binary files that only add noise to a review.
+EXCLUDED_PATHS = [
+    ":(exclude,glob)**/staticfiles/**",
+    ":(exclude,glob)**/*.sqlite3",
+    ":(exclude,glob)**/*.lock",
+    ":(exclude,glob)**/*.min.js",
+    ":(exclude,glob)**/*.min.css",
+]
+
+REVIEW_MARKER = "<!-- ai-review-bot -->"
+BOT_LOGIN = "github-actions[bot]"
+GUIDE_PATH = Path(__file__).resolve().parent.parent / "ai-review-guide.md"
+
+
+def get_diff(base, head):
+    cmd = ["git", "diff", "--no-color", f"{base}...{head}", "--", "."] + EXCLUDED_PATHS
+    return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
+
+
+def truncate_diff(diff, limit=MAX_DIFF_CHARS):
+    """Return (diff, was_truncated), cutting at a line boundary."""
+    if len(diff) <= limit:
+        return diff, False
+    return diff[: diff.rfind("\n", 0, limit) + 1], True
+
+
+def build_input(title, body, diff, truncated):
+    parts = [
+        f"Pull request title: {title}",
+        f"Pull request description:\n{body or '(none)'}",
+    ]
+    if truncated:
+        parts.append(
+            f"NOTE: the diff exceeded {MAX_DIFF_CHARS} characters and was cut off. "
+            "Review what is shown and say that the PR is too large to review fully."
+        )
+    parts.append(f"Diff:\n```diff\n{diff}\n```")
+    return "\n\n".join(parts)
+
+
+def extract_text(response):
+    """Join every output_text block from a Responses API result."""
+    texts = []
+    for item in response.get("output", []):
+        if item.get("type") != "message":
+            continue
+        for content in item.get("content", []):
+            if content.get("type") == "output_text":
+                texts.append(content["text"])
+            elif content.get("type") == "refusal":
+                texts.append(f"(The model declined to review: {content.get('refusal')})")
+    return "\n".join(texts).strip()
+
+
+def request_json(url, payload=None, token=None, method=None):
+    data = json.dumps(payload).encode() if payload is not None else None
+    req = urllib.request.Request(url, data=data, method=method)
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Accept", "application/json")
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
+    with urllib.request.urlopen(req, timeout=300) as resp:
+        return json.load(resp)
+
+
+def call_openai(api_key, instructions, user_input):
+    response = request_json(
+        "https://api.openai.com/v1/responses",
+        {
+            "model": MODEL,
+            "reasoning": {"effort": REASONING_EFFORT},
+            "instructions": instructions,
+            "input": user_input,
+            "max_output_tokens": MAX_OUTPUT_TOKENS,
+            "store": False,
+        },
+        token=api_key,
+    )
+    text = extract_text(response)
+    if not text:
+        raise RuntimeError(
+            f"No review text returned (status={response.get('status')}, "
+            f"details={response.get('incomplete_details')})"
+        )
+    return text
+
+
+def format_review(review, head_sha, truncated):
+    lines = [
+        REVIEW_MARKER,
+        "## 🤖 AI review",
+        f"<sub>`{MODEL}` on commit `{head_sha[:7]}`. Advisory only: "
+        "a teammate still reviews and approves. Earlier AI reviews are collapsed as outdated.</sub>",
+        "",
+    ]
+    if truncated:
+        lines += ["> ⚠️ The diff was too large and was truncated. Consider splitting this PR.", ""]
+    lines.append(review)
+    return "\n".join(lines)
+
+
+def post_review(repo, pr_number, token, body, commit_id):
+    """Post a comment-only PR review tied to the reviewed commit."""
+    return request_json(
+        f"https://api.github.com/repos/{repo}/pulls/{pr_number}/reviews",
+        {"body": body, "event": "COMMENT", "commit_id": commit_id},
+        token,
+        "POST",
+    )
+
+
+def list_reviews(repo, pr_number, token):
+    reviews, page = [], 1
+    while True:
+        batch = request_json(
+            f"https://api.github.com/repos/{repo}/pulls/{pr_number}/reviews"
+            f"?per_page=100&page={page}",
+            token=token,
+        )
+        reviews += batch
+        if len(batch) < 100:
+            return reviews
+        page += 1
+
+
+def collapse_previous_reviews(repo, pr_number, token, keep_id):
+    """Hide the bot's older reviews as outdated so only the latest stays open."""
+    for review in list_reviews(repo, pr_number, token):
+        if (
+            review["id"] == keep_id
+            or review["user"]["login"] != BOT_LOGIN
+            or REVIEW_MARKER not in (review["body"] or "")
+        ):
+            continue
+        result = request_json(
+            "https://api.github.com/graphql",
+            {
+                "query": "mutation($id: ID!) { minimizeComment(input: "
+                "{subjectId: $id, classifier: OUTDATED}) { clientMutationId } }",
+                "variables": {"id": review["node_id"]},
+            },
+            token,
+            "POST",
+        )
+        # GraphQL reports failures in the body with HTTP 200.
+        if result.get("errors"):
+            print(f"::warning::Could not collapse review {review['id']}: {result['errors']}")
+
+
+def main():
+    env = os.environ
+    diff, truncated = truncate_diff(get_diff(env["BASE_SHA"], env["HEAD_SHA"]))
+    instructions = GUIDE_PATH.read_text()
+    user_input = build_input(env.get("PR_TITLE", ""), env.get("PR_BODY", ""), diff, truncated)
+
+    if "--dry-run" in sys.argv:
+        print(instructions, "\n" + "=" * 80 + "\n", user_input)
+        return
+
+    if not diff.strip():
+        review = "No reviewable changes (only excluded or generated files changed)."
+    else:
+        if not env.get("OPENAI_API_KEY"):
+            sys.exit("OPENAI_API_KEY is not set. Add it under Settings → Secrets → Actions.")
+        review = call_openai(env["OPENAI_API_KEY"], instructions, user_input)
+
+    body = format_review(review, env["HEAD_SHA"], truncated)
+    posted = post_review(env["REPO"], env["PR_NUMBER"], env["GITHUB_TOKEN"], body, env["HEAD_SHA"])
+    print(body)
+    # The new review is already posted, so failing to tidy up is only a warning.
+    try:
+        collapse_previous_reviews(env["REPO"], env["PR_NUMBER"], env["GITHUB_TOKEN"], posted["id"])
+    except urllib.error.URLError as err:
+        print(f"::warning::Could not collapse earlier AI reviews: {err}")
+
+
+if __name__ == "__main__":
+    main()
