@@ -241,6 +241,13 @@ class GetConversationTests(unittest.TestCase):
         self.assertIn("@xamspanda", discussion)
         self.assertIn("comment on .github/scripts/ai_review.py:98", discussion)
 
+    def test_pending_review_is_skipped(self):
+        pending = review(2, login="lsometrico", body="draft thoughts", at=None)
+        submitted = review(3, login="RyanR04", body="Approved with a note", at="2026-10-12T12:00:00Z")
+        _, discussion = self.conversation([pending, submitted])
+        self.assertNotIn("draft thoughts", discussion)
+        self.assertIn("Approved with a note", discussion)
+
     def test_long_discussion_keeps_the_latest(self):
         # One comment per minute, so note 099 is the newest.
         comments = [comment("xamspanda", f"note {i:03}" + "x" * 500,

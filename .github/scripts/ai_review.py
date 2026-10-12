@@ -197,6 +197,9 @@ def get_conversation(repo, pr_number, token):
 
     entries = []
     for review in reviews:
+        # Pending (unsubmitted) reviews have no timestamp and aren't part of the discussion yet.
+        if not review.get("submitted_at"):
+            continue
         if review["user"]["type"] != "Bot" and (review["body"] or "").strip():
             entries.append((review["submitted_at"], review["user"]["login"], "review", review["body"]))
     for comment in get_paginated(f"{api}/issues/{pr_number}/comments", token):
