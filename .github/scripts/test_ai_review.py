@@ -70,6 +70,42 @@ class GetCommitMessagesTests(unittest.TestCase):
         self.assertNotIn("Commit 00", log)
 
 
+class GetChangedFilesTests(unittest.TestCase):
+    def test_lists_every_file_including_ones_left_out_of_the_diff(self):
+        base = make_repo(self)
+        head = commit_files({"app/views.py": "a\nb\n", "db.sqlite3": "x\n"})
+        listing = ai_review.get_changed_files(base, head)
+        self.assertIn("app/views.py (+2 -0)", listing)
+        self.assertIn("db.sqlite3 (+1 -0)", listing)
+
+    def test_many_files_are_grouped_by_directory(self):
+        base = make_repo(self)
+        files = {f"flask/src/m{i}.py": "x\n" for i in range(10)}
+        files["app/views.py"] = "a\n"
+        head = commit_files(files)
+        with mock.patch.object(ai_review, "MAX_LISTED_FILES", 5):
+            listing = ai_review.get_changed_files(base, head)
+        self.assertIn("11 files changed", listing)
+        self.assertIn("flask/src/ (10 files, +10 -0)", listing)
+        self.assertIn("app/ (1 files, +1 -0)", listing)
+
+    def test_committed_package_does_not_hide_app_code(self):
+        # A package copied into the project sorts before games/ and is bigger than the
+        # whole diff budget; the app's change must still be reviewed.
+        base = make_repo(self)
+        files = {f"binge_and_bosses/flask/module{i:02}.py": "x = 1\n" * 400 for i in range(60)}
+        files["binge_and_bosses/games/views.py"] = "def index(request):\n    pass\n"
+        head = commit_files(files)
+        full = ai_review.get_diff(base, head)
+        self.assertLess(full.index("flask/module59"), full.index("games/views.py"))
+        self.assertGreater(len(full), ai_review.MAX_DIFF_CHARS)
+
+        diff, truncated = ai_review.truncate_diff(ai_review.limit_diff_shares(full))
+        self.assertIn("def index(request):", diff)
+        self.assertFalse(truncated)
+        self.assertIn("more files in binge_and_bosses/flask/ omitted", diff)
+
+
 class GetDiffTests(unittest.TestCase):
     def test_excludes_generated_files_at_any_depth(self):
         base = make_repo(self)
@@ -89,6 +125,34 @@ class GetDiffTests(unittest.TestCase):
         self.assertIn("app/static/site.css", diff)  # only staticfiles/ is excluded
         for path in generated:
             self.assertNotIn(path, diff)
+
+
+def fake_file_diff(path, lines):
+    body = "".join(f"+line {i}\n" for i in range(lines))
+    return f"diff --git a/{path} b/{path}\n--- /dev/null\n+++ b/{path}\n@@ -0,0 +1,{lines} @@\n{body}"
+
+
+class LimitDiffSharesTests(unittest.TestCase):
+    def test_splits_diff_into_files(self):
+        diff = fake_file_diff("a.py", 2) + fake_file_diff("dir/b.py", 3)
+        self.assertEqual([p for p, _ in ai_review.split_diff_by_file(diff)], ["a.py", "dir/b.py"])
+
+    def test_small_diff_is_unchanged(self):
+        diff = fake_file_diff("a.py", 2) + fake_file_diff("dir/b.py", 3)
+        self.assertEqual(ai_review.limit_diff_shares(diff), diff)
+
+    def test_huge_file_is_cut_with_a_note(self):
+        limited = ai_review.limit_diff_shares(fake_file_diff("big.py", 1000), per_file=500)
+        self.assertLess(len(limited), 600)
+        self.assertIn("more characters of this file omitted", limited)
+
+    def test_package_cannot_crowd_out_app_code(self):
+        vendored = "".join(fake_file_diff(f"flask/src/m{i}.py", 50) for i in range(50))
+        diff = vendored + fake_file_diff("binge_and_bosses/games/views.py", 5)
+        limited = ai_review.limit_diff_shares(diff, per_dir=5_000)
+        self.assertIn("binge_and_bosses/games/views.py", limited)
+        self.assertIn("more files in flask/src/ omitted", limited)
+        self.assertLess(len(limited), 7_000)
 
 
 class TruncateDiffTests(unittest.TestCase):
@@ -325,11 +389,16 @@ class BuildInputContextTests(unittest.TestCase):
         for part in ("TITLE", "BODY", "COMMITS", "DISCUSSION", "+DIFF"):
             self.assertLess(framing, text.index(part))
 
+    def test_changed_files_come_before_the_diff(self):
+        text = ai_review.build_input("t", "b", "+x", False, changed_files="app/views.py (+1 -0)")
+        self.assertLess(text.index("app/views.py (+1 -0)"), text.index("Diff:"))
+
     def test_omits_empty_sections(self):
         text = ai_review.build_input("t", "b", "+x", False)
         self.assertNotIn("previous review", text)
         self.assertNotIn("Discussion", text)
         self.assertNotIn("Commits", text)
+        self.assertNotIn("Changed files", text)
 
 
 if __name__ == "__main__":
