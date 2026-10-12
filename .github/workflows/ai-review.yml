@@ -31,7 +31,7 @@ jobs:
   review:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20  # max reasoning effort can take several minutes
     steps:
       - uses: actions/checkout@v5
         with:

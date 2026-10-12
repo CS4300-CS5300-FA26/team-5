@@ -16,8 +16,12 @@ import urllib.request
 from pathlib import Path
 
 MODEL = "gpt-6-luna"
-REASONING_EFFORT = "medium"
-MAX_OUTPUT_TOKENS = 16000
+# Luna is cheap enough that the deepest reasoning costs about a cent per review.
+REASONING_EFFORT = "max"
+# Reasoning tokens count toward this cap; too low and the review comes back empty.
+MAX_OUTPUT_TOKENS = 64000
+# Seconds to wait for the model; max effort can take several minutes.
+OPENAI_TIMEOUT = 900
 # Roughly 40k tokens: plenty for a reviewable PR, and a cap on cost for a huge one.
 MAX_DIFF_CHARS = 150_000
 # gpt-6-luna list prices in USD per 1M tokens (October 2026), for the cost estimate in the log.
@@ -111,14 +115,14 @@ def extract_text(response):
     return "\n".join(texts).strip()
 
 
-def request_json(url, payload=None, token=None, method=None):
+def request_json(url, payload=None, token=None, method=None, timeout=60):
     data = json.dumps(payload).encode() if payload is not None else None
     req = urllib.request.Request(url, data=data, method=method)
     req.add_header("Content-Type", "application/json")
     req.add_header("Accept", "application/json")
     if token:
         req.add_header("Authorization", f"Bearer {token}")
-    with urllib.request.urlopen(req, timeout=300) as resp:
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.load(resp)
 
 
@@ -155,6 +159,7 @@ def call_openai(api_key, instructions, user_input):
             "store": False,
         },
         token=api_key,
+        timeout=OPENAI_TIMEOUT,
     )
     # A notice annotation shows on the workflow run's summary page.
     print(f"::notice title=AI review usage ({REASONING_EFFORT} effort)::{format_usage(response.get('usage') or {})}")

@@ -117,6 +117,26 @@ class ExtractTextTests(unittest.TestCase):
         self.assertEqual(ai_review.extract_text({"output": []}), "")
 
 
+class CallOpenAITests(unittest.TestCase):
+    def test_sends_effort_output_cap_and_long_timeout(self):
+        response = {"output": [{"type": "message", "content": [{"type": "output_text", "text": "ok"}]}]}
+        with mock.patch.object(ai_review, "request_json", return_value=response) as req, \
+                mock.patch("builtins.print"):
+            self.assertEqual(ai_review.call_openai("key", "guide", "input"), "ok")
+        payload = req.call_args.args[1]
+        self.assertEqual(payload["reasoning"], {"effort": ai_review.REASONING_EFFORT})
+        self.assertEqual(payload["max_output_tokens"], ai_review.MAX_OUTPUT_TOKENS)
+        self.assertEqual(req.call_args.kwargs["timeout"], ai_review.OPENAI_TIMEOUT)
+
+    def test_empty_review_raises_with_status(self):
+        response = {"output": [], "status": "incomplete",
+                    "incomplete_details": {"reason": "max_output_tokens"}}
+        with mock.patch.object(ai_review, "request_json", return_value=response), \
+                mock.patch("builtins.print"):
+            with self.assertRaisesRegex(RuntimeError, "max_output_tokens"):
+                ai_review.call_openai("key", "guide", "input")
+
+
 class FormatUsageTests(unittest.TestCase):
     def test_reports_tokens_and_cost(self):
         usage = {
