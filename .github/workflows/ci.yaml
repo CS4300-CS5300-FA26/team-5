@@ -21,7 +21,6 @@ jobs:
       - name: Run tests with coverage
         working-directory: binge_and_bosses
         run: coverage run manage.py test
-
       - name: Enforce 80% coverage
         working-directory: binge_and_bosses
         run: coverage report --fail-under=80
