@@ -242,12 +242,15 @@ class GetConversationTests(unittest.TestCase):
         self.assertIn("comment on .github/scripts/ai_review.py:98", discussion)
 
     def test_long_discussion_keeps_the_latest(self):
-        comments = [comment("xamspanda", f"note {i:03}" + "x" * 500, f"2026-10-12T10:{i % 60:02}:{i // 60:02}Z")
+        # One comment per minute, so note 099 is the newest.
+        comments = [comment("xamspanda", f"note {i:03}" + "x" * 500,
+                            f"2026-10-12T{10 + i // 60:02}:{i % 60:02}:00Z")
                     for i in range(100)]
         _, discussion = self.conversation([], comments)
         self.assertLessEqual(len(discussion), ai_review.MAX_DISCUSSION_CHARS + 40)
         self.assertTrue(discussion.startswith("(earlier discussion omitted)"))
         self.assertIn("note 099", discussion)
+        self.assertNotIn("note 000", discussion)
 
 
 class BuildInputContextTests(unittest.TestCase):
