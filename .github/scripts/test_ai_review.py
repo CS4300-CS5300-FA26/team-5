@@ -146,6 +146,42 @@ class LimitDiffSharesTests(unittest.TestCase):
         self.assertLess(len(limited), 600)
         self.assertIn("more characters of this file omitted", limited)
 
+    def test_renamed_file_is_filed_under_its_new_path(self):
+        diff = ("diff --git a/binge_and_bosses/flask/x.py b/binge_and_bosses/games/x.py\n"
+                "similarity index 90%\nrename from binge_and_bosses/flask/x.py\n"
+                "rename to binge_and_bosses/games/x.py\n")
+        self.assertEqual(ai_review.split_diff_by_file(diff)[0][0], "binge_and_bosses/games/x.py")
+
+    def test_rename_out_of_a_full_directory_is_still_reviewed(self):
+        vendored = "".join(fake_file_diff(f"binge_and_bosses/flask/m{i}.py", 50) for i in range(50))
+        moved = ("diff --git a/binge_and_bosses/flask/views.py b/binge_and_bosses/games/views.py\n"
+                 "similarity index 90%\nrename from binge_and_bosses/flask/views.py\n"
+                 "rename to binge_and_bosses/games/views.py\n@@ -1 +1 @@\n-old\n+def index(request):\n")
+        limited = ai_review.limit_diff_shares(vendored + moved, per_dir=5_000)
+        self.assertIn("+def index(request):", limited)
+
+    def test_many_full_directories_still_leave_room_for_app_code(self):
+        # Four directories that each want more than their 40k cap, then the app.
+        crowded = "".join(fake_file_diff(f"vendor{d}/pkg/m{i}.py", 600)
+                          for d in range(4) for i in range(10))
+        diff = crowded + fake_file_diff("binge_and_bosses/games/views.py", 5)
+        limited = ai_review.limit_diff_shares(diff)
+        self.assertIn("binge_and_bosses/games/views.py", limited)
+        self.assertLessEqual(len(limited), ai_review.MAX_DIFF_CHARS + 1_000)  # + omission notes
+        self.assertFalse(ai_review.truncate_diff(limited)[1])
+
+    def test_shares_never_exceed_the_total_and_small_directories_get_all_they_need(self):
+        sizes = {"a": 100_000, "b": 100_000, "c": 100_000, "d": 100_000, "app": 3_000}
+        shares = ai_review.directory_shares(sizes, total=150_000, per_dir=40_000)
+        self.assertLessEqual(sum(shares.values()), 150_000)
+        self.assertEqual(shares["app"], 3_000)
+
+    def test_first_file_is_cut_to_fit_a_small_share(self):
+        files = "".join(fake_file_diff(f"d{i}/x.py", 200) for i in range(30))
+        limited = ai_review.limit_diff_shares(files, total=30_000)
+        self.assertEqual(limited.count("diff --git"), 30)
+        self.assertIn("more characters of this file omitted", limited)
+
     def test_package_cannot_crowd_out_app_code(self):
         vendored = "".join(fake_file_diff(f"flask/src/m{i}.py", 50) for i in range(50))
         diff = vendored + fake_file_diff("binge_and_bosses/games/views.py", 5)

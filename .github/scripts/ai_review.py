@@ -112,27 +112,55 @@ def get_changed_files(base, head):
 
 
 def split_diff_by_file(diff):
-    """Split a git diff into (path, text) chunks, one per file."""
+    """Split a git diff into (path, text) chunks, one per file. A renamed file is
+    filed under its new path, where it ends up."""
     chunks = []
     for chunk in diff.split("\ndiff --git "):
         if chunk.strip():
             chunk = chunk if chunk.startswith("diff --git ") else "diff --git " + chunk
-            path = chunk.split("\n", 1)[0][len("diff --git a/"):].split(" b/", 1)[0]
+            path = chunk.split("\n", 1)[0].rsplit(" b/", 1)[1]
             chunks.append((path, chunk.rstrip("\n") + "\n"))
     return chunks
 
 
-def limit_diff_shares(diff, per_file=MAX_FILE_DIFF_CHARS, per_dir=MAX_DIR_DIFF_CHARS):
-    """Cap each file's and each directory's share of the diff, noting what was left out."""
-    used, kept, skipped = {}, [], {}
+def cut_to(chunk, limit):
+    cut = chunk.rfind("\n", 0, limit) + 1
+    return chunk[:cut] + f"... ({len(chunk) - cut} more characters of this file omitted)\n"
+
+
+def directory_shares(sizes, total, per_dir):
+    """Split the total budget between directories: each gets what it needs up to an
+    equal share of what's left, smallest first, so small directories are never squeezed
+    out and the shares never add up to more than the total."""
+    shares, remaining = {}, total
+    ordered = sorted(sizes, key=sizes.get)
+    for i, directory in enumerate(ordered):
+        shares[directory] = min(sizes[directory], per_dir, remaining // (len(ordered) - i))
+        remaining -= shares[directory]
+    return shares
+
+
+def limit_diff_shares(diff, per_file=MAX_FILE_DIFF_CHARS, per_dir=MAX_DIR_DIFF_CHARS,
+                      total=MAX_DIFF_CHARS):
+    """Cap each file's and each directory's share of the diff, so the whole thing fits
+    the total budget in git's file order, noting what was left out."""
+    files = []
     for path, chunk in split_diff_by_file(diff):
-        if len(chunk) > per_file:
-            cut = chunk.rfind("\n", 0, per_file) + 1
-            chunk = chunk[:cut] + f"... ({len(chunk) - cut} more characters of this file omitted)\n"
-        directory = directory_of(path)
-        if used.get(directory, 0) + len(chunk) > per_dir:
-            skipped[directory] = skipped.get(directory, 0) + 1
-            continue
+        files.append((directory_of(path), chunk if len(chunk) <= per_file else cut_to(chunk, per_file)))
+    sizes = {}
+    for directory, chunk in files:
+        sizes[directory] = sizes.get(directory, 0) + len(chunk)
+    shares = directory_shares(sizes, total, per_dir)
+
+    used, kept, skipped = {}, [], {}
+    for directory, chunk in files:
+        room = shares[directory] - used.get(directory, 0)
+        if len(chunk) > room:
+            # A directory's first file is cut to fit rather than dropped, if there's real room.
+            if directory in used or room < 1_000:
+                skipped[directory] = skipped.get(directory, 0) + 1
+                continue
+            chunk = cut_to(chunk, room - 100)
         used[directory] = used.get(directory, 0) + len(chunk)
         kept.append(chunk)
     notes = [
