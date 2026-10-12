@@ -129,24 +129,63 @@ class ExtractTextTests(unittest.TestCase):
         self.assertEqual(ai_review.extract_text({"output": []}), "")
 
 
+def done(text="ok", status="completed"):
+    return {"id": "resp_1", "status": status,
+            "output": [{"type": "message", "content": [{"type": "output_text", "text": text}]}]}
+
+
 class CallOpenAITests(unittest.TestCase):
-    def test_sends_effort_output_cap_and_long_timeout(self):
-        response = {"output": [{"type": "message", "content": [{"type": "output_text", "text": "ok"}]}]}
-        with mock.patch.object(ai_review, "request_json", return_value=response) as req, \
-                mock.patch("builtins.print"):
-            self.assertEqual(ai_review.call_openai("key", "guide", "input"), "ok")
-        payload = req.call_args.args[1]
+    def call(self, responses, clock=None):
+        with mock.patch.object(ai_review, "request_json", side_effect=responses) as req, \
+                mock.patch.object(ai_review.time, "sleep") as sleep, \
+                mock.patch.object(ai_review.time, "monotonic", side_effect=clock or (lambda: 0)), \
+                mock.patch("builtins.print") as printed:
+            try:
+                return ai_review.call_openai("key", "guide", "input"), req, sleep, printed
+            except RuntimeError as err:
+                return err, req, sleep, printed
+
+    def test_submits_in_background_with_effort_and_output_cap(self):
+        result, req, _, _ = self.call([done()])
+        self.assertEqual(result, "ok")
+        payload = req.call_args_list[0].args[1]
+        self.assertTrue(payload["background"])
+        self.assertFalse(payload["store"])
         self.assertEqual(payload["reasoning"], {"effort": ai_review.REASONING_EFFORT})
         self.assertEqual(payload["max_output_tokens"], ai_review.MAX_OUTPUT_TOKENS)
-        self.assertEqual(req.call_args.kwargs["timeout"], ai_review.OPENAI_TIMEOUT)
+
+    def test_polls_until_the_review_is_done(self):
+        queued = {"id": "resp_1", "status": "queued"}
+        running = {"id": "resp_1", "status": "in_progress"}
+        result, req, sleep, _ = self.call([queued, running, done("review text")])
+        self.assertEqual(result, "review text")
+        self.assertTrue(req.call_args_list[1].args[0].endswith("/responses/resp_1"))
+        self.assertEqual(sleep.call_count, 2)
+
+    def test_a_dropped_poll_is_retried(self):
+        running = {"id": "resp_1", "status": "in_progress"}
+        result, _, _, printed = self.call([running, ConnectionResetError("dropped"), done()])
+        self.assertEqual(result, "ok")
+        self.assertIn("::warning::", printed.call_args_list[0].args[0])
+
+    def test_cancels_after_the_deadline(self):
+        running = {"id": "resp_1", "status": "in_progress"}
+        times = iter([0, 10, ai_review.OPENAI_TIMEOUT + 1])
+        result, req, _, _ = self.call([running, running, {}], clock=lambda: next(times))
+        self.assertIsInstance(result, RuntimeError)
+        self.assertIn("cancelled", str(result))
+        url, _, _, method = req.call_args.args
+        self.assertEqual((url.endswith("/resp_1/cancel"), method), (True, "POST"))
+
+    def test_failed_review_raises_with_the_error(self):
+        result, _, _, _ = self.call([{"id": "resp_1", "status": "failed", "error": {"code": "server_error"}}])
+        self.assertIsInstance(result, RuntimeError)
+        self.assertIn("server_error", str(result))
 
     def test_empty_review_raises_with_status(self):
-        response = {"output": [], "status": "incomplete",
-                    "incomplete_details": {"reason": "max_output_tokens"}}
-        with mock.patch.object(ai_review, "request_json", return_value=response), \
-                mock.patch("builtins.print"):
-            with self.assertRaisesRegex(RuntimeError, "max_output_tokens"):
-                ai_review.call_openai("key", "guide", "input")
+        result, _, _, _ = self.call([{"id": "resp_1", "status": "incomplete", "output": [],
+                                      "incomplete_details": {"reason": "max_output_tokens"}}])
+        self.assertIn("max_output_tokens", str(result))
 
 
 class FormatUsageTests(unittest.TestCase):

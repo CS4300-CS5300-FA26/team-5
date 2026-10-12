@@ -11,6 +11,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -20,8 +21,11 @@ MODEL = "gpt-6-luna"
 REASONING_EFFORT = "max"
 # Reasoning tokens count toward this cap; too low and the review comes back empty.
 MAX_OUTPUT_TOKENS = 64000
-# Seconds to wait for the model; max effort can take several minutes.
+# Seconds to wait for the model; max effort can take several minutes. The request
+# runs in OpenAI's background mode and is polled, because a single HTTP request
+# held open that long gets dropped.
 OPENAI_TIMEOUT = 900
+POLL_SECONDS = 5
 # Roughly 40k tokens: plenty for a reviewable PR, and a cap on cost for a huge one.
 MAX_DIFF_CHARS = 150_000
 # gpt-6-luna list prices in USD per 1M tokens (October 2026), for the cost estimate in the log.
@@ -151,8 +155,9 @@ def format_usage(usage):
 
 
 def call_openai(api_key, instructions, user_input):
+    api = "https://api.openai.com/v1/responses"
     response = request_json(
-        "https://api.openai.com/v1/responses",
+        api,
         {
             "model": MODEL,
             "reasoning": {"effort": REASONING_EFFORT},
@@ -160,12 +165,25 @@ def call_openai(api_key, instructions, user_input):
             "input": user_input,
             "max_output_tokens": MAX_OUTPUT_TOKENS,
             "store": False,
+            "background": True,
         },
         token=api_key,
-        timeout=OPENAI_TIMEOUT,
     )
+    deadline = time.monotonic() + OPENAI_TIMEOUT
+    while response.get("status") in ("queued", "in_progress"):
+        if time.monotonic() > deadline:
+            request_json(f"{api}/{response['id']}/cancel", {}, api_key, "POST")
+            raise RuntimeError(f"The review took longer than {OPENAI_TIMEOUT} seconds and was cancelled")
+        time.sleep(POLL_SECONDS)
+        try:
+            response = request_json(f"{api}/{response['id']}", token=api_key)
+        except (urllib.error.URLError, ConnectionError, TimeoutError) as err:
+            print(f"::warning::Checking on the review failed, retrying: {err}")
+
     # A notice annotation shows on the workflow run's summary page.
     print(f"::notice title=AI review usage ({REASONING_EFFORT} effort)::{format_usage(response.get('usage') or {})}")
+    if response.get("status") == "failed":
+        raise RuntimeError(f"The review failed: {response.get('error')}")
     text = extract_text(response)
     if not text:
         raise RuntimeError(
