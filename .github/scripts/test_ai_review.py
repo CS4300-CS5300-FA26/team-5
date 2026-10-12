@@ -107,6 +107,15 @@ class GetChangedFilesTests(unittest.TestCase):
         self.assertNotIn("games/views.py", listing)
         self.assertIn("binge_and_bosses/flask/ (120 files", listing)
 
+    def test_risky_files_are_named_before_other_left_out_files(self):
+        base = make_repo(self)
+        files = {f"binge_and_bosses/staticfiles/f{i:03}.css": "a\n" for i in range(120)}
+        files["zzz/.env"] = "SECRET_KEY=x\n"  # sorts after every staticfiles path
+        head = commit_files(files)
+        listing = ai_review.get_changed_files(base, head)
+        self.assertIn("zzz/.env (+1 -0)", listing)
+        self.assertIn("(and 71 more)", listing)
+
     def test_named_files_survive_the_length_cap(self):
         base = make_repo(self)
         files = {f"d{i:03}/sub/m.py": "x\n" for i in range(300)}  # 300 groups: a long list
@@ -203,6 +212,16 @@ class LimitDiffSharesTests(unittest.TestCase):
         shares = ai_review.directory_shares(sizes, total=150_000, per_dir=40_000)
         self.assertLessEqual(sum(shares.values()), 150_000)
         self.assertEqual(shares["app"], 3_000)
+
+    def test_every_directory_keeps_a_snippet_when_shares_are_small(self):
+        # 200 directories of ~2k each: every share is under 1,000 characters.
+        crowded = "".join(fake_file_diff(f"vendor/p{i:03}/m.py", 250) for i in range(200))
+        diff = crowded + fake_file_diff("zz_app/games/views.py", 250)
+        limited = ai_review.limit_diff_shares(diff)
+        self.assertIn("diff --git a/zz_app/games/views.py", limited)
+        self.assertIn("+line 0", limited.split("zz_app/games/views.py")[-1])
+        self.assertEqual(limited.count("diff --git"), 201)
+        self.assertLessEqual(len(limited), ai_review.MAX_DIFF_CHARS + 1_000)
 
     def test_first_file_is_cut_to_fit_a_small_share(self):
         files = "".join(fake_file_diff(f"d{i}/x.py", 200) for i in range(30))

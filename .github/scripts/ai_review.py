@@ -32,6 +32,8 @@ MAX_DIFF_CHARS = 150_000
 # package (say a copied flask/) can't use up the budget before the app code.
 MAX_FILE_DIFF_CHARS = 15_000
 MAX_DIR_DIFF_CHARS = 40_000
+# A directory whose share is at least this keeps a cut-down first file, not nothing.
+MIN_SNIPPET_CHARS = 250
 # The changed-files list; past this many files it is grouped by directory.
 MAX_LISTED_FILES = 100
 MAX_FILE_LIST_CHARS = 10_000
@@ -113,6 +115,7 @@ def get_changed_files(base, head):
                                      check=True).stdout.splitlines())
         named = [(added, deleted, path) for added, deleted, path in rows
                  if path not in in_diff or is_risky(path)]
+        named.sort(key=lambda row: not is_risky(row[2]))  # risky files first, before the cap
         groups = {}
         for added, deleted, path in rows:
             directory = directory_of(path)
@@ -182,10 +185,10 @@ def limit_diff_shares(diff, per_file=MAX_FILE_DIFF_CHARS, per_dir=MAX_DIR_DIFF_C
         room = shares[directory] - used.get(directory, 0)
         if len(chunk) > room:
             # A directory's first file is cut to fit rather than dropped, if there's real room.
-            if directory in used or room < 1_000:
+            if directory in used or room < MIN_SNIPPET_CHARS:
                 skipped[directory] = skipped.get(directory, 0) + 1
                 continue
-            chunk = cut_to(chunk, room - 100)
+            chunk = cut_to(chunk, room - 80)  # leaves room for the "omitted" note
         used[directory] = used.get(directory, 0) + len(chunk)
         kept.append(chunk)
     notes = [
