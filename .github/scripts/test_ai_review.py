@@ -117,6 +117,24 @@ class ExtractTextTests(unittest.TestCase):
         self.assertEqual(ai_review.extract_text({"output": []}), "")
 
 
+class FormatUsageTests(unittest.TestCase):
+    def test_reports_tokens_and_cost(self):
+        usage = {
+            "input_tokens": 10_000,
+            "input_tokens_details": {"cached_tokens": 2_000, "cache_write_tokens": 1_000},
+            "output_tokens": 4_000,
+            "output_tokens_details": {"reasoning_tokens": 3_000},
+        }
+        line = ai_review.format_usage(usage)
+        for part in ("10000 input", "2000 cached", "1000 cache writes", "4000 output", "3000 reasoning"):
+            self.assertIn(part, line)
+        # 7000 x $0.10 + 2000 x $0.01 + 1000 x $0.125 + 4000 x $0.50, per 1M tokens
+        self.assertIn("$0.0028", line)
+
+    def test_missing_usage_does_not_crash(self):
+        self.assertIn("Estimated cost $0.0000", ai_review.format_usage({}))
+
+
 class BuildInputTests(unittest.TestCase):
     def test_includes_title_body_and_diff(self):
         text = ai_review.build_input("Add login", "Closes #3", "+x", truncated=False)

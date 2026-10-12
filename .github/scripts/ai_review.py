@@ -20,6 +20,11 @@ REASONING_EFFORT = "medium"
 MAX_OUTPUT_TOKENS = 16000
 # Roughly 40k tokens: plenty for a reviewable PR, and a cap on cost for a huge one.
 MAX_DIFF_CHARS = 150_000
+# gpt-6-luna list prices in USD per 1M tokens (October 2026), for the cost estimate in the log.
+PRICE_INPUT = 0.10
+PRICE_CACHED_INPUT = 0.01
+PRICE_CACHE_WRITE = 0.125
+PRICE_OUTPUT = 0.50
 # Earlier discussion beyond this is dropped, oldest first.
 MAX_DISCUSSION_CHARS = 30_000
 
@@ -117,6 +122,27 @@ def request_json(url, payload=None, token=None, method=None):
         return json.load(resp)
 
 
+def format_usage(usage):
+    """One log line with token counts and an estimated cost for a Responses API call."""
+    input_details = usage.get("input_tokens_details") or {}
+    output_details = usage.get("output_tokens_details") or {}
+    total_in = usage.get("input_tokens", 0)
+    cached = input_details.get("cached_tokens", 0)
+    written = input_details.get("cache_write_tokens", 0)
+    output = usage.get("output_tokens", 0)
+    reasoning = output_details.get("reasoning_tokens", 0)
+    cost = (
+        (total_in - cached - written) * PRICE_INPUT
+        + cached * PRICE_CACHED_INPUT
+        + written * PRICE_CACHE_WRITE
+        + output * PRICE_OUTPUT
+    ) / 1_000_000
+    return (
+        f"Usage: {total_in} input tokens ({cached} cached, {written} cache writes), "
+        f"{output} output tokens ({reasoning} reasoning). Estimated cost ${cost:.4f}"
+    )
+
+
 def call_openai(api_key, instructions, user_input):
     response = request_json(
         "https://api.openai.com/v1/responses",
@@ -130,6 +156,8 @@ def call_openai(api_key, instructions, user_input):
         },
         token=api_key,
     )
+    # A notice annotation shows on the workflow run's summary page.
+    print(f"::notice title=AI review usage ({REASONING_EFFORT} effort)::{format_usage(response.get('usage') or {})}")
     text = extract_text(response)
     if not text:
         raise RuntimeError(
