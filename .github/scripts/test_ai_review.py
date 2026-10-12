@@ -58,6 +58,18 @@ class GetCommitMessagesTests(unittest.TestCase):
         self.assertNotIn("base", log)
 
 
+    def test_long_history_keeps_the_latest_commits(self):
+        base = make_repo(self)
+        for i in range(60):
+            git("commit", "-q", "--allow-empty", "-m", f"Commit {i:02}", "-m", "y" * 500)
+        with mock.patch.object(ai_review, "MAX_COMMIT_CHARS", 5_000):
+            log = ai_review.get_commit_messages(base, "HEAD")
+        self.assertLessEqual(len(log), 5_000 + 40)
+        self.assertTrue(log.startswith("(earlier commits omitted)"))
+        self.assertIn("Commit 59", log)
+        self.assertNotIn("Commit 00", log)
+
+
 class GetDiffTests(unittest.TestCase):
     def test_excludes_generated_files_at_any_depth(self):
         base = make_repo(self)

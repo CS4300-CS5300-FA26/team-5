@@ -31,6 +31,8 @@ PRICE_CACHE_WRITE = 0.125
 PRICE_OUTPUT = 0.50
 # Earlier discussion beyond this is dropped, oldest first.
 MAX_DISCUSSION_CHARS = 30_000
+# Same for commit messages, so a long or chatty history can't crowd out the diff.
+MAX_COMMIT_CHARS = 20_000
 
 # Generated or binary files that only add noise to a review.
 EXCLUDED_PATHS = [
@@ -66,7 +68,8 @@ def get_diff(base, head):
 
 def get_commit_messages(base, head):
     cmd = ["git", "log", "--reverse", "--format=%h %an%n%B", f"{base}..{head}"]
-    return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.strip()
+    log = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.strip()
+    return keep_latest(log, MAX_COMMIT_CHARS, "earlier commits")
 
 
 def truncate_diff(diff, limit=MAX_DIFF_CHARS):
@@ -214,10 +217,10 @@ def is_bot_review(review):
     return review["user"]["login"] == BOT_LOGIN and REVIEW_MARKER in (review["body"] or "")
 
 
-def keep_latest(text, limit):
+def keep_latest(text, limit, what="earlier discussion"):
     if len(text) <= limit:
         return text
-    return "(earlier discussion omitted)\n" + text[-limit:]
+    return f"({what} omitted)\n" + text[-limit:]
 
 
 def get_conversation(repo, pr_number, token):
