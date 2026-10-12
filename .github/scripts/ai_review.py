@@ -33,6 +33,19 @@ EXCLUDED_PATHS = [
 REVIEW_MARKER = "<!-- ai-review-bot -->"
 BOT_LOGIN = "github-actions[bot]"
 GUIDE_PATH = Path(__file__).resolve().parent.parent / "ai-review-guide.md"
+GUIDE_GIT_PATH = ".github/ai-review-guide.md"
+
+
+def load_guide(base):
+    """Read the reviewer guide from the base branch, so a PR cannot rewrite the
+    instructions used to review itself. Falls back to the PR's copy only when the
+    base has no guide yet (the PR that first adds it)."""
+    result = subprocess.run(
+        ["git", "show", f"{base}:{GUIDE_GIT_PATH}"], capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        return result.stdout
+    return GUIDE_PATH.read_text()
 
 
 def get_diff(base, head):
@@ -173,7 +186,7 @@ def collapse_previous_reviews(repo, pr_number, token, keep_id):
 def main():
     env = os.environ
     diff, truncated = truncate_diff(get_diff(env["BASE_SHA"], env["HEAD_SHA"]))
-    instructions = GUIDE_PATH.read_text()
+    instructions = load_guide(env["BASE_SHA"])
     user_input = build_input(env.get("PR_TITLE", ""), env.get("PR_BODY", ""), diff, truncated)
 
     if "--dry-run" in sys.argv:

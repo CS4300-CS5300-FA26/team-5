@@ -7,7 +7,10 @@ name: AI Code Review
 # the API key: anyone who can push a branch here can already read repo secrets
 # with any push-triggered workflow, so running base-branch code instead would
 # not protect the key. Fork PRs get no secrets under `pull_request`, so the
-# review job fails without leaking anything. Do not switch to
+# review job fails without leaking anything; the team works on branches in this
+# repo, and this check is not a required one, so that is acceptable. The
+# reviewer guide is read from the base branch (see load_guide), so a PR cannot
+# rewrite the instructions used to review itself. Do not switch to
 # `pull_request_target`: it hands secrets to fork PRs. The real limit on misuse
 # is the spending cap on the OpenAI key.
 on:
