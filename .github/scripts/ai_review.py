@@ -35,6 +35,10 @@ MAX_DIR_DIFF_CHARS = 40_000
 # The changed-files list; past this many files it is grouped by directory.
 MAX_LISTED_FILES = 100
 MAX_FILE_LIST_CHARS = 10_000
+# Files always named in a grouped list, so a database or secrets file can't hide in a
+# directory total. Files left out of the diff (EXCLUDED_PATHS) are always named too.
+RISKY_SUFFIXES = (".sqlite3", ".db", ".pem", ".key")
+MAX_NAMED_FILES = 50
 # gpt-6-luna list prices in USD per 1M tokens (October 2026), for the cost estimate in the log.
 PRICE_INPUT = 0.10
 PRICE_CACHED_INPUT = 0.01
@@ -82,30 +86,51 @@ def directory_of(path):
     return "/".join(path.split("/")[:-1][:2]) or "(top level)"
 
 
+def as_int(count):
+    """git --numstat prints "-" instead of line counts for binary files."""
+    return int(count) if count.isdigit() else 0
+
+
+def is_risky(path):
+    name = path.rsplit("/", 1)[-1]
+    return name.startswith(".env") or name.endswith(RISKY_SUFFIXES)
+
+
 def get_changed_files(base, head):
     """List every changed file with lines added and removed, including files left out
-    of the diff, so the reviewer can see a committed package even when its diff isn't shown."""
-    cmd = ["git", "diff", "--numstat", f"{base}...{head}"]
-    out = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
-    rows = []
-    for line in out.splitlines():
-        added, deleted, path = line.split("\t", 2)
-        rows.append((path, added, deleted))
+    of the diff, so the reviewer can see a committed package even when its diff isn't shown.
+    Past MAX_LISTED_FILES the list is grouped by directory, but files left out of the diff
+    and risky ones (databases, .env, keys) are still named."""
+    # --no-renames shows a rename as a delete and an add, so paths match between the two calls.
+    numstat = ["git", "diff", "--no-renames", "--numstat", f"{base}...{head}"]
+    out = subprocess.run(numstat, capture_output=True, text=True, check=True).stdout
+    rows = [line.split("\t", 2) for line in out.splitlines()]
     if len(rows) <= MAX_LISTED_FILES:
-        text = "\n".join(f"{path} (+{added} -{deleted})" for path, added, deleted in rows)
+        text = "\n".join(f"{path} (+{added} -{deleted})" for added, deleted, path in rows)
     else:
+        in_diff_cmd = ["git", "diff", "--no-renames", "--name-only", f"{base}...{head}", "--", "."]
+        in_diff = set(subprocess.run(in_diff_cmd + EXCLUDED_PATHS, capture_output=True, text=True,
+                                     check=True).stdout.splitlines())
+        named = [(added, deleted, path) for added, deleted, path in rows
+                 if path not in in_diff or is_risky(path)]
         groups = {}
-        for path, added, deleted in rows:
-            count, plus, minus = groups.get(directory_of(path), (0, 0, 0))
-            groups[directory_of(path)] = (
-                count + 1,
-                plus + (int(added) if added.isdigit() else 0),
-                minus + (int(deleted) if deleted.isdigit() else 0),
-            )
-        text = f"{len(rows)} files changed, grouped by directory:\n" + "\n".join(
-            f"{directory}/ ({count} files, +{plus} -{minus})"
+        for added, deleted, path in rows:
+            directory = directory_of(path)
+            count, plus, minus = groups.get(directory, (0, 0, 0))
+            groups[directory] = (count + 1, plus + as_int(added), minus + as_int(deleted))
+        # Named files go first so the length cap below can't cut them off.
+        lines = [f"{len(rows)} files changed."]
+        if named:
+            lines.append("Files left out of the diff, or databases, .env files, and keys:")
+            lines += [f"{path} (+{added} -{deleted})" for added, deleted, path in named[:MAX_NAMED_FILES]]
+            if len(named) > MAX_NAMED_FILES:
+                lines.append(f"(and {len(named) - MAX_NAMED_FILES} more)")
+        lines.append("All files, grouped by directory:")
+        lines += [
+            f"{directory}/ ({count} file{'s' if count != 1 else ''}, +{plus} -{minus})"
             for directory, (count, plus, minus) in sorted(groups.items(), key=lambda g: -g[1][0])
-        )
+        ]
+        text = "\n".join(lines)
     if len(text) > MAX_FILE_LIST_CHARS:
         text = text[: text.rfind("\n", 0, MAX_FILE_LIST_CHARS)] + "\n(list cut off)"
     return text

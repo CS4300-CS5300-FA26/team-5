@@ -87,7 +87,35 @@ class GetChangedFilesTests(unittest.TestCase):
             listing = ai_review.get_changed_files(base, head)
         self.assertIn("11 files changed", listing)
         self.assertIn("flask/src/ (10 files, +10 -0)", listing)
-        self.assertIn("app/ (1 files, +1 -0)", listing)
+        self.assertIn("app/ (1 file, +1 -0)", listing)
+
+    def test_grouped_list_still_names_excluded_and_risky_files(self):
+        base = make_repo(self)
+        files = {f"binge_and_bosses/flask/m{i:03}.py": "x\n" for i in range(120)}
+        files.update({
+            "binge_and_bosses/db.sqlite3": "data\n",      # left out of the diff
+            "binge_and_bosses/.env": "SECRET_KEY=x\n",    # in the diff, but risky
+            "binge_and_bosses/staticfiles/admin.css": "a\n",  # left out of the diff
+            "binge_and_bosses/games/views.py": "a\n",     # ordinary: only in a group
+        })
+        head = commit_files(files)
+        listing = ai_review.get_changed_files(base, head)
+        self.assertIn("124 files changed", listing)
+        for path in ("binge_and_bosses/db.sqlite3", "binge_and_bosses/.env",
+                     "binge_and_bosses/staticfiles/admin.css"):
+            self.assertIn(path + " (+1 -0)", listing)
+        self.assertNotIn("games/views.py", listing)
+        self.assertIn("binge_and_bosses/flask/ (120 files", listing)
+
+    def test_named_files_survive_the_length_cap(self):
+        base = make_repo(self)
+        files = {f"d{i:03}/sub/m.py": "x\n" for i in range(300)}  # 300 groups: a long list
+        files["zzz/db.sqlite3"] = "data\n"
+        head = commit_files(files)
+        with mock.patch.object(ai_review, "MAX_FILE_LIST_CHARS", 2_000):
+            listing = ai_review.get_changed_files(base, head)
+        self.assertIn("zzz/db.sqlite3", listing)
+        self.assertTrue(listing.endswith("(list cut off)"))
 
     def test_committed_package_does_not_hide_app_code(self):
         # A package copied into the project sorts before games/ and is bigger than the
