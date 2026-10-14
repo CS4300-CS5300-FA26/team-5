@@ -80,3 +80,16 @@ class SignupTests(TestCase):
 
         # Make sure the user didnt get created with a weak password
         self.assertFalse(get_user_model().objects.filter(username="test_user").exists())
+
+    def test_password_was_hashed(self):
+        """
+            Check that the password was hashed and is not stored in plaintext
+        """
+        self.client.post(self.url, self.valid_registration_details)
+        user = get_user_model().objects.get(username="test_user")
+
+        # Check that the plaintext password is not set as the user's password
+        self.assertNotEqual(user.password, "SuperSecureP@$swo0RD")
+
+        # Ensure that the hashed password matches the plaintext password
+        self.assertTrue(user.check_password("SuperSecureP@$swo0RD"))
