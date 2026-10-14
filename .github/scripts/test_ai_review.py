@@ -70,6 +70,79 @@ class GetCommitMessagesTests(unittest.TestCase):
         self.assertNotIn("Commit 00", log)
 
 
+class GetChangedFilesTests(unittest.TestCase):
+    def test_lists_every_file_including_ones_left_out_of_the_diff(self):
+        base = make_repo(self)
+        head = commit_files({"app/views.py": "a\nb\n", "db.sqlite3": "x\n"})
+        listing = ai_review.get_changed_files(base, head)
+        self.assertIn("app/views.py (+2 -0)", listing)
+        self.assertIn("db.sqlite3 (+1 -0)", listing)
+
+    def test_many_files_are_grouped_by_directory(self):
+        base = make_repo(self)
+        files = {f"flask/src/m{i}.py": "x\n" for i in range(10)}
+        files["app/views.py"] = "a\n"
+        head = commit_files(files)
+        with mock.patch.object(ai_review, "MAX_LISTED_FILES", 5):
+            listing = ai_review.get_changed_files(base, head)
+        self.assertIn("11 files changed", listing)
+        self.assertIn("flask/src/ (10 files, +10 -0)", listing)
+        self.assertIn("app/ (1 file, +1 -0)", listing)
+
+    def test_grouped_list_still_names_excluded_and_risky_files(self):
+        base = make_repo(self)
+        files = {f"binge_and_bosses/flask/m{i:03}.py": "x\n" for i in range(120)}
+        files.update({
+            "binge_and_bosses/db.sqlite3": "data\n",      # left out of the diff
+            "binge_and_bosses/.env": "SECRET_KEY=x\n",    # in the diff, but risky
+            "binge_and_bosses/staticfiles/admin.css": "a\n",  # left out of the diff
+            "binge_and_bosses/games/views.py": "a\n",     # ordinary: only in a group
+        })
+        head = commit_files(files)
+        listing = ai_review.get_changed_files(base, head)
+        self.assertIn("124 files changed", listing)
+        for path in ("binge_and_bosses/db.sqlite3", "binge_and_bosses/.env",
+                     "binge_and_bosses/staticfiles/admin.css"):
+            self.assertIn(path + " (+1 -0)", listing)
+        self.assertNotIn("games/views.py", listing)
+        self.assertIn("binge_and_bosses/flask/ (120 files", listing)
+
+    def test_risky_files_are_named_before_other_left_out_files(self):
+        base = make_repo(self)
+        files = {f"binge_and_bosses/staticfiles/f{i:03}.css": "a\n" for i in range(120)}
+        files["zzz/.env"] = "SECRET_KEY=x\n"  # sorts after every staticfiles path
+        head = commit_files(files)
+        listing = ai_review.get_changed_files(base, head)
+        self.assertIn("zzz/.env (+1 -0)", listing)
+        self.assertIn("(and 71 more)", listing)
+
+    def test_named_files_survive_the_length_cap(self):
+        base = make_repo(self)
+        files = {f"d{i:03}/sub/m.py": "x\n" for i in range(300)}  # 300 groups: a long list
+        files["zzz/db.sqlite3"] = "data\n"
+        head = commit_files(files)
+        with mock.patch.object(ai_review, "MAX_FILE_LIST_CHARS", 2_000):
+            listing = ai_review.get_changed_files(base, head)
+        self.assertIn("zzz/db.sqlite3", listing)
+        self.assertTrue(listing.endswith("(list cut off)"))
+
+    def test_committed_package_does_not_hide_app_code(self):
+        # A package copied into the project sorts before games/ and is bigger than the
+        # whole diff budget; the app's change must still be reviewed.
+        base = make_repo(self)
+        files = {f"binge_and_bosses/flask/module{i:02}.py": "x = 1\n" * 400 for i in range(60)}
+        files["binge_and_bosses/games/views.py"] = "def index(request):\n    pass\n"
+        head = commit_files(files)
+        full = ai_review.get_diff(base, head)
+        self.assertLess(full.index("flask/module59"), full.index("games/views.py"))
+        self.assertGreater(len(full), ai_review.MAX_DIFF_CHARS)
+
+        diff, truncated = ai_review.truncate_diff(ai_review.limit_diff_shares(full))
+        self.assertIn("def index(request):", diff)
+        self.assertFalse(truncated)
+        self.assertIn("more files in binge_and_bosses/flask/ omitted", diff)
+
+
 class GetDiffTests(unittest.TestCase):
     def test_excludes_generated_files_at_any_depth(self):
         base = make_repo(self)
@@ -89,6 +162,80 @@ class GetDiffTests(unittest.TestCase):
         self.assertIn("app/static/site.css", diff)  # only staticfiles/ is excluded
         for path in generated:
             self.assertNotIn(path, diff)
+
+
+def fake_file_diff(path, lines):
+    body = "".join(f"+line {i}\n" for i in range(lines))
+    return f"diff --git a/{path} b/{path}\n--- /dev/null\n+++ b/{path}\n@@ -0,0 +1,{lines} @@\n{body}"
+
+
+class LimitDiffSharesTests(unittest.TestCase):
+    def test_splits_diff_into_files(self):
+        diff = fake_file_diff("a.py", 2) + fake_file_diff("dir/b.py", 3)
+        self.assertEqual([p for p, _ in ai_review.split_diff_by_file(diff)], ["a.py", "dir/b.py"])
+
+    def test_small_diff_is_unchanged(self):
+        diff = fake_file_diff("a.py", 2) + fake_file_diff("dir/b.py", 3)
+        self.assertEqual(ai_review.limit_diff_shares(diff), diff)
+
+    def test_huge_file_is_cut_with_a_note(self):
+        limited = ai_review.limit_diff_shares(fake_file_diff("big.py", 1000), per_file=500)
+        self.assertLess(len(limited), 600)
+        self.assertIn("more characters of this file omitted", limited)
+
+    def test_renamed_file_is_filed_under_its_new_path(self):
+        diff = ("diff --git a/binge_and_bosses/flask/x.py b/binge_and_bosses/games/x.py\n"
+                "similarity index 90%\nrename from binge_and_bosses/flask/x.py\n"
+                "rename to binge_and_bosses/games/x.py\n")
+        self.assertEqual(ai_review.split_diff_by_file(diff)[0][0], "binge_and_bosses/games/x.py")
+
+    def test_rename_out_of_a_full_directory_is_still_reviewed(self):
+        vendored = "".join(fake_file_diff(f"binge_and_bosses/flask/m{i}.py", 50) for i in range(50))
+        moved = ("diff --git a/binge_and_bosses/flask/views.py b/binge_and_bosses/games/views.py\n"
+                 "similarity index 90%\nrename from binge_and_bosses/flask/views.py\n"
+                 "rename to binge_and_bosses/games/views.py\n@@ -1 +1 @@\n-old\n+def index(request):\n")
+        limited = ai_review.limit_diff_shares(vendored + moved, per_dir=5_000)
+        self.assertIn("+def index(request):", limited)
+
+    def test_many_full_directories_still_leave_room_for_app_code(self):
+        # Four directories that each want more than their 40k cap, then the app.
+        crowded = "".join(fake_file_diff(f"vendor{d}/pkg/m{i}.py", 600)
+                          for d in range(4) for i in range(10))
+        diff = crowded + fake_file_diff("binge_and_bosses/games/views.py", 5)
+        limited = ai_review.limit_diff_shares(diff)
+        self.assertIn("binge_and_bosses/games/views.py", limited)
+        self.assertLessEqual(len(limited), ai_review.MAX_DIFF_CHARS + 1_000)  # + omission notes
+        self.assertFalse(ai_review.truncate_diff(limited)[1])
+
+    def test_shares_never_exceed_the_total_and_small_directories_get_all_they_need(self):
+        sizes = {"a": 100_000, "b": 100_000, "c": 100_000, "d": 100_000, "app": 3_000}
+        shares = ai_review.directory_shares(sizes, total=150_000, per_dir=40_000)
+        self.assertLessEqual(sum(shares.values()), 150_000)
+        self.assertEqual(shares["app"], 3_000)
+
+    def test_every_directory_keeps_a_snippet_when_shares_are_small(self):
+        # 200 directories of ~2k each: every share is under 1,000 characters.
+        crowded = "".join(fake_file_diff(f"vendor/p{i:03}/m.py", 250) for i in range(200))
+        diff = crowded + fake_file_diff("zz_app/games/views.py", 250)
+        limited = ai_review.limit_diff_shares(diff)
+        self.assertIn("diff --git a/zz_app/games/views.py", limited)
+        self.assertIn("+line 0", limited.split("zz_app/games/views.py")[-1])
+        self.assertEqual(limited.count("diff --git"), 201)
+        self.assertLessEqual(len(limited), ai_review.MAX_DIFF_CHARS + 1_000)
+
+    def test_first_file_is_cut_to_fit_a_small_share(self):
+        files = "".join(fake_file_diff(f"d{i}/x.py", 200) for i in range(30))
+        limited = ai_review.limit_diff_shares(files, total=30_000)
+        self.assertEqual(limited.count("diff --git"), 30)
+        self.assertIn("more characters of this file omitted", limited)
+
+    def test_package_cannot_crowd_out_app_code(self):
+        vendored = "".join(fake_file_diff(f"flask/src/m{i}.py", 50) for i in range(50))
+        diff = vendored + fake_file_diff("binge_and_bosses/games/views.py", 5)
+        limited = ai_review.limit_diff_shares(diff, per_dir=5_000)
+        self.assertIn("binge_and_bosses/games/views.py", limited)
+        self.assertIn("more files in flask/src/ omitted", limited)
+        self.assertLess(len(limited), 7_000)
 
 
 class TruncateDiffTests(unittest.TestCase):
@@ -364,11 +511,16 @@ class BuildInputContextTests(unittest.TestCase):
         for part in ("TITLE", "BODY", "COMMITS", "DISCUSSION", "+DIFF"):
             self.assertLess(framing, text.index(part))
 
+    def test_changed_files_come_before_the_diff(self):
+        text = ai_review.build_input("t", "b", "+x", False, changed_files="app/views.py (+1 -0)")
+        self.assertLess(text.index("app/views.py (+1 -0)"), text.index("Diff:"))
+
     def test_omits_empty_sections(self):
         text = ai_review.build_input("t", "b", "+x", False)
         self.assertNotIn("previous review", text)
         self.assertNotIn("Discussion", text)
         self.assertNotIn("Commits", text)
+        self.assertNotIn("Changed files", text)
 
 
 if __name__ == "__main__":
