@@ -93,3 +93,62 @@ class SignupTests(TestCase):
 
         # Ensure that the hashed password matches the plaintext password
         self.assertTrue(user.check_password("SuperSecureP@$swo0RD"))
+
+class loginTests(TestCase):
+    '''
+        Tests for the login functionality
+    '''
+    def setUp(self):
+        self.url = reverse("login")
+        self.user = get_user_model().objects.create_user(
+            username="user_a",
+            email="usera@example.com",
+            password="TesTINGp#ass0r0d"
+        )
+
+    def test_login_page_200(self):
+        """
+            Test that the login page resolves and is the login page template
+        """
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "registration/login.html")
+
+    def test_login_correct_creds(self):
+        """
+            Test a login with correct credentials
+        """
+        response = self.client.post(self.url, {
+            "username": "user_a",
+            "password": "TesTINGp#ass0r0d"
+        })
+
+        # Check that we redirect back to the root
+        self.assertRedirects(response, "/", fetch_redirect_response=False)
+
+        # Ensure that the session holds this user's ID
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    def test_login_incorrect_pass(self):
+        """
+            Test that the login does not log a user in when inputting the wrong password
+        """
+        response = self.client.post(self.url, {
+            "username": "user_a",
+            "password": "a_wrong_pass!"
+        })
+
+        # Check that the login did not redirect but re-rendered
+        self.assertEqual(response.status_code, 200)
+
+        # Check the ID
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_login_with_unregistered_user(self):
+        """
+            Test that putting an unregistered username does not log the user in
+        """
+        response = self.client.post(self.url, {
+            "username": "unknown",
+            "password": "TesTINGp#ass0r0d"
+        })
