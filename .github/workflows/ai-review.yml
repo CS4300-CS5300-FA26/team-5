@@ -1,0 +1,58 @@
+name: AI Code Review
+
+# Posts an advisory review comment on every pull request using the OpenAI API.
+# It never blocks a merge: a teammate's approval is still required.
+#
+# Why `pull_request` runs the PR's own copy of this workflow and script with
+# the API key: anyone who can push a branch here can already read repo secrets
+# with any push-triggered workflow, so running base-branch code instead would
+# not protect the key. Fork PRs get no secrets under `pull_request`, so the
+# review job fails without leaking anything; the team works on branches in this
+# repo, and this check is not a required one, so that is acceptable. The
+# reviewer guide is read from the base branch (see load_guide), so a PR cannot
+# rewrite the instructions used to review itself. Do not switch to
+# `pull_request_target`: it hands secrets to fork PRs. The real limit on misuse
+# is the spending cap on the OpenAI key.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# A new push to the same PR cancels the review of the older commit.
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          # The script only reads local git history; don't leave the token in .git/config.
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Test the review script
+        run: python -m unittest discover -s .github/scripts -p "test_*.py"
+
+      - name: Review pull request
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python .github/scripts/ai_review.py
