@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binge & Bosses</title>
+</head>
+<body>
+    <h1>Binge & Bosses</h1>
+    <ul>
+    {% for game in games %}
+        <li>
+            <h2>{{game.game_title}}</h2>
+            <p>Description:<br>{{game.game_description}}</p>
+            <p>Rating:<br>{{game.game_rating}}</p>
+            <p>Release Date:<br>{{game.game_release}}</p>
+        </li>
+    {% empty %}
+        <li>No games yet...</li>
+    {% endfor %}
+    </ul>
+</body>
+</html>
