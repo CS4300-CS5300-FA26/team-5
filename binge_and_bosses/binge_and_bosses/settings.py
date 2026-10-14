@@ -37,6 +37,7 @@ CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
 # Application definition
 
 INSTALLED_APPS = [
+    'authentication', # Put here to override admin templates to allow for more customization
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -45,6 +46,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'games'
 ]
+
+AUTH_USER_MODEL = "authentication.User"
+
+LOGIN_URL = "login"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
