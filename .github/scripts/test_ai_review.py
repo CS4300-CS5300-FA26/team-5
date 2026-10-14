@@ -21,13 +21,13 @@ def make_repo(test):
     return git("rev-parse", "HEAD").strip()
 
 
-def commit_files(files):
+def commit_files(files, message="change"):
     for path, text in files.items():
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "w") as f:
             f.write(text)
     git("add", "-A")
-    git("commit", "-q", "-m", "change")
+    git("commit", "-q", "-m", message)
     return git("rev-parse", "HEAD").strip()
 
 
@@ -45,6 +45,102 @@ class LoadGuideTests(unittest.TestCase):
         with mock.patch.object(ai_review, "GUIDE_PATH") as guide_path:
             guide_path.read_text.return_value = "new guide"
             self.assertEqual(ai_review.load_guide(base), "new guide")
+
+
+class GetCommitMessagesTests(unittest.TestCase):
+    def test_lists_pr_commits_oldest_first_with_full_messages(self):
+        base = make_repo(self)
+        commit_files({"a.py": "1\n"}, message="Add a.py")
+        git("commit", "-q", "--allow-empty", "-m", "Update docs", "-m", "Explains why.")
+        log = ai_review.get_commit_messages(base, "HEAD")
+        self.assertLess(log.index("Add a.py"), log.index("Update docs"))
+        self.assertIn("Explains why.", log)
+        self.assertNotIn("base", log)
+
+
+    def test_long_history_keeps_the_latest_commits(self):
+        base = make_repo(self)
+        for i in range(60):
+            git("commit", "-q", "--allow-empty", "-m", f"Commit {i:02}", "-m", "y" * 500)
+        with mock.patch.object(ai_review, "MAX_COMMIT_CHARS", 5_000):
+            log = ai_review.get_commit_messages(base, "HEAD")
+        self.assertLessEqual(len(log), 5_000 + 40)
+        self.assertTrue(log.startswith("(earlier commits omitted)"))
+        self.assertIn("Commit 59", log)
+        self.assertNotIn("Commit 00", log)
+
+
+class GetChangedFilesTests(unittest.TestCase):
+    def test_lists_every_file_including_ones_left_out_of_the_diff(self):
+        base = make_repo(self)
+        head = commit_files({"app/views.py": "a\nb\n", "db.sqlite3": "x\n"})
+        listing = ai_review.get_changed_files(base, head)
+        self.assertIn("app/views.py (+2 -0)", listing)
+        self.assertIn("db.sqlite3 (+1 -0)", listing)
+
+    def test_many_files_are_grouped_by_directory(self):
+        base = make_repo(self)
+        files = {f"flask/src/m{i}.py": "x\n" for i in range(10)}
+        files["app/views.py"] = "a\n"
+        head = commit_files(files)
+        with mock.patch.object(ai_review, "MAX_LISTED_FILES", 5):
+            listing = ai_review.get_changed_files(base, head)
+        self.assertIn("11 files changed", listing)
+        self.assertIn("flask/src/ (10 files, +10 -0)", listing)
+        self.assertIn("app/ (1 file, +1 -0)", listing)
+
+    def test_grouped_list_still_names_excluded_and_risky_files(self):
+        base = make_repo(self)
+        files = {f"binge_and_bosses/flask/m{i:03}.py": "x\n" for i in range(120)}
+        files.update({
+            "binge_and_bosses/db.sqlite3": "data\n",      # left out of the diff
+            "binge_and_bosses/.env": "SECRET_KEY=x\n",    # in the diff, but risky
+            "binge_and_bosses/staticfiles/admin.css": "a\n",  # left out of the diff
+            "binge_and_bosses/games/views.py": "a\n",     # ordinary: only in a group
+        })
+        head = commit_files(files)
+        listing = ai_review.get_changed_files(base, head)
+        self.assertIn("124 files changed", listing)
+        for path in ("binge_and_bosses/db.sqlite3", "binge_and_bosses/.env",
+                     "binge_and_bosses/staticfiles/admin.css"):
+            self.assertIn(path + " (+1 -0)", listing)
+        self.assertNotIn("games/views.py", listing)
+        self.assertIn("binge_and_bosses/flask/ (120 files", listing)
+
+    def test_risky_files_are_named_before_other_left_out_files(self):
+        base = make_repo(self)
+        files = {f"binge_and_bosses/staticfiles/f{i:03}.css": "a\n" for i in range(120)}
+        files["zzz/.env"] = "SECRET_KEY=x\n"  # sorts after every staticfiles path
+        head = commit_files(files)
+        listing = ai_review.get_changed_files(base, head)
+        self.assertIn("zzz/.env (+1 -0)", listing)
+        self.assertIn("(and 71 more)", listing)
+
+    def test_named_files_survive_the_length_cap(self):
+        base = make_repo(self)
+        files = {f"d{i:03}/sub/m.py": "x\n" for i in range(300)}  # 300 groups: a long list
+        files["zzz/db.sqlite3"] = "data\n"
+        head = commit_files(files)
+        with mock.patch.object(ai_review, "MAX_FILE_LIST_CHARS", 2_000):
+            listing = ai_review.get_changed_files(base, head)
+        self.assertIn("zzz/db.sqlite3", listing)
+        self.assertTrue(listing.endswith("(list cut off)"))
+
+    def test_committed_package_does_not_hide_app_code(self):
+        # A package copied into the project sorts before games/ and is bigger than the
+        # whole diff budget; the app's change must still be reviewed.
+        base = make_repo(self)
+        files = {f"binge_and_bosses/flask/module{i:02}.py": "x = 1\n" * 400 for i in range(60)}
+        files["binge_and_bosses/games/views.py"] = "def index(request):\n    pass\n"
+        head = commit_files(files)
+        full = ai_review.get_diff(base, head)
+        self.assertLess(full.index("flask/module59"), full.index("games/views.py"))
+        self.assertGreater(len(full), ai_review.MAX_DIFF_CHARS)
+
+        diff, truncated = ai_review.truncate_diff(ai_review.limit_diff_shares(full))
+        self.assertIn("def index(request):", diff)
+        self.assertFalse(truncated)
+        self.assertIn("more files in binge_and_bosses/flask/ omitted", diff)
 
 
 class GetDiffTests(unittest.TestCase):
@@ -66,6 +162,80 @@ class GetDiffTests(unittest.TestCase):
         self.assertIn("app/static/site.css", diff)  # only staticfiles/ is excluded
         for path in generated:
             self.assertNotIn(path, diff)
+
+
+def fake_file_diff(path, lines):
+    body = "".join(f"+line {i}\n" for i in range(lines))
+    return f"diff --git a/{path} b/{path}\n--- /dev/null\n+++ b/{path}\n@@ -0,0 +1,{lines} @@\n{body}"
+
+
+class LimitDiffSharesTests(unittest.TestCase):
+    def test_splits_diff_into_files(self):
+        diff = fake_file_diff("a.py", 2) + fake_file_diff("dir/b.py", 3)
+        self.assertEqual([p for p, _ in ai_review.split_diff_by_file(diff)], ["a.py", "dir/b.py"])
+
+    def test_small_diff_is_unchanged(self):
+        diff = fake_file_diff("a.py", 2) + fake_file_diff("dir/b.py", 3)
+        self.assertEqual(ai_review.limit_diff_shares(diff), diff)
+
+    def test_huge_file_is_cut_with_a_note(self):
+        limited = ai_review.limit_diff_shares(fake_file_diff("big.py", 1000), per_file=500)
+        self.assertLess(len(limited), 600)
+        self.assertIn("more characters of this file omitted", limited)
+
+    def test_renamed_file_is_filed_under_its_new_path(self):
+        diff = ("diff --git a/binge_and_bosses/flask/x.py b/binge_and_bosses/games/x.py\n"
+                "similarity index 90%\nrename from binge_and_bosses/flask/x.py\n"
+                "rename to binge_and_bosses/games/x.py\n")
+        self.assertEqual(ai_review.split_diff_by_file(diff)[0][0], "binge_and_bosses/games/x.py")
+
+    def test_rename_out_of_a_full_directory_is_still_reviewed(self):
+        vendored = "".join(fake_file_diff(f"binge_and_bosses/flask/m{i}.py", 50) for i in range(50))
+        moved = ("diff --git a/binge_and_bosses/flask/views.py b/binge_and_bosses/games/views.py\n"
+                 "similarity index 90%\nrename from binge_and_bosses/flask/views.py\n"
+                 "rename to binge_and_bosses/games/views.py\n@@ -1 +1 @@\n-old\n+def index(request):\n")
+        limited = ai_review.limit_diff_shares(vendored + moved, per_dir=5_000)
+        self.assertIn("+def index(request):", limited)
+
+    def test_many_full_directories_still_leave_room_for_app_code(self):
+        # Four directories that each want more than their 40k cap, then the app.
+        crowded = "".join(fake_file_diff(f"vendor{d}/pkg/m{i}.py", 600)
+                          for d in range(4) for i in range(10))
+        diff = crowded + fake_file_diff("binge_and_bosses/games/views.py", 5)
+        limited = ai_review.limit_diff_shares(diff)
+        self.assertIn("binge_and_bosses/games/views.py", limited)
+        self.assertLessEqual(len(limited), ai_review.MAX_DIFF_CHARS + 1_000)  # + omission notes
+        self.assertFalse(ai_review.truncate_diff(limited)[1])
+
+    def test_shares_never_exceed_the_total_and_small_directories_get_all_they_need(self):
+        sizes = {"a": 100_000, "b": 100_000, "c": 100_000, "d": 100_000, "app": 3_000}
+        shares = ai_review.directory_shares(sizes, total=150_000, per_dir=40_000)
+        self.assertLessEqual(sum(shares.values()), 150_000)
+        self.assertEqual(shares["app"], 3_000)
+
+    def test_every_directory_keeps_a_snippet_when_shares_are_small(self):
+        # 200 directories of ~2k each: every share is under 1,000 characters.
+        crowded = "".join(fake_file_diff(f"vendor/p{i:03}/m.py", 250) for i in range(200))
+        diff = crowded + fake_file_diff("zz_app/games/views.py", 250)
+        limited = ai_review.limit_diff_shares(diff)
+        self.assertIn("diff --git a/zz_app/games/views.py", limited)
+        self.assertIn("+line 0", limited.split("zz_app/games/views.py")[-1])
+        self.assertEqual(limited.count("diff --git"), 201)
+        self.assertLessEqual(len(limited), ai_review.MAX_DIFF_CHARS + 1_000)
+
+    def test_first_file_is_cut_to_fit_a_small_share(self):
+        files = "".join(fake_file_diff(f"d{i}/x.py", 200) for i in range(30))
+        limited = ai_review.limit_diff_shares(files, total=30_000)
+        self.assertEqual(limited.count("diff --git"), 30)
+        self.assertIn("more characters of this file omitted", limited)
+
+    def test_package_cannot_crowd_out_app_code(self):
+        vendored = "".join(fake_file_diff(f"flask/src/m{i}.py", 50) for i in range(50))
+        diff = vendored + fake_file_diff("binge_and_bosses/games/views.py", 5)
+        limited = ai_review.limit_diff_shares(diff, per_dir=5_000)
+        self.assertIn("binge_and_bosses/games/views.py", limited)
+        self.assertIn("more files in flask/src/ omitted", limited)
+        self.assertLess(len(limited), 7_000)
 
 
 class TruncateDiffTests(unittest.TestCase):
@@ -106,6 +276,83 @@ class ExtractTextTests(unittest.TestCase):
         self.assertEqual(ai_review.extract_text({"output": []}), "")
 
 
+def done(text="ok", status="completed"):
+    return {"id": "resp_1", "status": status,
+            "output": [{"type": "message", "content": [{"type": "output_text", "text": text}]}]}
+
+
+class CallOpenAITests(unittest.TestCase):
+    def call(self, responses, clock=None):
+        with mock.patch.object(ai_review, "request_json", side_effect=responses) as req, \
+                mock.patch.object(ai_review.time, "sleep") as sleep, \
+                mock.patch.object(ai_review.time, "monotonic", side_effect=clock or (lambda: 0)), \
+                mock.patch("builtins.print") as printed:
+            try:
+                return ai_review.call_openai("key", "guide", "input"), req, sleep, printed
+            except RuntimeError as err:
+                return err, req, sleep, printed
+
+    def test_submits_in_background_with_effort_and_output_cap(self):
+        result, req, _, _ = self.call([done()])
+        self.assertEqual(result, "ok")
+        payload = req.call_args_list[0].args[1]
+        self.assertTrue(payload["background"])
+        self.assertFalse(payload["store"])
+        self.assertEqual(payload["reasoning"], {"effort": ai_review.REASONING_EFFORT})
+        self.assertEqual(payload["max_output_tokens"], ai_review.MAX_OUTPUT_TOKENS)
+
+    def test_polls_until_the_review_is_done(self):
+        queued = {"id": "resp_1", "status": "queued"}
+        running = {"id": "resp_1", "status": "in_progress"}
+        result, req, sleep, _ = self.call([queued, running, done("review text")])
+        self.assertEqual(result, "review text")
+        self.assertTrue(req.call_args_list[1].args[0].endswith("/responses/resp_1"))
+        self.assertEqual(sleep.call_count, 2)
+
+    def test_a_dropped_poll_is_retried(self):
+        running = {"id": "resp_1", "status": "in_progress"}
+        result, _, _, printed = self.call([running, ConnectionResetError("dropped"), done()])
+        self.assertEqual(result, "ok")
+        self.assertIn("::warning::", printed.call_args_list[0].args[0])
+
+    def test_cancels_after_the_deadline(self):
+        running = {"id": "resp_1", "status": "in_progress"}
+        times = iter([0, 10, ai_review.OPENAI_TIMEOUT + 1])
+        result, req, _, _ = self.call([running, running, {}], clock=lambda: next(times))
+        self.assertIsInstance(result, RuntimeError)
+        self.assertIn("cancelled", str(result))
+        url, _, _, method = req.call_args.args
+        self.assertEqual((url.endswith("/resp_1/cancel"), method), (True, "POST"))
+
+    def test_failed_review_raises_with_the_error(self):
+        result, _, _, _ = self.call([{"id": "resp_1", "status": "failed", "error": {"code": "server_error"}}])
+        self.assertIsInstance(result, RuntimeError)
+        self.assertIn("server_error", str(result))
+
+    def test_empty_review_raises_with_status(self):
+        result, _, _, _ = self.call([{"id": "resp_1", "status": "incomplete", "output": [],
+                                      "incomplete_details": {"reason": "max_output_tokens"}}])
+        self.assertIn("max_output_tokens", str(result))
+
+
+class FormatUsageTests(unittest.TestCase):
+    def test_reports_tokens_and_cost(self):
+        usage = {
+            "input_tokens": 10_000,
+            "input_tokens_details": {"cached_tokens": 2_000, "cache_write_tokens": 1_000},
+            "output_tokens": 4_000,
+            "output_tokens_details": {"reasoning_tokens": 3_000},
+        }
+        line = ai_review.format_usage(usage)
+        for part in ("10000 input", "2000 cached", "1000 cache writes", "4000 output", "3000 reasoning"):
+            self.assertIn(part, line)
+        # 7000 x $0.10 + 2000 x $0.01 + 1000 x $0.125 + 4000 x $0.50, per 1M tokens
+        self.assertIn("$0.0028", line)
+
+    def test_missing_usage_does_not_crash(self):
+        self.assertIn("Estimated cost $0.0000", ai_review.format_usage({}))
+
+
 class BuildInputTests(unittest.TestCase):
     def test_includes_title_body_and_diff(self):
         text = ai_review.build_input("Add login", "Closes #3", "+x", truncated=False)
@@ -138,8 +385,16 @@ class PostReviewTests(unittest.TestCase):
         self.assertEqual(payload, {"body": "body", "event": "COMMENT", "commit_id": "abc123"})
 
 
-def review(id, login=ai_review.BOT_LOGIN, body=ai_review.REVIEW_MARKER):
-    return {"id": id, "node_id": f"node{id}", "user": {"login": login}, "body": body}
+def user(login):
+    return {"login": login, "type": "Bot" if login.endswith("[bot]") else "User"}
+
+
+def review(id, login=ai_review.BOT_LOGIN, body=ai_review.REVIEW_MARKER, at="2026-10-12T10:00:00Z"):
+    return {"id": id, "node_id": f"node{id}", "user": user(login), "body": body, "submitted_at": at}
+
+
+def comment(login, body, at, **extra):
+    return {"user": user(login), "body": body, "created_at": at, **extra}
 
 
 class CollapsePreviousReviewsTests(unittest.TestCase):
@@ -170,6 +425,102 @@ class CollapsePreviousReviewsTests(unittest.TestCase):
                 mock.patch("builtins.print") as printed:
             ai_review.collapse_previous_reviews("org/repo", "5", "tok", keep_id=5)
         self.assertIn("::warning::", printed.call_args.args[0])
+
+
+class GetConversationTests(unittest.TestCase):
+    def conversation(self, reviews, issue_comments=(), inline_comments=()):
+        def fake_request(url, payload=None, token=None, method=None):
+            if not url.endswith("page=1"):
+                return []  # everything fits on the first page
+            if "/reviews" in url:
+                return reviews
+            if "/issues/5/comments" in url:
+                return list(issue_comments)
+            if "/pulls/5/comments" in url:
+                return list(inline_comments)
+            raise AssertionError(url)
+
+        with mock.patch.object(ai_review, "request_json", side_effect=fake_request):
+            return ai_review.get_conversation("org/repo", "5", "tok")
+
+    def test_previous_review_is_the_bots_latest(self):
+        older = review(1, body=ai_review.REVIEW_MARKER + " first")
+        latest = review(2, body=ai_review.REVIEW_MARKER + " second")
+        previous, _ = self.conversation([older, latest])
+        self.assertIn("second", previous)
+
+    def test_no_previous_review_on_first_run(self):
+        previous, discussion = self.conversation([])
+        self.assertIsNone(previous)
+        self.assertEqual(discussion, "")
+
+    def test_discussion_is_humans_only_in_time_order(self):
+        reviews = [
+            review(1, at="2026-10-12T10:00:00Z"),
+            review(2, login="lsometrico", body="Looks good to me", at="2026-10-12T12:00:00Z"),
+            review(3, login="RyanR04", body="", at="2026-10-12T12:30:00Z"),  # approval, no text
+        ]
+        issue_comments = [
+            comment("xamspanda", "Not changing the trigger", "2026-10-12T11:00:00Z"),
+            comment("dependabot[bot]", "bot noise", "2026-10-12T11:30:00Z"),
+        ]
+        inline = [comment("Carlos-Luc", "Why 300s?", "2026-10-12T13:00:00Z",
+                          path=".github/scripts/ai_review.py", line=98)]
+        _, discussion = self.conversation(reviews, issue_comments, inline)
+
+        self.assertNotIn("bot noise", discussion)
+        self.assertNotIn(ai_review.REVIEW_MARKER, discussion)
+        self.assertNotIn("RyanR04", discussion)
+        order = [discussion.index(text) for text in
+                 ("Not changing the trigger", "Looks good to me", "Why 300s?")]
+        self.assertEqual(order, sorted(order))
+        self.assertIn("@xamspanda", discussion)
+        self.assertIn("comment on .github/scripts/ai_review.py:98", discussion)
+
+    def test_pending_review_is_skipped(self):
+        pending = review(2, login="lsometrico", body="draft thoughts", at=None)
+        submitted = review(3, login="RyanR04", body="Approved with a note", at="2026-10-12T12:00:00Z")
+        _, discussion = self.conversation([pending, submitted])
+        self.assertNotIn("draft thoughts", discussion)
+        self.assertIn("Approved with a note", discussion)
+
+    def test_long_discussion_keeps_the_latest(self):
+        # One comment per minute, so note 099 is the newest.
+        comments = [comment("xamspanda", f"note {i:03}" + "x" * 500,
+                            f"2026-10-12T{10 + i // 60:02}:{i % 60:02}:00Z")
+                    for i in range(100)]
+        _, discussion = self.conversation([], comments)
+        self.assertLessEqual(len(discussion), ai_review.MAX_DISCUSSION_CHARS + 40)
+        self.assertTrue(discussion.startswith("(earlier discussion omitted)"))
+        self.assertIn("note 099", discussion)
+        self.assertNotIn("note 000", discussion)
+
+
+class BuildInputContextTests(unittest.TestCase):
+    def test_includes_commits_previous_review_and_discussion(self):
+        text = ai_review.build_input("t", "b", "+x", False, commits="abc1 Fix bug",
+                                     previous_review="Must fix: X", discussion="@a: done")
+        for part in ("Fix bug", "Your previous review", "Must fix: X", "@a: done"):
+            self.assertIn(part, text)
+        self.assertLess(text.index("@a: done"), text.index("Diff:"))
+
+    def test_all_pr_content_is_framed_as_data_before_it_appears(self):
+        text = ai_review.build_input("TITLE", "BODY", "+DIFF", False, commits="COMMITS",
+                                     previous_review="PREVIOUS", discussion="DISCUSSION")
+        framing = text.index("not instructions")
+        for part in ("TITLE", "BODY", "COMMITS", "DISCUSSION", "+DIFF"):
+            self.assertLess(framing, text.index(part))
+
+    def test_changed_files_come_before_the_diff(self):
+        text = ai_review.build_input("t", "b", "+x", False, changed_files="app/views.py (+1 -0)")
+        self.assertLess(text.index("app/views.py (+1 -0)"), text.index("Diff:"))
+
+    def test_omits_empty_sections(self):
+        text = ai_review.build_input("t", "b", "+x", False)
+        self.assertNotIn("previous review", text)
+        self.assertNotIn("Discussion", text)
+        self.assertNotIn("Commits", text)
+        self.assertNotIn("Changed files", text)
 
 
 if __name__ == "__main__":
