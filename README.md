@@ -75,5 +75,4 @@ Every pull request gets an automatic review comment from OpenAI's `gpt-6-luna` m
 | 10/12/2026 | Claude Code (Claude Opus 5.5) | Extended the AI review so it reads the PR's commit messages, its previous review, and teammates' comments, with tests. Laura reviewed it; submitted in a pull request for teammate review. |
 | 10/12/2026 | Claude Code (Claude Opus 5.5) | Made the AI review handle huge diffs (per-file and per-directory limits, a list of all changed files) so a committed package can't hide the app's changes, with tests. Laura reviewed it; submitted in a pull request for teammate review. |
 | 10/12/2026 | Claude Code (Claude Opus 5.5) | Edited the AI reviewer guide so the bot stops asking authors to confirm how outside APIs behave, and keeps unlikely edge cases out of Must fix. Laura reviewed it; submitted in a pull request for teammate review. |
-
-| 10/14/2026 | Claude Code (Claude Opus 5.5) | Drafted the team docs in `docs/` (project layout, pull requests, testing, deployment) from the current code and workflows. Laura reviewed them; submitted in a pull request for teammate review. |
+| 10/14/2026 | Claude Code (Claude Opus 5.5) | Drafted the team docs in `docs/` (project layout, pull requests, testing, deployment) from the current code and workflows. Opened as a draft pull request for Laura and the team to review. |
