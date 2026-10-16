@@ -17,11 +17,16 @@ Binge & Bosses is a backlog management and social interaction platform geared fo
 - Track the time spent in-game
 
 ## How to run Binge & Bosses
-### Step 1. Install the requirements
-Run: 
+### Step 1. Install uv and the requirements
+This project uses [uv](https://docs.astral.sh/uv/) to manage Python and packages. Install it once:
+- macOS/Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh` (or `brew install uv`)
+- Windows: `winget install --id=astral-sh.uv -e`
+
+Then, from the repository root, run:
 ```bash
-pip3 install -r requirements.txt
+uv sync
 ```
+This installs the Python version in `.python-version` (3.12) if you don't have it, and creates `.venv/` with the exact package versions in `uv.lock`. Run commands with `uv run` so they use that environment. In VS Code or PyCharm, set the interpreter to `.venv`.
 
 ### Step 2. Create .env file
 within `binge_and_bosses/` create a file called `.env` in the same directory as `manage.py`
@@ -38,18 +43,34 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 
 ### Step 4. Run the server
 ```bash
-binge_and_bosses/manage.py runserver
+cd binge_and_bosses
+uv run python manage.py runserver
 ```
 
 ## How to run the tests
 After Steps 1–3, run the tests from the `binge_and_bosses/` directory (the one containing `manage.py`):
 ```bash
 cd binge_and_bosses
-python3 manage.py test
+uv run python manage.py test
 ```
 Django creates a temporary test database and deletes it afterward, so the tests do not change `db.sqlite3`. Leave `DATABASE_URL` unset so the tests use local SQLite; never point tests at the production database.
 
 Note: running `binge_and_bosses/manage.py test` from the repository root finds 0 tests, so `cd` into `binge_and_bosses/` first.
+
+CI also checks coverage. To see it locally:
+```bash
+uv run coverage run manage.py test
+uv run coverage report -m
+```
+
+## Adding or updating packages
+- Add a package: `uv add <package>`. For tools only needed in development or CI (like `coverage`), use `uv add --dev <package>`.
+- Then regenerate `requirements.txt`, which Render installs from:
+  ```bash
+  uv export --no-dev --no-emit-project -o requirements.txt
+  ```
+- Commit `pyproject.toml`, `uv.lock`, and `requirements.txt` together. CI fails if `uv.lock` or `requirements.txt` is out of date.
+- Don't `pip install` into the project or edit `requirements.txt` by hand.
 
 ## AI code review
 Every pull request gets an automatic review comment from OpenAI's `gpt-6-luna` model (`.github/workflows/ai-review.yml`). It posts a new comment-only review for each push and collapses its earlier reviews as outdated, so the latest review sits right after the latest commit. The review is advisory: a teammate still has to review and approve before merging. To change what the bot looks for, edit `.github/ai-review-guide.md`. The workflow reads the API key from the `OPENAI_API_KEY` repository secret.
@@ -75,4 +96,5 @@ Every pull request gets an automatic review comment from OpenAI's `gpt-6-luna` m
 | 10/12/2026 | Claude Code (Claude Opus 5.5) | Extended the AI review so it reads the PR's commit messages, its previous review, and teammates' comments, with tests. Laura reviewed it; submitted in a pull request for teammate review. |
 | 10/12/2026 | Claude Code (Claude Opus 5.5) | Made the AI review handle huge diffs (per-file and per-directory limits, a list of all changed files) so a committed package can't hide the app's changes, with tests. Laura reviewed it; submitted in a pull request for teammate review. |
 | 10/12/2026 | Claude Code (Claude Opus 5.5) | Edited the AI reviewer guide so the bot stops asking authors to confirm how outside APIs behave, and keeps unlikely edge cases out of Must fix. Laura reviewed it; submitted in a pull request for teammate review. |
+| 10/12/2026 | Claude Code (Claude Opus 5.5) | Moved the project to uv: wrote `pyproject.toml`, generated `uv.lock` and the pinned `requirements.txt`, pinned Python 3.12, switched CI to uv with a check that `requirements.txt` matches the lock, and updated the README setup steps. Submitted in a pull request for teammate review. |
 | 10/14/2026 | Claude Code (Claude Opus 5.5) | Drafted the team docs in `docs/` (project layout, pull requests, testing, deployment) from the current code and workflows. Opened as a draft pull request for Laura and the team to review. |
