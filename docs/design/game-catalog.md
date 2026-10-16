@@ -83,7 +83,7 @@ erDiagram
   }
   USER {
     int id PK
-    string username "custom User model, PR 52"
+    string username "authentication.User"
   }
   LIBRARY_ENTRY {
     int user_id FK
