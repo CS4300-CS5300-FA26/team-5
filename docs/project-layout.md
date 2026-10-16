@@ -8,6 +8,11 @@ team-5/
 │   ├── binge_and_bosses/      ← project settings and top-level URLs
 │   │   ├── settings.py
 │   │   └── urls.py
+│   ├── authentication/        ← accounts: custom User model, sign-up, log-in
+│   │   ├── models.py          ← User (settings.AUTH_USER_MODEL)
+│   │   ├── views.py           ← signup view; log-in/out come from Django
+│   │   ├── urls.py            ← everything under /accounts/
+│   │   └── templates/registration/
 │   └── games/                 ← the "games" app
 │       ├── models.py          ← Game model
 │       ├── views.py           ← index view (the home page)
@@ -21,8 +26,11 @@ team-5/
 │   ├── ai-review-guide.md         ← what the AI reviewer looks for
 │   └── scripts/                   ← the AI review script and its tests
 ├── docs/                      ← you are here
-├── requirements.txt           ← Python packages
-└── README.md                  ← setup, running, AI usage log
+├── pyproject.toml             ← the packages we depend on (edit with `uv add`)
+├── uv.lock                    ← exact pinned versions of every package; commit it
+├── .python-version            ← Python version (3.12)
+├── requirements.txt           ← generated from uv.lock for Render; never edit by hand
+└── README.md                  ← setup, running, adding packages, AI usage log
 ```
 
 ## How a page gets to the browser
@@ -35,12 +43,15 @@ Using the home page as the example:
 
 New features follow the same path: URL → view → model → template.
 
+## Users
+Always refer to the user model as `settings.AUTH_USER_MODEL` (in model fields) or `get_user_model()` (in code), never `django.contrib.auth.models.User`. We use our own `authentication.User`, so Django's built-in one isn't the one in the database.
+
 ## Adding a new app
 Django apps group one area of the site (games, accounts, reviews, …).
 
 ```bash
 cd binge_and_bosses
-python3 manage.py startapp <name>
+uv run python manage.py startapp <name>
 ```
 
 Then add it to `INSTALLED_APPS` in `settings.py` and `include()` its `urls.py` from `binge_and_bosses/urls.py`.

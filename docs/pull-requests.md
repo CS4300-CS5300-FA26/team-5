@@ -20,7 +20,7 @@ Not ready for review yet? Open it as a **draft**. Teammates can see it and comme
 ## What runs on your PR
 | Check | What it does | If it fails |
 | --- | --- | --- |
-| **CI** (`ci.yaml`) | Runs all tests and requires at least 80% coverage. Also runs on every push to any branch. | Click *Details* on the failed check and read the log. Usually a failing test or new code without tests. See [Testing](testing.md). |
+| **CI** (`ci.yaml`) | Installs the exact packages in `uv.lock`, checks that `requirements.txt` matches it, runs all tests, and requires at least 80% coverage. Also runs on every push to any branch. | Click *Details* on the failed check and read the log. A failing test or new code without tests: see [Testing](testing.md). "Out of date" lock or `requirements.txt`: you changed packages without the steps in the README's *Adding or updating packages*. |
 | **AI code review** (`ai-review.yml`) | Posts a review comment with suggestions. Skips draft PRs. | It never blocks merging. Treat it as one reviewer's opinion: fix what's right, reply on what's wrong. |
 
 ## Getting it merged
@@ -45,4 +45,5 @@ That email must be one listed in your GitHub account's email settings. If a comm
 ## Things to avoid
 - **PRs that depend on another open PR** ("stacked" PRs). They're hard to review and merge in the right order. Branch from `main` and wait if you need someone else's work.
 - **Huge PRs.** Smaller PRs get reviewed faster and better. Split by feature if you can.
-- **Committing `db.sqlite3`, `.env`, or `staticfiles/`.** They're in `.gitignore`. If `git status` shows one, don't `git add` it.
+- **Committing `db.sqlite3`, `.env`, `.venv/`, or `staticfiles/`.** They're in `.gitignore`. If `git status` shows one, don't `git add` it.
+- **`pip install` into the project.** Use `uv add` so `pyproject.toml` and `uv.lock` stay in step (see the README).

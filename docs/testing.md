@@ -6,7 +6,7 @@ The course grades tests every sprint: new features need tests, and coverage must
 From the `binge_and_bosses/` folder (the one with `manage.py`):
 
 ```bash
-python3 manage.py test
+uv run python manage.py test
 ```
 
 Running it from the repo root finds 0 tests.
@@ -14,12 +14,11 @@ Running it from the repo root finds 0 tests.
 Django creates a temporary test database and deletes it afterward, so tests never touch your `db.sqlite3` or production. Leave `DATABASE_URL` unset when you run tests.
 
 ## Checking coverage locally
-This is what CI runs:
+This is what CI runs (`coverage` is installed by `uv sync`):
 
 ```bash
-pip install coverage
-coverage run manage.py test
-coverage report -m
+uv run coverage run manage.py test
+uv run coverage report -m
 ```
 
 `report -m` lists the line numbers in each file that no test ran. Those are what to test next.

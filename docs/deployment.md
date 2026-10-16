@@ -5,7 +5,7 @@ Production runs on [Render](https://render.com)'s free tier, built from this rep
 ## What a deploy does
 Render runs [build.sh](../binge_and_bosses/build.sh), which:
 
-1. Installs the packages in `requirements.txt`.
+1. Installs the packages in `requirements.txt`. That file is generated from `uv.lock`, so production gets the same versions as CI and your machine. Render doesn't use uv itself.
 2. Collects static files (CSS, images) into `staticfiles/`, which WhiteNoise serves.
 3. Applies database migrations.
 4. Creates the admin superuser if it doesn't exist yet.
