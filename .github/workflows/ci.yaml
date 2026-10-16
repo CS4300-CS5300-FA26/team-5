@@ -11,17 +11,28 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v6
+      # Installs uv; `uv sync` below then installs the Python version in .python-version.
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0 (no major-version tag exists)
         with:
-          python-version: "3.12"
+          version: "0.13.0"
 
+      # --locked fails if uv.lock is out of date with pyproject.toml.
       - name: Install packages
-        run: pip install -r requirements.txt coverage
+        run: uv sync --locked
+
+      # Render installs from requirements.txt, so it must match uv.lock.
+      - name: Check requirements.txt matches uv.lock
+        run: |
+          uv export --locked --no-dev --no-emit-project -o requirements.txt
+          git diff --exit-code requirements.txt || {
+            echo "::error file=requirements.txt::requirements.txt is out of date. Run: uv export --no-dev --no-emit-project -o requirements.txt"
+            exit 1
+          }
 
       - name: Run tests with coverage
         working-directory: binge_and_bosses
-        run: coverage run manage.py test
+        run: uv run --locked coverage run manage.py test
 
       - name: Enforce 80% coverage
         working-directory: binge_and_bosses
-        run: coverage report -m --fail-under=80
+        run: uv run --locked coverage report -m --fail-under=80

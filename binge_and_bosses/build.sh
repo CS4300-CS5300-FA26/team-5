@@ -8,6 +8,7 @@ PROJ_DIR=binge_and_bosses
 
 
 
+# requirements.txt is generated from uv.lock (see README), so this installs the pinned versions.
 pip install -r requirements.txt
 
 python3 $PROJ_DIR/manage.py collectstatic --no-input
