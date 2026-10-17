@@ -59,3 +59,19 @@ class LogoutTests(TestCase):
         self.client.logout()
         response = self.client.get("/")
         self.assertContains(response, "Log in")
+
+# Tests that the library page displays correctly and that logged out users are redirected to the login page when visiting.
+class LibraryPageTests(TestCase):
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="user_b", password="TesTINGp#ass0r0d")
+
+    def test_logged_out_user_redirected_to_login(self):
+        response = self.client.get(reverse("library"))
+        self.assertRedirects(response, f"{reverse('login')}?next={reverse('library')}")
+
+    def test_logged_in_user_sees_their_library(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("library"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "user_b's Library")
