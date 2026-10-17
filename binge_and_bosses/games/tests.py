@@ -4,6 +4,10 @@ from django.test import TestCase
 
 from .models import Game
 
+from django.urls import reverse
+
+from django.contrib.auth import get_user_model
+
 
 # Tests for the landing page (URL "/" -> index view -> Game model -> index.html).
 # Django's TestCase runs against a temporary test database, so these tests
@@ -32,3 +36,26 @@ class LandingPageTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "No games yet...")
+
+# Tests that the logout button actually logs the user out via post and redirects to the right place
+class LogoutTests(TestCase):
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="user_b", password="TesTINGp#ass0r0d")
+        self.client.force_login(self.user)
+
+    def test_logout_post_logs_user_out(self):
+        response = self.client.post(reverse("logout"))
+        self.assertRedirects(response, "/accounts/login/", fetch_redirect_response=False)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_nav_shows_username_when_logged_in(self):
+        response = self.client.get("/")
+        self.assertContains(response, "user_b")
+        self.assertContains(response, "Log out")
+
+    def test_nav_shows_login_when_logged_out(self):
+        self.client.logout()
+        response = self.client.get("/")
+        self.assertContains(response, "Log in")

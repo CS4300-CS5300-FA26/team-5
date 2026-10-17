@@ -123,8 +123,8 @@ class loginTests(TestCase):
             "password": "TesTINGp#ass0r0d"
         })
 
-        # Check that we redirect back to the root
-        self.assertRedirects(response, "/", fetch_redirect_response=False)
+        # Check that we redirect back to user's library
+        self.assertRedirects(response, "/library/", fetch_redirect_response=False)
 
         # Ensure that the session holds this user's ID
         self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
