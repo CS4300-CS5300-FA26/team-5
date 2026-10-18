@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from .models import Game
+from .services import Game_Search
 # Create your views here.
 
 def index(request):
