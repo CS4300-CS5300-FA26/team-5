@@ -16,6 +16,7 @@ def search_game(game_name):
 def get_game_details(game_id):
     try:
         response = requests.get(f"{BASE_URL}/{game_id}", params={"key": settings.RAWG_API_KEY}, timeout=10)
+        response.raise_for_status
         return response.json().get("results", [])
-    except requests.exceptions.RequestException
+    except requests.exceptions.RequestException:
         return None
