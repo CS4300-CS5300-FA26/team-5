@@ -16,5 +16,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "behave-django>=2.0.0",
     "coverage>=7.16.2",
 ]

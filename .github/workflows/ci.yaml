@@ -25,13 +25,19 @@ jobs:
         run: |
           uv export --locked --no-dev --no-emit-project -o requirements.txt
           git diff --exit-code requirements.txt || {
-            echo "::error file=requirements.txt::requirements.txt is out of date. Run: uv export --no-dev --no-emit-project -o requirements.txt"
+            echo "::error file=requirements.txt::requirements.txt is out of date. Run: uv export --locked --no-dev --no-emit-project -o requirements.txt"
             exit 1
           }
 
       - name: Run tests with coverage
         working-directory: binge_and_bosses
         run: uv run --locked coverage run manage.py test
+
+      # Acceptance tests from the stories' Gherkin (features/). --append adds
+      # their coverage to the unit tests' so the 80% check counts both.
+      - name: Run Behave scenarios with coverage
+        working-directory: binge_and_bosses
+        run: uv run --locked coverage run --append manage.py behave --simple
 
       - name: Enforce 80% coverage
         working-directory: binge_and_bosses
