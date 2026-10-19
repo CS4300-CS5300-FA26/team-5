@@ -17,5 +17,5 @@ def signup(request):
 
             # Login as user (preventing annoying retyping)
             login(request, user)
-            return redirect("/")
+            return redirect("library")
     return render(request, "registration/signup.html", {"form": form})
