@@ -29,7 +29,15 @@ class SignupTests(TestCase):
             Test that when entering valid data, the user is in the database
         """
         self.client.post(self.url, self.valid_registration_details)
-        self.assertTrue(get_user_model().objects.filter(username="test_user").exists()) 
+        self.assertTrue(get_user_model().objects.filter(username="test_user").exists())
+
+    def test_successful_signup_redirect(self):
+        """
+            Test that a valid signup redirects to the library page
+        """
+        response = self.client.post(self.url, self.valid_registration_details)
+        self.assertRedirects(response, reverse("library"))
+
 
     def test_successful_login_after_signup(self):
         """
@@ -123,8 +131,8 @@ class loginTests(TestCase):
             "password": "TesTINGp#ass0r0d"
         })
 
-        # Check that we redirect back to the root
-        self.assertRedirects(response, "/", fetch_redirect_response=False)
+        # Check that we redirect back to user's library
+        self.assertRedirects(response, "/library/", fetch_redirect_response=False)
 
         # Ensure that the session holds this user's ID
         self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
