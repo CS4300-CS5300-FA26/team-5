@@ -2,6 +2,7 @@
     Steps for signing up, logging in and logging out (stories #7 and #8).
 """
 from behave import given, when, then
+from bs4 import BeautifulSoup
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
@@ -26,6 +27,17 @@ def log_in(context, username, password):
 
 def is_logged_in(context):
     return "_auth_user_id" in context.test.client.session
+
+
+def displayed_errors(response):
+    """
+        Every error the form shows, by field ("__all__" for errors not tied to a field).
+        Comparing these between two responses checks that nothing else differs,
+        not just that both contain the same phrase.
+    """
+    errors = response.context["form"].errors.get_json_data()
+    return {field: [error["message"] for error in field_errors]
+            for field, field_errors in errors.items()}
 
 
 # Sign-up (#7)
@@ -80,11 +92,10 @@ def error_next_to_field(context, field):
 
 @then("the message does not reveal whether the email is registered")
 def signup_message_does_not_reveal_email(context):
-    # A taken username with a new email must get the same message as a taken email
-    response = sign_up(context, context.user.username, "brand-new@example.com", PASSWORD)
-    context.test.assertContains(
-        response,
-        "Unable to create an account with those details. Try logging in or resetting your password.",
+    # A taken username with a new email must show exactly the same errors as a taken email
+    taken_username = sign_up(context, context.user.username, "brand-new@example.com", PASSWORD)
+    context.test.assertEqual(
+        displayed_errors(taken_username), displayed_errors(context.response)
     )
 
 
@@ -114,10 +125,18 @@ def land_on_library(context):
 
 @when('I click "Logout"')
 def click_logout(context):
-    # The library page must have a logout form; the test client then submits it
+    # The library page must have a POST form to the logout URL with a submit button.
+    # The test client then submits that form the way the browser would.
     library = context.test.client.get(reverse("library"))
-    context.test.assertContains(library, f'action="{reverse("logout")}"')
-    context.response = context.test.client.post(reverse("logout"))
+    page = BeautifulSoup(library.content, "html.parser")
+    form = page.find("form", action=reverse("logout"))
+    context.test.assertIsNotNone(form, "No logout form on the library page")
+    context.test.assertEqual(form.get("method", "").lower(), "post")
+    context.test.assertIsNotNone(
+        form.find(["button", "input"], attrs={"type": "submit"}),
+        "The logout form has no submit button",
+    )
+    context.response = context.test.client.post(form["action"])
 
 
 @then("I am returned to the login page")
@@ -138,5 +157,7 @@ def enter_wrong_credentials(context):
 
 @then("the message does not reveal whether the username is registered")
 def login_message_does_not_reveal_username(context):
-    # A wrong password for a real account gets the same message as an unknown username
-    context.test.assertContains(context.wrong_password_response, context.error_message)
+    # A wrong password for a real account must show exactly the same errors as an unknown username
+    context.test.assertEqual(
+        displayed_errors(context.wrong_password_response), displayed_errors(context.response)
+    )

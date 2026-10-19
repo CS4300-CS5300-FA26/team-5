@@ -37,5 +37,4 @@ def see_text(context, text):
 
 @then('I see the error "{message}"')
 def see_error(context, message):
-    context.error_message = message
     context.test.assertContains(context.response, message)

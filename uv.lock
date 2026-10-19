@@ -71,6 +71,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "beautifulsoup4" },
     { name = "behave-django" },
     { name = "coverage" },
 ]
@@ -88,6 +89,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "beautifulsoup4", specifier = ">=4.15.0" },
     { name = "behave-django", specifier = ">=2.0.0" },
     { name = "coverage", specifier = ">=7.16.2" },
 ]
