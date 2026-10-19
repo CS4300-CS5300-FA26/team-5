@@ -24,7 +24,7 @@
                         </div>
                     {% endif %}
 
-                    <form method="post" nonvalidate>
+                    <form method="post" novalidate>
                         {% csrf_token %}
                         {% for field in form %}
                             <div class="mb-3">
