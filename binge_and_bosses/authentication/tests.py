@@ -29,7 +29,15 @@ class SignupTests(TestCase):
             Test that when entering valid data, the user is in the database
         """
         self.client.post(self.url, self.valid_registration_details)
-        self.assertTrue(get_user_model().objects.filter(username="test_user").exists()) 
+        self.assertTrue(get_user_model().objects.filter(username="test_user").exists())
+
+    def test_successful_signup_redirect(self):
+        """
+            Test that a valid signup redirects to the library page
+        """
+        response = self.client.post(self.url, self.valid_registration_details)
+        self.assertRedirects(response, reverse("library"), fetch_redirect_response=False)
+
 
     def test_successful_login_after_signup(self):
         """
@@ -94,7 +102,15 @@ class SignupTests(TestCase):
         # Ensure that the hashed password matches the plaintext password
         self.assertTrue(user.check_password("SuperSecureP@$swo0RD"))
 
-class loginTests(TestCase):
+    def test_missing_fields_fail(self):
+        """
+            Check that when submitting an empty form, it should not create a user
+        """
+        response = self.client.post(self.url, {})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(get_user_model().objects.count(), 0)
+
+class LoginTests(TestCase):
     '''
         Tests for the login functionality
     '''
@@ -123,8 +139,8 @@ class loginTests(TestCase):
             "password": "TesTINGp#ass0r0d"
         })
 
-        # Check that we redirect back to the root
-        self.assertRedirects(response, "/", fetch_redirect_response=False)
+        # Check that we redirect back to user's library
+        self.assertRedirects(response, "/library/", fetch_redirect_response=False)
 
         # Ensure that the session holds this user's ID
         self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
@@ -152,3 +168,41 @@ class loginTests(TestCase):
             "username": "unknown",
             "password": "TesTINGp#ass0r0d"
         })
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_login_error_does_not_reveal_registered_username(self):
+        """
+            Test that a wrong password and an unregistered username show the same error,
+            so the message doesn't reveal whether a username is registered
+        """
+        wrong_password = self.client.post(self.url, {
+            "username": "user_a",
+            "password": "a_wrong_pass!"
+        })
+        unregistered = self.client.post(self.url, {
+            "username": "unknown",
+            "password": "TesTINGp#ass0r0d"
+        })
+
+        self.assertContains(wrong_password, "Invalid username or password.")
+        self.assertContains(unregistered, "Invalid username or password.")
+
+class LogoutTest(TestCase):
+    def test_logout_clears_session(self):
+        """
+            Test that when you logout, you are *really* logged out
+        """
+        user = get_user_model().objects.create_user(
+            username="user_a", password="CutMyLif3IntoP@sswords"
+        )
+        self.client.force_login(user)
+        self.client.post(reverse("logout"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_library_redirects_anon_user(self):
+        """
+            Test that we cannot simply access library page as an unauthenticated user and it redirects to the login page
+        """
+        response = self.client.get(reverse("library"))
+        self.assertRedirects(response, f"{reverse('login')}?next={reverse('library')}", fetch_redirect_response=False)
