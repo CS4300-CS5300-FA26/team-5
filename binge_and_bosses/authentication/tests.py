@@ -160,3 +160,5 @@ class loginTests(TestCase):
             "username": "unknown",
             "password": "TesTINGp#ass0r0d"
         })
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("_auth_user_id", self.client.session)
