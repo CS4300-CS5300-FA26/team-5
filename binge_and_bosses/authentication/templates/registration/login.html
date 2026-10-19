@@ -1,10 +1,55 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block title %}Login | Binge and Bosses{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'authentication/css/login.css' %}">
+{% endblock %}
+
 {% block content %}
-<h2>Login</h2>
+    <div class="row justify-content-center">
+        <div class="col-11 col-sm-8 col-md-6 col-lg-4">
+            {# Create bordered box #}
+            <div class="card shadow-sm login-card">
+                {# Padding #}
+                <div class="card-body p-4">
+                    <h2 class="card-title text-center mb-4">Login</h2>
+                    {% if form.non_field_errors %}
+                        {# Create Warning Box #}
+                        <div class="alert alert-danger" role="alert">
+                            {% for error in form.non_field_errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
 
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Login</button>
-</form>
+                    {# novalidate turns off browser validation popup forcing Django error messages #}
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        {# Allow ?next= to work #}
+                        <input type="hidden" name="next" value="{{ next }}">
 
+                        {# Loop over each field in the form #}
+                        {% for field in form %}
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ field.id_for_label }}">
+                                    {{ field.label }}
+                                </label>
+                                {{ field }}
+                                {% for error in field.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                        <button type="submit" class="btn btn-primary w-100">login</button>
+                    </form>
+                    <p class="text-center mt-3 mb-0">
+                        No account? <a href="{% url 'signup' %}">Register</a>
+                    </p> 
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}
