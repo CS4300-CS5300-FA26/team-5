@@ -171,6 +171,23 @@ class LoginTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("_auth_user_id", self.client.session)
 
+    def test_login_error_does_not_reveal_registered_username(self):
+        """
+            Test that a wrong password and an unregistered username show the same error,
+            so the message doesn't reveal whether a username is registered
+        """
+        wrong_password = self.client.post(self.url, {
+            "username": "user_a",
+            "password": "a_wrong_pass!"
+        })
+        unregistered = self.client.post(self.url, {
+            "username": "unknown",
+            "password": "TesTINGp#ass0r0d"
+        })
+
+        self.assertContains(wrong_password, "Invalid username or password.")
+        self.assertContains(unregistered, "Invalid username or password.")
+
 class LogoutTest(TestCase):
     def test_logout_clears_session(self):
         """
