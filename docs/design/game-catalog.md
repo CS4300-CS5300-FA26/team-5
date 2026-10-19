@@ -2,6 +2,9 @@
 
 **Status: proposal.** Nothing here is built yet. Comment on the PR. Once the team agrees, this page becomes the reference for #9 (search), #10 (details), #11 (library), #13 (rating) and #14 (reviews).
 
+## Sprint 1 scope
+Sprint 1 builds only **search and saving games**: `RawgClient` with its cache, the search page (#9), and the `Game`, `Genre`, `Platform` and `Publisher` tables filled in by `GameCatalog`. Libraries, ratings and reviews come in later sprints. They're in this document only to check that the Sprint 1 tables won't need redoing for them.
+
 ## The problem
 Players search for any game by title (#9), open its details (#10), and add it to their library (#11). We don't have a list of every game, so the data comes from [RAWG](https://rawg.io/apidocs), a free video game database with an API.
 
@@ -18,10 +21,12 @@ RAWG's free plan has limits that shape the design:
 | 2 | Search RAWG live; don't copy their database | Agreed |
 | 3 | Cache RAWG responses for a few hours | Agreed |
 | 4 | Save a game to our database only when a user does something with it (library, rating, review) | Agreed |
-| 5 | Genres and platforms get their own tables | Agreed |
+| 5 | Genres, platforms and publishers get their own tables | Agreed |
 | 6 | Ratings and reviews are separate | Agreed |
 | 7 | RAWG code is split into `RawgClient` and `GameCatalog` | Agreed |
 | 8 | Library statuses, and whether users can make their own lists | **Waiting on the customer** |
+| 9 | Sprint 1 is search and saving games only | Agreed |
+| 10 | A saved game stores its title, description, release date, publishers and genres (plus cover and platforms) | Agreed; trigger for saving in Sprint 1 is open |
 
 ### 2. Search live instead of copying RAWG
 RAWG has close to a million games. Copying them would use most of a month's request quota, the copy would go out of date right away, and bulk downloads are a paid-plan feature. Instead, our server asks RAWG each time someone searches and shows the results. The browser never talks to RAWG directly, so the API key stays on our server.
@@ -34,8 +39,18 @@ A search result is temporary: it's shown and forgotten. When a user adds a game 
 
 Saved games can go stale (a new platform, a cover change). Each `Game` remembers when it was last fetched (`fetched_at`), and the details page refreshes it from RAWG when it's old.
 
-### 5. Genres and platforms get their own tables
-Storing genres as a text or JSON field would be faster today, but "filter my library by genre", "what platforms do my friends play on", and the Sprint 4 recommendations ("which genres does this user rate highest") all need to query by genre. Separate tables make those simple queries instead of a rewrite later. We stop at genres and platforms: developers, tags, screenshots and the like can each be added with a small migration if we ever need them.
+### 5. Genres, platforms and publishers get their own tables
+A game can have several of each, and many games share the same ones. Storing them as a text or JSON field would be faster today, but "filter my library by genre", "what platforms do my friends play on", and the Sprint 4 recommendations ("which genres does this user rate highest") all need to query by genre. Separate tables make those simple queries instead of a rewrite later. We stop at genres, platforms and publishers: developers, tags, screenshots and the like can each be added with a small migration if we ever need them.
+
+### Search results vs. saved games
+RAWG's search results include each game's name, cover, release date, genres and platforms, but **not its description or publishers**. Those come only from RAWG's details request, one per game. Fetching details for every search result would cost about 20 requests per search, so:
+
+- **Search results show** title, cover, release date, genres and platforms.
+- **When a game is saved**, `GameCatalog` makes one details request and stores everything, including the description and publishers.
+
+(Confirm the exact fields against [RAWG's API reference](https://api.rawg.io/docs/) when building `RawgClient`.)
+
+Cover and platforms aren't in the field list from the PR discussion, but the user stories need them: #9's results show cover art, and #10's details page shows cover, genres, platforms and description.
 
 ### 6. Ratings and reviews are separate
 A rating is 0.5 to 5 stars in half-star steps. A review is written text. A user can rate without reviewing, or review without rating. Each user has at most one of each per game, and can edit both. A game's average rating is calculated from our users' ratings when needed, never stored, so it can't drift out of date. (The current `game_rating` field goes away.)
@@ -53,6 +68,7 @@ Solid boxes are what the search and details work builds. The others (marked *fut
 erDiagram
   GAME }o--o{ GENRE : "tagged with"
   GAME }o--o{ PLATFORM : "released on"
+  GAME }o--o{ PUBLISHER : "published by"
   USER ||--o{ LIBRARY_ENTRY : "future: has"
   GAME ||--o{ LIBRARY_ENTRY : "future: in"
   USER ||--o{ RATING : "future: gives"
@@ -76,6 +92,12 @@ erDiagram
     string name
   }
   PLATFORM {
+    int id PK
+    int rawg_id UK
+    string slug
+    string name
+  }
+  PUBLISHER {
     int id PK
     int rawg_id UK
     string slug
@@ -107,7 +129,7 @@ erDiagram
 
 - `LIBRARY_ENTRY`, `RATING` and `REVIEW` are each unique per (user, game).
 - `released`, `cover_url` and `description` can be empty because many RAWG games have no release date ("TBA"), no cover, or no description. The details page shows placeholders for these (#10).
-- `description` is empty until someone opens the game's details page, because RAWG's search results don't include descriptions.
+- `description` and publishers are filled in when the game is saved, from RAWG's details request (see *Search results vs. saved games*).
 
 ## Code structure
 ```mermaid
@@ -128,6 +150,7 @@ classDiagram
     <<dataclass, never saved>>
     everything in GameSummary
     description
+    publishers
   }
   class GameCatalog {
     <<games/catalog.py>>
@@ -170,7 +193,7 @@ sequenceDiagram
 
 If RAWG is down, `RawgClient` raises `RawgUnavailable` and the view shows an error message instead of crashing.
 
-**Adding to the library** (Sprint 2) is the first time a game is saved:
+**Saving a game**, shown here as adding it to the library (Sprint 2). Sprint 1 uses the same `GameCatalog` call from whatever triggers saving (open question 5):
 
 ```mermaid
 sequenceDiagram
@@ -187,7 +210,7 @@ sequenceDiagram
   else first time anyone touches it
     G->>C: get_game(3498)
     C-->>G: GameDetail
-    G->>D: save Game, genres, platforms
+    G->>D: save Game, genres, platforms, publishers
   end
   G-->>V: Game
   V->>D: save LibraryEntry(user, game, status)
@@ -210,6 +233,7 @@ The current model is `game_title`, `game_description`, `game_rating`, `game_rele
 | --- | --- | --- |
 | *(none)* | `rawg_id` (unique) | Ties our row to RAWG's game, so the same game isn't saved twice |
 | *(none)* | `slug`, `cover_url`, `fetched_at` | Needed for URLs, the cover, and refreshing |
+| *(none)* | `genres`, `platforms`, `publishers` | Links to the new tables |
 | `game_title` | `name` | Matches RAWG's naming; the `game_` prefix repeats the model name |
 | `game_description` (required) | `description` (may be empty) | Many RAWG games have none |
 | `game_release` (required) | `released` (may be empty) | Unreleased games have no date |
@@ -224,3 +248,4 @@ The home page and its tests (`games/tests.py`) change to match.
 2. **Statuses (customer):** "Not Started" vs "Want-to-play". Same thing, or both?
 3. **Existing sample games (team):** OK to delete the current `Game` rows in the migration? Is anything in production that someone wants to keep?
 4. **Who builds what (team):** search (#9) and details (#10) share `RawgClient`. One person, or split once `RawgClient` exists?
+5. **What saves a game in Sprint 1 (team):** there's no library until Sprint 2. Does opening a game's details page save it, or is there an "add" button that saves it now and becomes "add to library" later?
