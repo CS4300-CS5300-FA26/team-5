@@ -1,0 +1,27 @@
+<h1>Search games</h1>
+
+<form method="get">
+  <input name="q" value="{{ query }}" placeholder="Game title" required>
+  <button type="submit">Search</button>
+</form>
+
+{% if error %}
+  <p>Could not load games. Try again.</p>
+{% elif query %}
+  {% for game in games %}
+    <article>
+      <h2>
+        <a href="{% url 'game_details' game.id %}">
+          {{ game.name }}
+        </a>
+      </h2>
+      {% if game.background_image %}
+        <img src="{{ game.background_image }}" alt="{{ game.name }}" width="200">
+      {% endif %}
+    </article>
+  {% empty %}
+    <p>No games found</p>
+  {% endfor %}
+{% endif %}
+
+<p>Game data provided by <a href="https://rawg.io">RAWG</a>.</p>

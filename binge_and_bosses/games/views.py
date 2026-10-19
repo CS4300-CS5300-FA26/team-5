@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from .models import Game
-from .services import search_game, get_game_details 
+from .rawg_client import search_game, get_game_details 
 # Create your views here.
 
 def index(request):
@@ -12,9 +12,9 @@ def game_search(request):
     query = request.GET.get("q", "").strip()
     games = search_game(query) if query else []
     
-    return render(request, "games/search_results.html", {
+    return render(request, "games/search.html", {
         "games": games if games is not None else[], 
-        "query": query
+        "query": query,
         "error": games is None
         })
 

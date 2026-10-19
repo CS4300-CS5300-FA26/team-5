@@ -1,0 +1,35 @@
+{% if error %}
+  <p>Could not load game details. Try again.</p>
+{% else %}
+  <h1>{{ game.name }}</h1>
+
+  {% if game.background_image %}
+    <img src="{{ game.background_image }}" alt="{{ game.name }}" width="400">
+  {% else %}
+    <p>No cover available</p>
+  {% endif %}
+
+  <p>{{ game.description_raw|default:"No description available" }}</p>
+  <p>Released: {{ game.released|default:"Unknown" }}</p>
+
+  <p>
+    Genres:
+    {% for genre in game.genres %}
+      {{ genre.name }}{% if not forloop.last %}, {% endif %}
+    {% empty %}
+      Unknown
+    {% endfor %}
+  </p>
+
+  <p>
+    Platforms:
+    {% for item in game.platforms %}
+      {{ item.platform.name }}{% if not forloop.last %}, {% endif %}
+    {% empty %}
+      Unknown
+    {% endfor %}
+  </p>
+{% endif %}
+
+<a href="{% url 'game_search' %}">Search games</a>
+<p>Game data provided by <a href="https://rawg.io">RAWG</a>.</p>
