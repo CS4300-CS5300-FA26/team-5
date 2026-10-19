@@ -24,4 +24,11 @@ class SignupForm(StyledForm, UserCreationForm):
         fields = ("username", "email")
 
 class LoginForm(StyledForm, AuthenticationForm):
-    pass
+    """
+        Login form for users. The same error is shown for a wrong password and an
+        unregistered username, so it doesn't reveal which usernames are registered
+    """
+    error_messages = {
+        **AuthenticationForm.error_messages,
+        "invalid_login": "Invalid username or password.",
+    }
