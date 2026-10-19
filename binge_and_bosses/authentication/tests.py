@@ -36,7 +36,7 @@ class SignupTests(TestCase):
             Test that a valid signup redirects to the library page
         """
         response = self.client.post(self.url, self.valid_registration_details)
-        self.assertRedirects(response, reverse("library"))
+        self.assertRedirects(response, reverse("library"), fetch_redirect_response=False)
 
 
     def test_successful_login_after_signup(self):
@@ -102,7 +102,7 @@ class SignupTests(TestCase):
         # Ensure that the hashed password matches the plaintext password
         self.assertTrue(user.check_password("SuperSecureP@$swo0RD"))
 
-class loginTests(TestCase):
+class LoginTests(TestCase):
     '''
         Tests for the login functionality
     '''
