@@ -51,9 +51,11 @@ def submit_valid_signup(context):
 
 @then("I am logged in and see my empty library")
 def logged_in_with_empty_library(context):
-    # Exactly one new account, saved with the submitted email, and it's the one logged in
+    # Exactly one new account, saved with the submitted email and password,
+    # and it's the one logged in
     context.test.assertEqual(get_user_model().objects.count(), context.user_count + 1)
     user = get_user_model().objects.get(email=context.email)
+    context.test.assertTrue(user.check_password(PASSWORD))
     context.test.assertRedirects(context.response, reverse("library"))
     context.test.assertEqual(int(context.test.client.session["_auth_user_id"]), user.pk)
 
