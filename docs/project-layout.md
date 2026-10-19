@@ -8,16 +8,19 @@ team-5/
 │   ├── binge_and_bosses/      ← project settings and top-level URLs
 │   │   ├── settings.py
 │   │   └── urls.py
+│   ├── templates/base.html    ← shared page layout (Bootstrap); new pages extend it
 │   ├── authentication/        ← accounts: custom User model, sign-up, log-in
 │   │   ├── models.py          ← User (settings.AUTH_USER_MODEL)
+│   │   ├── forms.py           ← SignupForm, LoginForm (Bootstrap-styled)
 │   │   ├── views.py           ← signup view; log-in/out come from Django
 │   │   ├── urls.py            ← everything under /accounts/
-│   │   └── templates/registration/
+│   │   ├── static/authentication/css/
+│   │   └── templates/registration/  ← login.html, signup.html
 │   └── games/                 ← the "games" app
 │       ├── models.py          ← Game model
-│       ├── views.py           ← index view (the home page)
+│       ├── views.py           ← index (home page) and library views
 │       ├── urls.py
-│       ├── templates/games/index.html
+│       ├── templates/games/   ← index.html, library.html
 │       ├── migrations/        ← committed; never delete or edit by hand
 │       └── tests.py
 ├── .github/
@@ -42,6 +45,31 @@ Using the home page as the example:
 4. It renders `games/index.html` with those games.
 
 New features follow the same path: URL → view → model → template.
+
+## Pages
+| URL | Name | What it is |
+| --- | --- | --- |
+| `/` | `index` | Home page |
+| `/library/` | `library` | The user's library (placeholder for now). Requires login. |
+| `/accounts/signup/` | `signup` | Sign-up. Logs the new user in and goes to the library. |
+| `/accounts/login/` | `login` | Log-in. Goes to the library, or to `?next=` if set. |
+| `/accounts/logout/` | `logout` | Log-out. Must be a POST (a form with `{% csrf_token %}`), not a link. Goes to the login page. |
+| `/admin/` | | Django admin |
+
+Use the name in code and templates (`reverse("library")`, `{% url 'login' %}`) rather than writing the URL out. The redirects after logging in and out are set by `LOGIN_REDIRECT_URL` and `LOGOUT_REDIRECT_URL` in `settings.py`.
+
+## Templates
+`templates/base.html` holds the page skeleton and Bootstrap. A page extends it and fills in its blocks:
+
+```django
+{% extends "base.html" %}
+{% block title %}Library | Binge and Bosses{% endblock %}
+{% block content %}
+    <h1>...</h1>
+{% endblock %}
+```
+
+The login and sign-up pages already use it. The home and library pages still have their own HTML, and a shared nav bar is planned in #59.
 
 ## Users
 Always refer to the user model as `settings.AUTH_USER_MODEL` (in model fields) or `get_user_model()` (in code), never `django.contrib.auth.models.User`. We use our own `authentication.User`, so Django's built-in one isn't the one in the database.
