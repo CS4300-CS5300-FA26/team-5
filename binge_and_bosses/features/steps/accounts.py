@@ -45,13 +45,17 @@ def displayed_errors(response):
 @when("I submit a valid email and password")
 def submit_valid_signup(context):
     context.user_count = get_user_model().objects.count()
-    context.response = sign_up(context, "new_player", "new@example.com", PASSWORD)
+    context.email = "new@example.com"
+    context.response = sign_up(context, "new_player", context.email, PASSWORD)
 
 
 @then("I am logged in and see my empty library")
 def logged_in_with_empty_library(context):
+    # Exactly one new account, saved with the submitted email, and it's the one logged in
+    context.test.assertEqual(get_user_model().objects.count(), context.user_count + 1)
+    user = get_user_model().objects.get(email=context.email)
     context.test.assertRedirects(context.response, reverse("library"))
-    context.test.assertTrue(is_logged_in(context))
+    context.test.assertEqual(int(context.test.client.session["_auth_user_id"]), user.pk)
 
     library = context.test.client.get(reverse("library"))
     context.test.assertContains(library, "Your games will show up here soon.")
@@ -86,8 +90,16 @@ def no_account_created(context):
 
 @then('I see an error next to the "{field}" field')
 def error_next_to_field(context, field):
-    form = context.response.context["form"]
-    context.test.assertIn(field, form.errors)
+    # The field has an error, and the page shows it in the same block as the field's input
+    messages = displayed_errors(context.response).get(field)
+    context.test.assertTrue(messages, f'No error for the "{field}" field')
+
+    page = BeautifulSoup(context.response.content, "html.parser")
+    field_input = page.find(id=f"id_{field}")
+    context.test.assertIsNotNone(field_input, f'No input for the "{field}" field')
+    shown_next_to_field = field_input.parent.get_text()
+    for message in messages:
+        context.test.assertIn(message, shown_next_to_field)
 
 
 @then("the message does not reveal whether the email is registered")
