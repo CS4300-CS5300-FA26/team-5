@@ -55,10 +55,27 @@ class LogoutTests(TestCase):
         self.assertContains(response, "user_b")
         self.assertContains(response, "Log out")
 
-    def test_nav_shows_login_when_logged_out(self):
+    def test_nav_shows_correct_buttons_when_logged_out(self):
         self.client.logout()
         response = self.client.get("/")
         self.assertContains(response, "Log in")
+        self.assertContains(response, "Sign up")
+
+    def test_signup_directs_to_signup_page(self):
+
+        """
+            Checks if the index page contains the expected signup url for the sign up button
+        """
+        
+        self.client.logout()
+
+        response = self.client.get(reverse('index'))
+
+        expected_url = reverse('signup')
+
+        expected_url_html = f'href="{expected_url}"'
+
+        self.assertContains(response,expected_url_html)
 
 # Tests that the library page displays correctly and that logged out users are redirected to the login page when visiting.
 class LibraryPageTests(TestCase):
