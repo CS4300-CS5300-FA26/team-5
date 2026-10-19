@@ -1,6 +1,6 @@
 # Deployment
 
-Production runs on [Render](https://render.com)'s free tier, built from this repo's `main` branch.
+Production runs on [Render](https://render.com)'s free tier, built from this repo's `main` branch. *Not confirmed yet: whether Render deploys automatically on every merge to `main`, and its start command. The Render owners are asked in PR #55.*
 
 ## What a deploy does
 Render runs [build.sh](../binge_and_bosses/build.sh), which:

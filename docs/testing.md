@@ -9,7 +9,7 @@ From the `binge_and_bosses/` folder (the one with `manage.py`):
 uv run python manage.py test
 ```
 
-Running it from the repo root finds 0 tests.
+Run it from `binge_and_bosses/`, not the repo root. From the root, `python manage.py test` fails because there's no `manage.py` there, and `python binge_and_bosses/manage.py test` runs but finds 0 tests.
 
 Django creates a temporary test database and deletes it afterward, so tests never touch your `db.sqlite3` or production. Leave `DATABASE_URL` unset when you run tests.
 
