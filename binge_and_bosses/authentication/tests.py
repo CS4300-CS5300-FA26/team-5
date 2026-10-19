@@ -36,7 +36,7 @@ class SignupTests(TestCase):
             Test that a valid signup redirects to the library page
         """
         response = self.client.post(self.url, self.valid_registration_details)
-        self.assertRedirects(response, reverse("library"))
+        self.assertRedirects(response, reverse("library"), fetch_redirect_response=False)
 
 
     def test_successful_login_after_signup(self):
@@ -102,7 +102,15 @@ class SignupTests(TestCase):
         # Ensure that the hashed password matches the plaintext password
         self.assertTrue(user.check_password("SuperSecureP@$swo0RD"))
 
-class loginTests(TestCase):
+    def test_missing_fields_fail(self):
+        """
+            Check that when submitting an empty form, it should not create a user
+        """
+        response = self.client.post(self.url, {})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(get_user_model().objects.count(), 0)
+
+class LoginTests(TestCase):
     '''
         Tests for the login functionality
     '''
@@ -160,3 +168,24 @@ class loginTests(TestCase):
             "username": "unknown",
             "password": "TesTINGp#ass0r0d"
         })
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+class LogoutTest(TestCase):
+    def test_logout_clears_session(self):
+        """
+            Test that when you logout, you are *really* logged out
+        """
+        user = get_user_model().objects.create_user(
+            username="user_a", password="CutMyLif3IntoP@sswords"
+        )
+        self.client.force_login(user)
+        self.client.post(reverse("logout"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_library_redirects_anon_user(self):
+        """
+            Test that we cannot simply access library page as an unauthenticated user and it redirects to the login page
+        """
+        response = self.client.get(reverse("library"))
+        self.assertRedirects(response, f"{reverse('login')}?next={reverse('library')}", fetch_redirect_response=False)
