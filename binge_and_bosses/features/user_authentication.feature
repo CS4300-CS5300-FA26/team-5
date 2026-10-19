@@ -13,8 +13,6 @@ Feature: Log in and log out
     When I click "Logout"
     Then I am returned to the login page
 
-  # Needs the error message from #61. Remove @wip once #61 is merged.
-  @wip
   Scenario: Wrong username or password
     Given I am on the login page
     When I enter a username or password that does not match an account

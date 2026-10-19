@@ -159,7 +159,7 @@ classDiagram
 | #7 Sign-up | Invalid email or weak password | Yes (Django's email check and 8-character minimum) |
 | #8 Log in | Correct credentials | Yes |
 | #8 Log in | Log out | Yes |
-| #8 Log in | Wrong username or password | After #61 merges. Tagged `@wip` until then. |
+| #8 Log in | Wrong username or password | Yes (#61) |
 
 #7 is closed, but its second scenario isn't met. It moved to #62 in Sprint 2, along with unique emails.
 
