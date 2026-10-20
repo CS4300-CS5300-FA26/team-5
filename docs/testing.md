@@ -49,5 +49,5 @@ The course asks us to write tests first:
 Watching it fail first proves the test can catch a bug.
 
 ## Coming soon
-- **Behave** runs the Gherkin scenarios from our user stories as tests. It's set up in PR #63 (design: `docs/design/behave.md` on that branch). Once that merges, the README explains how to run the scenarios, and each new feature's PR adds its story's scenarios.
+- **Behave** runs the Gherkin scenarios from our user stories as tests. It isn't on `main` yet: it's set up in PR #63 (design: `docs/design/behave.md` on that branch). Once that merges, the README explains how to run the scenarios, and each new feature's PR adds its story's scenarios.
 - **Tests that need an outside API** (like the RAWG game search) must not call the real API. They replace it with fake responses, so tests work without a key and don't use up our request quota.
