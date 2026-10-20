@@ -24,6 +24,7 @@ Not ready for review yet? Open it as a **draft**. Teammates can see it and comme
 | **AI code review** (`ai-review.yml`) | Posts a review comment with suggestions. Skips draft PRs. | It never blocks merging. Treat it as one reviewer's opinion: fix what's right, reply on what's wrong. |
 
 ## Getting it merged
+- **CI's `test` check must pass.** A PR with failing tests or coverage below 80% can't merge, even if it's approved. The AI review isn't required.
 - **One approval from a teammate** is required.
 - **The last push needs approval.** If you push after someone approved, a teammate must approve again.
 
