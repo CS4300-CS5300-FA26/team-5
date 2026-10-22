@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+from importlib.util import find_spec
 from pathlib import Path
 from decouple import config
 from decouple import Csv 
@@ -46,6 +47,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'games'
 ]
+
+# behave-django is a dev dependency, so Render doesn't install it.
+# Add it only when it's installed, so production still starts.
+if find_spec("behave_django"):
+    INSTALLED_APPS.append("behave_django")
 
 AUTH_USER_MODEL = "authentication.User"
 
