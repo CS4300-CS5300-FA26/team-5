@@ -17,5 +17,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "beautifulsoup4>=4.15.0",
+    "behave-django>=2.0.0",
     "coverage>=7.16.2",
 ]

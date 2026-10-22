@@ -25,7 +25,7 @@ jobs:
         run: |
           uv export --locked --no-dev --no-emit-project -o requirements.txt
           git diff --exit-code requirements.txt || {
-            echo "::error file=requirements.txt::requirements.txt is out of date. Run: uv export --no-dev --no-emit-project -o requirements.txt"
+            echo "::error file=requirements.txt::requirements.txt is out of date. Run: uv export --locked --no-dev --no-emit-project -o requirements.txt"
             exit 1
           }
 
@@ -35,6 +35,21 @@ jobs:
           RAWG_API_KEY: test-key
         run: uv run --locked coverage run manage.py test
 
+      # Acceptance tests from the stories' Gherkin (features/). --append adds
+      # their coverage to the unit tests' so the 80% check counts both.
+      - name: Run Behave scenarios with coverage
+        working-directory: binge_and_bosses
+        run: uv run --locked coverage run --append manage.py behave --simple
+
       - name: Enforce 80% coverage
         working-directory: binge_and_bosses
         run: uv run --locked coverage report -m --fail-under=80
+
+      # Render installs only the non-dev packages (requirements.txt). Check that
+      # the app still starts that way, e.g. that settings.py doesn't need behave-django.
+      # A separate environment keeps the dev packages in .venv for any later steps.
+      - name: Check the app starts without dev packages
+        working-directory: binge_and_bosses
+        env:
+          UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/no-dev-venv
+        run: uv run --locked --no-dev python manage.py check
