@@ -1,11 +1,17 @@
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 from .models import Game
 from .rawg_client import search_game, get_game_details 
 # Create your views here.
 
+
 def index(request):
     games = Game.objects.all()
     return render(request,'games/index.html',{'games':games})
+
+@login_required
+def library(request):
+    return render(request,'games/library.html')
 
 #return search results from rawg based on user input, return error on empty 
 def game_search(request):
@@ -25,3 +31,5 @@ def game_details(request, game_id):
         "game": game,
         "error": game is None,
     })
+    return render(request,'games/index.html',{'games':games, 'user': request.user})
+
