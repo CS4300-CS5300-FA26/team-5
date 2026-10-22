@@ -39,6 +39,8 @@ jobs:
       # their coverage to the unit tests' so the 80% check counts both.
       - name: Run Behave scenarios with coverage
         working-directory: binge_and_bosses
+        env:
+          RAWG_API_KEY: test-key
         run: uv run --locked coverage run --append manage.py behave --simple
 
       - name: Enforce 80% coverage
