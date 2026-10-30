@@ -6,14 +6,14 @@ from django.conf import settings
 #Game Model
 class Game(models.Model):
     # Store the rawg_id for a game 
-    rawg_id = models.IntegerField(unique=True)
-    # Store all orher attributes we get from it
+    rawg_id = models.IntegerField(unique=True, null=True, blank=True)
+    # Store all other attributes we get from it
     game_title = models.CharField(max_length=200)
     game_description = models.TextField()
     game_rating = models.FloatField()
-    game_release = models.DateField()
-    game_image = models.URLField()
-    game_genre = models.TextField()
+    game_release = models.DateField(null=True, blank=True)
+    game_image = models.URLField(blank=True)
+    game_genre = models.TextField(blank=True)
 
 class Catalog(models.Model):
 
