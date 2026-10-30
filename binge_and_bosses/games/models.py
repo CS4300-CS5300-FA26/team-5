@@ -1,10 +1,23 @@
 from django.db import models
+from django.conf import settings
 
 # Create your models here.
 
-#Game Model and Attributes We Need
+#Game Model
 class Game(models.Model):
-    game_title = models.CharField(max_length=100)
+    # Store the rawg_id for a game 
+    rawg_id = models.IntegerField(unique=True)
+    # Store all orher attributes we get from it
+    game_title = models.CharField(max_length=200)
     game_description = models.TextField()
     game_rating = models.FloatField()
     game_release = models.DateField()
+    game_image = models.URLField()
+    game_genre = models.TextField()
+
+class Catalog(models.Model):
+
+    games = models.ForeignKey(Game,on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
+
+
