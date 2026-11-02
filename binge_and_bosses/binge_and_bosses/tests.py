@@ -27,6 +27,14 @@ class NavBarUnauthenticated(TestCase):
         self.assertContains(response, reverse("login"))
         self.assertContains(response, ">Login</a>")
 
+    def test_signup_link_exists(self):
+        """
+            Test that the signup link in the navbar exists
+        """
+        response = self.client.get("/")
+        self.assertContains(response, reverse("signup"))
+        self.assertContains(response, ">Signup</a>")
+
     def test_logout_and_greeting_are_hidden(self):
         """
             Test that, when you are not logged in, you do not see indicators
