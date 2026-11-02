@@ -47,5 +47,4 @@ def game_details(request, game_id):
         "error": game is None,
         "in_library": in_library,
     })
-    return render(request,'games/index.html',{'games':games, 'user': request.user})
 
