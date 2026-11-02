@@ -33,11 +33,14 @@ This installs the Python version in `.python-version` (3.12) if you don't have i
 ### Step 2. Create .env file
 within `binge_and_bosses/` create a file called `.env` in the same directory as `manage.py`
 
-### Step 3. Add secret key
-Next, generate a secret key and place it within the `.env` file with the format like:
+### Step 3. Add secret key and RAWG API key
+Next, generate a secret key and place it within the `.env` file, with your RAWG API key, in the format like:
 ```.env
 SECRET_KEY=<SECRET_KEY_HERE>
+RAWG_API_KEY=<RAWG_API_KEY_HERE>
 ``` 
+Django won't start without both. Get a free RAWG key at [rawg.io/apidocs](https://rawg.io/apidocs). For running tests only, `RAWG_API_KEY=test-key` is enough, but searches on the running site need a real key.
+
 You can generate a secret key by running
 ```
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
