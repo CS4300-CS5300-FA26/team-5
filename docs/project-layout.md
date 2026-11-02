@@ -91,7 +91,7 @@ cd binge_and_bosses
 uv run python manage.py startapp reviews
 ```
 
-Then add it to `INSTALLED_APPS` in `settings.py` and `include()` its `urls.py` from `binge_and_bosses/urls.py`.
+Then add it to `INSTALLED_APPS` in `settings.py`. `startapp` doesn't create a `urls.py`, so create `reviews/urls.py` with a `urlpatterns` list (copy `games/urls.py`), and `include()` it from `binge_and_bosses/urls.py`.
 
 ## Settings come from the environment
 `settings.py` reads these from `binge_and_bosses/.env` locally, or from Render's environment in production:
