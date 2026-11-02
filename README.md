@@ -16,6 +16,8 @@ Binge & Bosses is a backlog management and social interaction platform geared fo
 - Get game recommendations
 - Track the time spent in-game
 
+For project layout, pull requests, testing and deployment, see [Team docs](docs/README.md).
+
 ## How to run Binge & Bosses
 ### Step 1. Install uv and the requirements
 This project uses [uv](https://docs.astral.sh/uv/) to manage Python and packages. Install it once:
@@ -120,3 +122,4 @@ Every pull request gets an automatic review comment from OpenAI's `gpt-6-luna` m
 | 10/19/2026 | Claude Code (Claude Opus 5.5) | Brought the team docs up to date with `main` (shared base template, login forms, library page, a table of the site's URLs, Behave status) and resolved the merge conflict in this log. Checked the course's sprint requirements first: the AI usage log must stay in this README. Laura reviewed it; submitted in a pull request for teammate review. |
 | 10/19/2026 | Claude Code (Claude Opus 5.5) | Designed the Behave setup with Laura (`docs/design/behave.md`), tried behave-django on our Django version first, then wrote the feature files for stories #7 and #8 (watched them fail before writing the steps), the step code, the CI step and the README instructions. Laura reviewed it; submitted in a pull request for teammate review. |
 | 10/22/2026 | OpenAI Codex | Prepared the Sprint 1 report and release notes from repository code, CI logs and browser checks; reconciled completed issues and GitHub Projects cards; created the sprint1 release. No application code was changed. Laura will review the submission documents before submitting them to Canvas. |
+| 11/02/2026 | Codex (GPT-6.1 Sol), Claude Code (Claude Opus 5.5) | Merged main into the team docs branch, kept both sides' AI usage log rows, and updated the project layout, PR, testing and deployment pages for Behave, RAWG and current account behavior. Checked the documented commands and kept unconfirmed Render settings marked. Submitted in a pull request for teammate review. |

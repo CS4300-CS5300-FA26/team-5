@@ -6,8 +6,10 @@ Notes for the five of us while we build Binge & Bosses: how the project is laid 
 | --- | --- |
 | [Project layout](project-layout.md) | You're looking for where something lives |
 | [Pull requests](pull-requests.md) | You're about to open a PR, or you're wondering why a check failed |
-| [Testing](testing.md) | You're writing tests or coverage dropped below 80% |
+| [Testing](testing.md) | You're running unit tests or Behave scenarios, or coverage dropped below 80% |
 | [Deployment](deployment.md) | You want to know how code gets to the live site |
+
+These pages describe `main` as of November 2, 2026. The [Behave design](design/behave.md) records the original plan and includes work that hasn't landed. Use [Testing](testing.md) for current commands and scenario status.
 
 ## Rules for this folder
 - **The repo is public.** Anyone on the internet can read these pages. Never put keys, passwords, `.env` contents, or production URLs with credentials here.

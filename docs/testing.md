@@ -3,25 +3,51 @@
 The course grades tests every sprint: new features need tests, and coverage must stay at **80% or higher**. CI fails the build below 80%.
 
 ## Running the tests
-From the `binge_and_bosses/` folder (the one with `manage.py`):
+From the `binge_and_bosses/` folder (the one with `manage.py`), install the locked packages and set test-only values:
 
 ```bash
-uv run python manage.py test
+uv sync --locked
+export SECRET_KEY=ci-only-not-a-real-key DEBUG=True RAWG_API_KEY=test-key
+unset DATABASE_URL
+uv run --locked python manage.py test
 ```
 
-Run it from `binge_and_bosses/`, not the repo root. From the root, `python manage.py test` fails because there's no `manage.py` there, and `python binge_and_bosses/manage.py test` runs but finds 0 tests.
+Run tests from `binge_and_bosses/`, where Django can find the apps' tests. Running from the repo root can fail or find no tests.
 
 Django creates a temporary test database and deletes it afterward, so tests never touch your `db.sqlite3` or production. Leave `DATABASE_URL` unset when you run tests.
 
-## Checking coverage locally
-This is what CI runs (`coverage` is installed by `uv sync`):
+## Behave scenarios
+Behave is on `main` (#63). From the same folder and with the same test environment:
 
 ```bash
-uv run coverage run manage.py test
-uv run coverage report -m
+uv run --locked python manage.py behave --simple
 ```
 
-`report -m` lists the line numbers in each file that no test ran. Those are what to test next.
+`--simple` uses Django's test client, with no browser or server. The scenarios in `features/` cover sign-up, login and logout. They check the same "Invalid username or password." message for an unknown username and a wrong password.
+
+`behave.ini` skips scenarios tagged `@wip` by default. Each has an issue comment. To include only those scenarios:
+
+```bash
+uv run --locked python manage.py behave --simple --tags=@wip
+```
+
+The duplicate-email scenario is still `@wip` (#62). Sign-up now rejects duplicate emails (#66), but the scenario also expects a generic error that doesn't reveal whether an email is registered. The form currently shows an email-specific error, so this scenario still fails when selected.
+
+Add each new feature's scenarios in the same PR. Check `features/steps/common.py` for shared steps first. The [design](design/behave.md) records the original plan; search/details scenarios and fake-RAWG hooks aren't implemented yet.
+
+## Checking coverage locally
+From `binge_and_bosses/`, with the test environment above, run both suites. This is what CI runs (`coverage` is a dev dependency):
+
+```bash
+uv run --locked coverage run manage.py test
+uv run --locked coverage run --append manage.py behave --simple
+uv run --locked coverage report -m --fail-under=80
+```
+
+`report -m` lists the line numbers in each file that neither suite ran. Those are what to test next. CI also checks that Django starts without dev packages, so `settings.py` only adds `behave_django` when it's installed.
+
+## Tests that use RAWG
+Tests must use fake RAWG responses and never call the real API. `games/tests.py` patches `games.rawg_client.requests.get` for API tests, and `games.views.search_game` or `games.views.get_game_details` for view tests. Future search/details scenarios must also replace those calls with fakes. The dummy `RAWG_API_KEY=test-key` satisfies settings; it isn't a working API key.
 
 ## Writing a test
 Tests live in each app's `tests.py`. Each test is a method whose name starts with `test_`. [games/tests.py](../binge_and_bosses/games/tests.py) is a short example:
@@ -48,6 +74,4 @@ The course asks us to write tests first:
 
 Watching it fail first proves the test can catch a bug.
 
-## Coming soon
-- **Behave** runs the Gherkin scenarios from our user stories as tests. It isn't on `main` yet: it's set up in PR #63 (design: `docs/design/behave.md` on that branch). Once that merges, the README explains how to run the scenarios, and each new feature's PR adds its story's scenarios.
-- **Tests that need an outside API** (like the RAWG game search) must not call the real API. They replace it with fake responses, so tests work without a key and don't use up our request quota.
+Linting isn't part of CI yet (#36, Sprint 3).

@@ -20,11 +20,12 @@ Not ready for review yet? Open it as a **draft**. Teammates can see it and comme
 ## What runs on your PR
 | Check | What it does | If it fails |
 | --- | --- | --- |
-| **CI** (`ci.yaml`) | Installs the exact packages in `uv.lock`, checks that `requirements.txt` matches it, runs all tests, and requires at least 80% coverage. Also runs on every push to any branch. | Click *Details* on the failed check and read the log. A failing test or new code without tests: see [Testing](testing.md). "Out of date" lock or `requirements.txt`: you changed packages without the steps in the README's *Adding or updating packages*. |
+| **CI** (`ci.yaml`) | Installs the locked packages, checks `requirements.txt`, runs unit tests then Behave, requires 80% combined coverage, and checks startup without dev packages. Also runs on every push to any branch. | Click *Details* and read the log. Tests or coverage: see [Testing](testing.md). Lock or `requirements.txt` out of date: see the README's *Adding or updating packages*. |
 | **AI code review** (`ai-review.yml`) | Posts a review comment with suggestions. Skips draft PRs. | It never blocks merging. Treat it as one reviewer's opinion: fix what's right, reply on what's wrong. |
 
 ## Getting it merged
 - **CI's `test` check must pass.** A PR with failing tests or coverage below 80% can't merge, even if it's approved. The AI review isn't required.
+- Behave skips scenarios tagged `@wip`. That keeps unfinished criteria visible without failing CI; see [Testing](testing.md#behave-scenarios).
 - **One approval from a teammate** is required.
 - **The last push needs approval.** If you push after someone approved, a teammate must approve again.
 

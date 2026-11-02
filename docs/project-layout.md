@@ -9,6 +9,8 @@ team-5/
 │   │   ├── settings.py
 │   │   └── urls.py
 │   ├── templates/base.html    ← shared page layout (Bootstrap); new pages extend it
+│   ├── behave.ini             ← skips @wip scenarios by default
+│   ├── features/              ← account scenarios; shared and account steps in steps/
 │   ├── authentication/        ← accounts: custom User model, sign-up, log-in
 │   │   ├── models.py          ← User (settings.AUTH_USER_MODEL)
 │   │   ├── forms.py           ← SignupForm, LoginForm (Bootstrap-styled)
@@ -18,13 +20,14 @@ team-5/
 │   │   └── templates/registration/  ← login.html, signup.html
 │   └── games/                 ← the "games" app
 │       ├── models.py          ← Game model
-│       ├── views.py           ← index (home page) and library views
+│       ├── views.py           ← home, library, RAWG search and details views
+│       ├── rawg_client.py     ← search_game and get_game_details call RAWG
 │       ├── urls.py
-│       ├── templates/games/   ← index.html, library.html
+│       ├── templates/games/   ← index.html, library.html, search.html, details.html
 │       ├── migrations/        ← committed; never delete or edit by hand
 │       └── tests.py
 ├── .github/
-│   ├── workflows/ci.yaml          ← tests + coverage on every push and PR
+│   ├── workflows/ci.yaml          ← unit tests + Behave + coverage on every push and PR
 │   ├── workflows/ai-review.yml    ← AI review comment on every PR
 │   ├── ai-review-guide.md         ← what the AI reviewer looks for
 │   └── scripts/                   ← the AI review script and its tests
@@ -46,10 +49,14 @@ Using the home page as the example:
 
 New features follow the same path: URL → view → model → template.
 
+Search and details use RAWG through `games/rawg_client.py` instead of the local `Game` model. They don't save games to the database. The library is still a placeholder; there are no catalog or library-entry models yet.
+
 ## Pages
 | URL | Name | What it is |
 | --- | --- | --- |
 | `/` | `index` | Home page |
+| `/search/?q=title` | `game_search` | Search RAWG by title; shows up to five results. No login required. |
+| `/<int:game_id>/` | `game_details` | Details for a RAWG game ID. Shows an error on this page if RAWG fails. No login required. |
 | `/library/` | `library` | The user's library (placeholder for now). Requires login. |
 | `/accounts/signup/` | `signup` | Sign-up. Logs the new user in and goes to the library. |
 | `/accounts/login/` | `login` | Log-in. Goes to the library, or to `?next=` if set. |
@@ -69,17 +76,19 @@ Use the name in code and templates (`reverse("library")`, `{% url 'login' %}`) r
 {% endblock %}
 ```
 
-The login and sign-up pages already use it. The home and library pages still have their own HTML, and a shared nav bar is planned in #59.
+The login and sign-up pages already use it. Home, library, search and details have their own markup. A shared nav bar is still planned (#59, PR #67).
 
 ## Users
 Always refer to the user model as `settings.AUTH_USER_MODEL` (in model fields) or `get_user_model()` (in code), never `django.contrib.auth.models.User`. We use our own `authentication.User`, so Django's built-in one isn't the one in the database.
 
+Sign-up asks for a username, email and password. It rejects duplicate emails (#66). Login uses a username and shows "Invalid username or password." for both an unknown username and a wrong password (#61).
+
 ## Adding a new app
-Django apps group one area of the site (games, accounts, reviews, …).
+Django apps group one area of the site (games, accounts, reviews, …). From the repository root, for a new app called `reviews`:
 
 ```bash
 cd binge_and_bosses
-uv run python manage.py startapp <name>
+uv run python manage.py startapp reviews
 ```
 
 Then add it to `INSTALLED_APPS` in `settings.py` and `include()` its `urls.py` from `binge_and_bosses/urls.py`.
@@ -90,6 +99,7 @@ Then add it to `INSTALLED_APPS` in `settings.py` and `include()` its `urls.py` f
 | Variable | Default | What it does |
 | --- | --- | --- |
 | `SECRET_KEY` | none (required) | Django's signing key. Never commit it. |
+| `RAWG_API_KEY` | none (required) | RAWG API key. Required even to start Django. Tests and CI use the dummy value `test-key`; real searches need a valid key. |
 | `DEBUG` | `False` | Set `DEBUG=True` in your local `.env` to get error pages and static files while developing. Never `True` in production. |
 | `ALLOWED_HOSTS` | `localhost,127.0.0.1` | Hostnames the site answers to. |
 | `CSRF_TRUSTED_ORIGINS` | empty | Origins allowed to submit forms (needed for the production URL). |
