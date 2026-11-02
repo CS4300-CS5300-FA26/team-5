@@ -1,0 +1,52 @@
+.auth-login,
+.auth-signup {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Login button */
+.auth-login {
+    box-shadow: 0 4px 0 #0d6efd;
+}
+
+.auth-login:hover {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #0d6efd;
+}
+
+.auth-login:active {
+    transform: translateY(4px);
+    box-shadow: none;
+}
+
+/* Signup button */
+.auth-signup {
+    box-shadow: 0 4px 0 #084298;
+}
+
+.auth-signup:hover {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #084298;
+}
+
+.auth-signup:active {
+    transform: translateY(4px);
+    box-shadow: none;
+}
+
+/*Navbar Spacing */
+@media (max-width: 991.98px){
+    .navbar-nav {
+        padding-top: 15px;
+        gap: 12px;
+    }
+
+    .navbar-nav .nav-item {
+        width: 100%
+    }
+
+    .navbar-nav .auth-login,
+    .navbar-nav .auth-signup {
+        display: inline-block;
+        margin-bottom: 5px;
+    }
+}
