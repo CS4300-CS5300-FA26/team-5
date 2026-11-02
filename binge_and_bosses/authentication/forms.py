@@ -23,6 +23,24 @@ class SignupForm(StyledForm, UserCreationForm):
         # NOTE: the password fields are handled automatically by UserCreationForm so dont worry
         fields = ("username", "email")
 
+    def _post_clean(self):
+        super()._post_clean()
+        duplicate = False
+        for field in ("username", "email"):
+            errors = self.errors.as_data().get(field, [])
+            if any(error.code == "unique" for error in errors):
+                duplicate = True
+                del self.errors[field]
+                for error in errors:
+                    if error.code != "unique":
+                        self.add_error(field, error)
+        if duplicate:
+            # Use one form-level error so its location cannot reveal the taken field.
+            self.add_error(None, (
+                "Unable to create an account with those details. "
+                "Try logging in or resetting your password."
+            ))
+
 class LoginForm(StyledForm, AuthenticationForm):
     """
         Login form for users. The same error is shown for a wrong password and an
