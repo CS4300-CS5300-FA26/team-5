@@ -3,7 +3,18 @@
 <head><title>{{ user.username }}'s Library</title></head>
 <body>
   <h1>{{ user.username }}'s Library</h1>
-  <p>Your games will show up here soon.</p>
+  {% for library_entry in library_entries %}
+    <article>
+    {% if library_entry.games.game_image %}
+      <img src="{{ library_entry.games.game_image }}" alt="{{ library_entry.games.game_title }}" width="150">
+    {% else %}
+      <p>No cover available</p>
+    {% endif %}
+    <h2><a href="{% url 'game_details' library_entry.games.rawg_id %}">{{ library_entry.games.game_title }}</a></h2>
+    </article>
+  {% empty %}
+    <p>Your library is empty.</p>
+  {% endfor %}
 
   <form method="post" action="{% url 'logout' %}">
     {% csrf_token %}

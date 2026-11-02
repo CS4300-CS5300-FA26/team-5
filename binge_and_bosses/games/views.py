@@ -13,7 +13,8 @@ def index(request):
 
 @login_required
 def library(request):
-    return render(request,'games/library.html')
+    library_entries = Catalog.objects.filter(user=request.user).select_related('games')
+    return render(request,'games/library.html', {'library_entries': library_entries})
 
 #Get the game details from rawg and add it to the user's library if it doesn't exist already
 @login_required
