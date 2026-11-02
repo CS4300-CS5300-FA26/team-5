@@ -1,6 +1,5 @@
 # Story #9: Search by Game Title
 
-@fake_rawg
 Feature: Search by title
 
   Scenario: Matching titles
