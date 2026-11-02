@@ -1,5 +1,8 @@
 from datetime import date
 
+from bs4 import BeautifulSoup
+from django.contrib import messages
+from django.contrib.staticfiles import finders
 from django.test import TestCase
 
 from .models import Game
@@ -125,6 +128,16 @@ class GameSearchandDetailsViewTests(TestCase):
         self.assertTrue(response.context['error'])
         self.assertEqual(response.context['games'], [])
 
+    @patch('games.views.search_game')
+    def test_search_links_preserve_encoded_query(self, mock_search_game):
+        mock_search_game.return_value = [{'id': 1, 'name': 'Pokemon Red'}]
+
+        response = self.client.get(reverse('game_search'), {'q': 'Pokémon & Red/Blue'})
+
+        self.assertContains(
+            response, 'href="/1/?q=Pok%C3%A9mon%20%26%20Red%2FBlue"'
+        )
+
     @patch('games.views.get_game_details')
     def test_game_details_view(self,mock_search_game_detail):
 
@@ -161,6 +174,44 @@ class GameSearchandDetailsViewTests(TestCase):
 
         self.assertTrue(response.context['error'])
         self.assertIsNone(response.context['game'])
+        self.assertContains(response, 'Could not load game details. Try again.')
+
+    @patch('games.views.search_game')
+    @patch('games.views.get_game_details')
+    def test_details_failure_returns_to_search_with_message(self, mock_details, mock_search):
+        mock_details.return_value = None
+        mock_search.return_value = [{'id': 1, 'name': 'Pokemon Red'}]
+
+        response = self.client.get(
+            reverse('game_details', args=[1]), {'q': 'Pokémon & Red/Blue'}, follow=True
+        )
+
+        self.assertRedirects(response, '/search/?q=Pok%C3%A9mon%20%26%20Red%2FBlue')
+        self.assertContains(response, 'Could not load game details. Try again.')
+        self.assertContains(response, 'Pokemon Red')
+        shown_messages = list(response.context['messages'])
+        self.assertEqual(len(shown_messages), 1)
+        self.assertEqual(shown_messages[0].level, messages.ERROR)
+        mock_search.assert_called_once_with('Pokémon & Red/Blue')
+
+    @patch('games.views.get_game_details')
+    def test_missing_cover_uses_placeholder(self, mock_details):
+        for image in ['', None]:
+            with self.subTest(background_image=image):
+                mock_details.return_value = {
+                    'id': 1, 'name': 'Pokemon Red',
+                    'background_image': image, 'description_raw': '',
+                }
+
+                response = self.client.get(reverse('game_details', args=[1]))
+
+                page = BeautifulSoup(response.content, 'html.parser')
+                self.assertIsNotNone(page.find('img', attrs={
+                    'src': '/static/games/cover-placeholder.svg',
+                    'alt': 'No cover available',
+                }))
+                self.assertContains(response, 'No description available')
+                self.assertIsNotNone(finders.find('games/cover-placeholder.svg'))
 
     
     

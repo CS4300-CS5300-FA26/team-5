@@ -1,5 +1,7 @@
-from django.shortcuts import render
+from django.contrib import messages
+from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 from .models import Game
 from .rawg_client import search_game, get_game_details 
 # Create your views here.
@@ -26,6 +28,10 @@ def game_search(request):
 
 def game_details(request, game_id):
     game = get_game_details(game_id)
+
+    if game is None and "q" in request.GET:
+        messages.error(request, "Could not load game details. Try again.")
+        return redirect(reverse("game_search", query={"q": request.GET["q"]}))
 
     return render(request, "games/details.html", {
         "game": game,

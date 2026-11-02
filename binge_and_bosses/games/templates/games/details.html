@@ -1,3 +1,4 @@
+{% load static %}
 {% if error %}
   <p>Could not load game details. Try again.</p>
 {% else %}
@@ -6,7 +7,7 @@
   {% if game.background_image %}
     <img src="{{ game.background_image }}" alt="{{ game.name }}" width="400">
   {% else %}
-    <p>No cover available</p>
+    <img src="{% static 'games/cover-placeholder.svg' %}" alt="No cover available" width="400">
   {% endif %}
 
   <p>{{ game.description_raw|default:"No description available" }}</p>

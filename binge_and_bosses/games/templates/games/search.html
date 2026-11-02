@@ -5,13 +5,17 @@
   <button type="submit">Search</button>
 </form>
 
+{% for message in messages %}
+  <p>{{ message }}</p>
+{% endfor %}
+
 {% if error %}
   <p>Could not load games. Try again.</p>
 {% elif query %}
   {% for game in games %}
     <article>
       <h2>
-        <a href="{% url 'game_details' game.id %}">
+        <a href="{% url 'game_details' game.id %}?q={{ query|urlencode:"" }}">
           {{ game.name }}
         </a>
       </h2>
