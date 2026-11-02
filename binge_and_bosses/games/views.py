@@ -1,4 +1,4 @@
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from .models import Game, Catalog
@@ -22,6 +22,14 @@ def add_to_library(request, game_id):
     game = get_or_import(game_id)
     if game is not None:
         Catalog.objects.get_or_create(user=request.user, games=game)
+    return redirect("game_details", game_id=game_id)
+
+#Get the existing catalog entry for the user and game and delete it, then redirect to the game details page
+@login_required
+@require_POST
+def remove_from_library(request, game_id):
+    game = get_object_or_404(Catalog, user=request.user, games__rawg_id=game_id)
+    game.delete()
     return redirect("game_details", game_id=game_id)
 
 #return search results from rawg based on user input, return error on empty 
