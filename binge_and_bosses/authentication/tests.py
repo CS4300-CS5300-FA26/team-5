@@ -76,6 +76,18 @@ class SignupTests(TestCase):
         # Make sure only 1 user with the username "test_user" exists within the database
         self.assertEqual(get_user_model().objects.filter(username="test_user").count(), 1)
 
+    def test_unique_email(self):
+        """
+            Ensure that the email of a new user is unique to that user
+        """
+        get_user_model().objects.create_user(username="test_email", email="test_user@example.com", password="luke_I_am_your_Password")
+        response = self.client.post(self.url, self.valid_registration_details)
+        self.assertEqual(response.status_code, 200)
+        
+        # Make sure it fails because the email was already in use
+        self.assertContains(response, "User with this Email address already exists.")
+        self.assertEqual(get_user_model().objects.filter(email="test_user@example.com").count(), 1)
+
     def test_password_requirements(self):
         """
             Ensure that weak passwords arent allowed

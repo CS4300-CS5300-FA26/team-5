@@ -57,9 +57,24 @@ Django creates a temporary test database and deletes it afterward, so the tests 
 
 Note: running `binge_and_bosses/manage.py test` from the repository root finds 0 tests, so `cd` into `binge_and_bosses/` first.
 
-CI also checks coverage. To see it locally:
+### Behave scenarios
+Each story's Gherkin acceptance criteria live in `binge_and_bosses/features/` as a `.feature` file, and the code behind each step is in `features/steps/`. Run them from `binge_and_bosses/`:
+```bash
+uv run python manage.py behave --simple
+```
+Like `manage.py test`, this uses a temporary test database. `--simple` runs the scenarios with Django's test client, without a browser.
+
+Scenarios tagged `@wip` describe something the app doesn't do yet, and each one has a comment linking the issue that will fix it. They're skipped by default (`behave.ini`). To run them anyway:
+```bash
+uv run python manage.py behave --simple --tags=@wip
+```
+
+When you build a new feature, add its story's scenarios to `features/` in the same pull request, as part of its tests. Shared steps such as `I see "..."` are in `features/steps/common.py`, so check there before writing a new step. See `docs/design/behave.md` for how the setup works.
+
+CI also checks coverage, counting both the unit tests and the Behave scenarios. To see it locally:
 ```bash
 uv run coverage run manage.py test
+uv run coverage run --append manage.py behave --simple
 uv run coverage report -m
 ```
 
@@ -67,7 +82,7 @@ uv run coverage report -m
 - Add a package: `uv add <package>`. For tools only needed in development or CI (like `coverage`), use `uv add --dev <package>`.
 - Then regenerate `requirements.txt`, which Render installs from:
   ```bash
-  uv export --no-dev --no-emit-project -o requirements.txt
+  uv export --locked --no-dev --no-emit-project -o requirements.txt
   ```
 - Commit `pyproject.toml`, `uv.lock`, and `requirements.txt` together. CI fails if `uv.lock` or `requirements.txt` is out of date.
 - Don't `pip install` into the project or edit `requirements.txt` by hand.
@@ -100,5 +115,8 @@ Every pull request gets an automatic review comment from OpenAI's `gpt-6-luna` m
 | 10/14/2026 | Claude Code (Claude Opus 5.5) | Drafted the team docs in `docs/` (project layout, pull requests, testing, deployment) from the current code and workflows. Opened as a draft pull request for Laura and the team to review. |
 | 10/16/2026 | Claude Opus 5.5 | Generated log out button tests (log out button logs user out and removes their session from the database and index page displays correctly depending on if user is logged in) and library page tests(library page redirects logged out users to login and library displays correctly for logged in users) in `games/tests.py`. Also created placeholder library html template. |
 | 10/18/2026 | Claude Sonnet 5.5 | Help assisting in created HTML for the login and signup views. | 
+| 10/18/2026 | Codex (GPT-6 Astra) | Help with the rawg.io api implementation as the documentation was not useful, help with the process of calling the API and generated barebones HTML views to test the function out. Also used to help learn how test API functionality with patch and mock, so we can simulate calling the API. Also used it for refrence on how to make these API tests | 
 | 10/19/2026 | Claude Code (Claude Opus 5.5) | Compared the project with the Sprint 1 goals. Changed the login error to "Invalid username or password." so it's the same for a wrong password and an unknown username (story #8), with a test written first and seen failing. Laura reviewed it; submitted in a pull request for teammate review. |
 | 10/19/2026 | Claude Code (Claude Opus 5.5) | Brought the team docs up to date with `main` (shared base template, login forms, library page, a table of the site's URLs, Behave status) and resolved the merge conflict in this log. Checked the course's sprint requirements first: the AI usage log must stay in this README. Laura reviewed it; submitted in a pull request for teammate review. |
+| 10/19/2026 | Claude Code (Claude Opus 5.5) | Designed the Behave setup with Laura (`docs/design/behave.md`), tried behave-django on our Django version first, then wrote the feature files for stories #7 and #8 (watched them fail before writing the steps), the step code, the CI step and the README instructions. Laura reviewed it; submitted in a pull request for teammate review. |
+| 10/22/2026 | OpenAI Codex | Prepared the Sprint 1 report and release notes from repository code, CI logs and browser checks; reconciled completed issues and GitHub Projects cards; created the sprint1 release. No application code was changed. Laura will review the submission documents before submitting them to Canvas. |
