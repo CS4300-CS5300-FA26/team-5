@@ -7,6 +7,11 @@ class SignupTests(TestCase):
     """
         Test for the registration functionality
     """
+    duplicate_message = (
+        "Unable to create an account with those details. "
+        "Try logging in or resetting your password."
+    )
+
     def setUp(self):
         self.url = reverse("signup")
         self.valid_registration_details = {
@@ -72,9 +77,13 @@ class SignupTests(TestCase):
 
         # Page should just reload
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.duplicate_message, count=1)
+        self.assertEqual(response.context["form"].errors, {"__all__": [self.duplicate_message]})
 
         # Make sure only 1 user with the username "test_user" exists within the database
         self.assertEqual(get_user_model().objects.filter(username="test_user").count(), 1)
+        self.assertEqual(get_user_model().objects.count(), 1)
+        self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_unique_email(self):
         """
@@ -84,9 +93,55 @@ class SignupTests(TestCase):
         response = self.client.post(self.url, self.valid_registration_details)
         self.assertEqual(response.status_code, 200)
         
-        # Make sure it fails because the email was already in use
-        self.assertContains(response, "User with this Email address already exists.")
+        # Reject the duplicate without revealing which detail was already in use
+        self.assertContains(response, self.duplicate_message, count=1)
+        self.assertEqual(response.context["form"].errors, {"__all__": [self.duplicate_message]})
         self.assertEqual(get_user_model().objects.filter(email="test_user@example.com").count(), 1)
+        self.assertEqual(get_user_model().objects.count(), 1)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_duplicate_signup_errors_are_identical(self):
+        user = get_user_model().objects.create_user(
+            username="existing_player", email="taken@example.com"
+        )
+        email_taken = self.client.post(self.url, {
+            **self.valid_registration_details, "email": user.email
+        })
+        for username, email in (
+            (user.username, "new@example.com"),
+            (user.username, user.email),
+            (user.username.upper(), "new@example.com"),
+        ):
+            with self.subTest(username=username, email=email):
+                response = self.client.post(self.url, {
+                    **self.valid_registration_details, "username": username, "email": email
+                })
+                self.assertEqual(response.context["form"].errors, email_taken.context["form"].errors)
+                self.assertEqual(response.context["form"].errors, {"__all__": [self.duplicate_message]})
+                self.assertContains(response, self.duplicate_message, count=1)
+                self.assertEqual(get_user_model().objects.count(), 1)
+                self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_invalid_email_error_is_unchanged(self):
+        response = self.client.post(self.url, {
+            **self.valid_registration_details, "email": "not-an-email"
+        })
+        self.assertEqual(response.context["form"].errors, {"email": ["Enter a valid email address."]})
+        self.assertContains(response, "Enter a valid email address.")
+        self.assertEqual(get_user_model().objects.count(), 0)
+
+    def test_duplicate_username_preserves_other_validation_errors(self):
+        get_user_model().objects.create_user(username="test_user", email="taken@example.com")
+        response = self.client.post(self.url, {
+            **self.valid_registration_details, "email": "not-an-email",
+            "password1": "Sh0rt!", "password2": "Sh0rt!"
+        })
+        self.assertEqual(response.context["form"].errors, {
+            "__all__": [self.duplicate_message],
+            "email": ["Enter a valid email address."],
+            "password2": ["This password is too short. It must contain at least 8 characters."],
+        })
+        self.assertEqual(get_user_model().objects.count(), 1)
 
     def test_password_requirements(self):
         """
@@ -100,6 +155,10 @@ class SignupTests(TestCase):
 
         # Make sure the user didnt get created with a weak password
         self.assertFalse(get_user_model().objects.filter(username="test_user").exists())
+        self.assertEqual(response.context["form"].errors, {
+            "password2": ["This password is too common."]
+        })
+        self.assertContains(response, "This password is too common.")
 
     def test_password_was_hashed(self):
         """
