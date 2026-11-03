@@ -1,3 +1,5 @@
+{% extends "base.html" %}
+{% block content %}
 {% if error %}
   <p>Could not load game details. Try again.</p>
 {% else %}
@@ -33,3 +35,4 @@
 
 <a href="{% url 'game_search' %}">Search games</a>
 <p>Game data provided by <a href="https://rawg.io">RAWG</a>.</p>
+{% endblock %}
