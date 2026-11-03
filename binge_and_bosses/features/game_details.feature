@@ -1,5 +1,6 @@
 # Story #10: Game Details Page
 
+@fake_rawg
 Feature: Game details
 
   Scenario: Open a game from search results
