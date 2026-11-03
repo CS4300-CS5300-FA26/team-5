@@ -19,49 +19,73 @@
 <body>
     <nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">
         <div class="container">
-            {# When clicking on Binge and Bosses, get sent back to /#}
-            <a class="navbar-brand" href="/">Binge and Bosses</a>
+            {# App far left #}
+            <a class="navbar-brand" href="/">
+                Binge and Bosses
+            </a>
 
-            {# Mobile Navigation Toggle #}
-            <button class="navbar-toggler" type="button"
-                    data-bs-toggle="collapse" data-bs-target="#mainNav"
-                    aria-controls="mainNav" aria-expanded="false"
-                    aria-label="Toggle navigation">
+            {# Mobile Navigation #}
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
-            {# Right nav #}
+            {# Navbar Contents #}
             <div class="collapse navbar-collapse" id="mainNav">
-                <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-3">
-                    {% if user.is_authenticated %}
+                {# AUTHENTICATED USER #}
+                {% if user.is_authenticated %}
+                
+                    {# Center Links Centered #}
+                    <ul class="navbar-nav mx-auto align-items-lg-center gap-lg-3">
                         <li class="nav-item">
-                            <span class="navbar-text me-3">Hello There, {{ user.username }}</span>
+                            <a class="nav-link" href="{% url 'library' %}">
+                                Library
+                            </a>
+                        </li>
+                    </ul>
+
+                    {# Right side controls #}
+                    <ul class="navbar-nav align-items-lg-center gap-lg-2">
+                        <li class="nav-item">
+                            <span class="navbar-text">
+                                Welcome, {{ user.username }}
+                            </span>
                         </li>
 
                         <li class="nav-item">
                             <form method="post" action="{% url 'logout' %}">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
+                                <button type="submit" class="btn btn-outline-primary btn-sm px-3 auth-login-logout">
+                                    Logout
+                                </button>
                             </form>
                         </li>
-                    {% else%}
-                        <li class="nav-item"> 
-                            <a class="btn btn-outline-primary btn-sm px-3 auth-login {% if request.resolver_match.url_name == 'login'%}active{% endif %}" href="{% url 'login' %}">Login</a>
+                    </ul>
+                {% else %}
+                    <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+                        <li class="nav-item">
+                            <a class="btn btn-outline-primary btn-sm px-3 auth-login-logout {% if request.resolver_match.url_name == 'login' %}active{% endif %}" href="{% url 'login' %}">
+                                Login
+                            </a>
                         </li>
 
                         <li class="nav-item">
-                            <a class="btn btn-primary btn-sm px-3 auth-signup {% if request.resolver_match.url_name == 'signup'%}active{% endif %}" href="{% url 'signup' %}">Signup</a>
+                            <a class="btn btn-primary btn-sm px-3 auth-signup {% if request.resolver_match.url_name == 'signup' %}active{% endif %}" href="{% url 'signup' %}">
+                                Signup
+                            </a>
                         </li>
-                    {% endif %}
-                </ul>
+                    </ul>
+                {% endif %}
             </div>
         </div>
     </nav>
 
+    {# Main Page #}
     <main class="container py-4">
-        {% block content %}{% endblock %}
+        {% block content %}
+        {% endblock %}
     </main>
 
+    {# JS bundle #}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

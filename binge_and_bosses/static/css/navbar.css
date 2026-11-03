@@ -4,18 +4,25 @@
 }
 
 /* Login button */
-.auth-login {
-    box-shadow: 0 4px 0 #0d6efd;
+.auth-login-logout {
+    box-shadow: 0 4px 0 #adb5bd;
 }
 
-.auth-login:hover {
+.auth-login-logout:hover {
     transform: translateY(2px);
     box-shadow: 0 2px 0 #0d6efd;
 }
 
-.auth-login:active {
+.auth-login-logout:active {
     transform: translateY(4px);
     box-shadow: none;
+}
+
+.auth-login-logout.active {
+    background-color: transparent;
+    color: #0d6efd;
+    border-color: #0d6efd;
+    box-shadow: 0 2px 0 #adb5bd;
 }
 
 /* Signup button */
@@ -49,4 +56,19 @@
         display: inline-block;
         margin-bottom: 5px;
     }
+}
+
+/* Welcome Message*/
+.navbar-text {
+    font-weight: 500;
+    margin-right: 10px;
+}
+
+/* Navigation Links */
+.navbar-nav .nav-link {
+    transition: color 0.2s ease;
+}
+
+.navbar-nav .nav-link:hover {
+    color: #0d6efd;
 }
