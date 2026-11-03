@@ -1,5 +1,5 @@
 from datetime import date
-
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 
 from .models import Game, Catalog
@@ -393,6 +393,17 @@ class AddToLibraryViewTests(TestCase):
 
         self.assertRedirects(response, f"{reverse('login')}?next={url}")
         self.assertEqual(Catalog.objects.count(), 0)
+
+        
+    def test_catalog_rejects_duplicate_user_and_game(self):
+        game = Game.objects.create(
+            rawg_id=10, game_title="Portal", game_description="A puzzle game.", game_rating=4.7,
+        )
+        Catalog.objects.create(user=self.user, games=game)
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Catalog.objects.create(user=self.user, games=game)
 
 class RemoveFromLibraryViewTests(TestCase):
 

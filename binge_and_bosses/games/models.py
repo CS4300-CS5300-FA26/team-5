@@ -20,6 +20,11 @@ class Catalog(models.Model):
     class Status(models.TextChoices):
         NOT_STARTED = 'not_started', 'Not Started'
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "games"], name="unique_catalog_user_game"),
+        ]
+
     games = models.ForeignKey(Game,on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NOT_STARTED)
