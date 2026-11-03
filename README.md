@@ -120,3 +120,5 @@ Every pull request gets an automatic review comment from OpenAI's `gpt-6-luna` m
 | 10/22/2026 | OpenAI Codex | Prepared the Sprint 1 report and release notes from repository code, CI logs and browser checks; reconciled completed issues and GitHub Projects cards; created the sprint1 release. No application code was changed. Laura will review the submission documents before submitting them to Canvas. |
 | 10/30/2026 | Claude Opus 5.5 | Created catalog.py, the add_to_library view and modified details.html to add a add to library button. Code was reviewd by Carlos |
 | 11/01/2026 | Google Gemini 4 Argon  | Created tests for catalog.py and for the add_to_library view. Test reviewed to cover good and bad paths and mutations were added to verify test were correctly catching bugs |
+| 11/02/2026 | Google Gemini 4 Argon  | Created and extended tests for the remove from library view and the library page. Test reviewed by Carlos |
+| 11/02/2026 | Claude Opus 5.5 | Created view for remove_from_library, assisted with modification of library page and created the behave step code and environment.py file for the add to library feature|
