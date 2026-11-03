@@ -244,7 +244,7 @@ class LibraryPageTests(TestCase):
         self.assertContains(response, "Status: Not Started")
         self.assertContains(response, "https://example.com/celeste.jpg")
         self.assertContains(response, reverse("game_details", args=[42]))
-        self.assertNotContains(response, "Your library is empty.")
+        self.assertNotContains(response, "Your games will show up here soon.")
     
     def test_library_does_not_show_other_users_games(self):
         other_user = get_user_model().objects.create_user(
@@ -263,7 +263,7 @@ class LibraryPageTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "Elden Ring")
-        self.assertContains(response, "Your library is empty.")
+        self.assertContains(response, "Your games will show up here soon.")
 
 # Test that Catalog's get_or_import method works as expected
 class CatalogGetOrImportTests(TestCase):

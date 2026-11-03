@@ -16,7 +16,7 @@
     <p>Status: {{ library_entry.get_status_display }}</p>
     </article>
   {% empty %}
-    <p>Your library is empty.</p>
+    <p>Your games will show up here soon.</p>
   {% endfor %}
 
   <form method="post" action="{% url 'logout' %}">
