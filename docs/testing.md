@@ -31,7 +31,7 @@ uv run --locked python manage.py behave --simple
 uv run --locked python manage.py behave --simple --tags=@wip
 ```
 
-The duplicate-email scenario is still `@wip` (#62). Sign-up now rejects duplicate emails (#66), but the scenario also expects a generic error that doesn't reveal whether an email is registered. The form currently shows an email-specific error, so this scenario still fails when selected.
+No scenarios are tagged `@wip` right now. The duplicate-email scenario runs since #62 was fixed (#66, #71).
 
 Add each new feature's scenarios in the same PR. Check `features/steps/common.py` for shared steps first. The [design](design/behave.md) records the original plan; search/details scenarios and fake-RAWG hooks aren't implemented yet.
 

@@ -81,7 +81,7 @@ The login and sign-up pages already use it. Home, library, search and details ha
 ## Users
 Always refer to the user model as `settings.AUTH_USER_MODEL` (in model fields) or `get_user_model()` (in code), never `django.contrib.auth.models.User`. We use our own `authentication.User`, so Django's built-in one isn't the one in the database.
 
-Sign-up asks for a username, email and password. It rejects duplicate emails (#66). Login uses a username and shows "Invalid username or password." for both an unknown username and a wrong password (#61).
+Sign-up asks for a username, email and password. It rejects a taken username or email with one generic message, "Unable to create an account with those details. Try logging in or resetting your password.", so the page doesn't reveal which one is registered (#62). Login uses a username and shows "Invalid username or password." for both an unknown username and a wrong password (#61).
 
 ## Adding a new app
 Django apps group one area of the site (games, accounts, reviews, …). From the repository root, for a new app called `reviews`:
