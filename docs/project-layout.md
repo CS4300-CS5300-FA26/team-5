@@ -10,7 +10,7 @@ team-5/
 │   │   └── urls.py
 │   ├── templates/base.html    ← shared page layout (Bootstrap); new pages extend it
 │   ├── behave.ini             ← skips @wip scenarios by default
-│   ├── features/              ← account scenarios; shared and account steps in steps/
+│   ├── features/              ← account, search, details and library scenarios; steps in steps/
 │   ├── authentication/        ← accounts: custom User model, sign-up, log-in
 │   │   ├── models.py          ← User (settings.AUTH_USER_MODEL)
 │   │   ├── forms.py           ← SignupForm, LoginForm (Bootstrap-styled)
@@ -55,8 +55,8 @@ Search and details use RAWG through `games/rawg_client.py` instead of the local 
 | URL | Name | What it is |
 | --- | --- | --- |
 | `/` | `index` | Home page |
-| `/search/?q=title` | `game_search` | Search RAWG by title; shows up to five results. No login required. |
-| `/<int:game_id>/` | `game_details` | Details for a RAWG game ID. Shows an error on this page if RAWG fails. No login required. |
+| `/search/?q=title` | `game_search` | Search RAWG by title; shows up to five results. If RAWG fails, shows this visitor's last results for the same search (kept in the session). No login required. |
+| `/<int:game_id>/` | `game_details` | Details for a RAWG game ID. If RAWG fails, goes back to the search results with an error when opened from a search, otherwise shows the error on this page. No login required. |
 | `/library/` | `library` | The user's library (placeholder for now). Requires login. |
 | `/accounts/signup/` | `signup` | Sign-up. Logs the new user in and goes to the library. |
 | `/accounts/login/` | `login` | Log-in. Goes to the library, or to `?next=` if set. |
@@ -76,7 +76,7 @@ Use the name in code and templates (`reverse("library")`, `{% url 'login' %}`) r
 {% endblock %}
 ```
 
-The login and sign-up pages already use it. Home, library, search and details have their own markup. A shared nav bar is still planned (#59, PR #67).
+Every page uses it, and it holds the shared nav bar (#59, PR #67).
 
 ## Users
 Always refer to the user model as `settings.AUTH_USER_MODEL` (in model fields) or `get_user_model()` (in code), never `django.contrib.auth.models.User`. We use our own `authentication.User`, so Django's built-in one isn't the one in the database.

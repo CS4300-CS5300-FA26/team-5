@@ -1,5 +1,7 @@
+from django.contrib import messages
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 from .models import Game, Catalog
 from .rawg_client import search_game, get_game_details 
@@ -37,7 +39,16 @@ def remove_from_library(request, game_id):
 def game_search(request):
     query = request.GET.get("q", "").strip()
     games = search_game(query) if query else []
-    
+    last_search = request.session.get("last_search", {})
+    if games:
+        # Keep what search.html shows, so the results survive a RAWG outage.
+        request.session["last_search"] = {"q": query, "games": [
+            {"id": g["id"], "name": g["name"], "background_image": g.get("background_image")}
+            for g in games
+        ]}
+    elif games is None and last_search.get("q") == query:
+        games = last_search["games"]
+
     return render(request, "games/search.html", {
         "games": games if games is not None else[], 
         "query": query,
@@ -50,6 +61,10 @@ def game_details(request, game_id):
         request.user.is_authenticated
         and Catalog.objects.filter(user=request.user, games__rawg_id=game_id).exists()
     )
+
+    if game is None and "q" in request.GET:
+        messages.error(request, "Could not load game details. Try again.")
+        return redirect(reverse("game_search", query={"q": request.GET["q"]}))
 
     return render(request, "games/details.html", {
         "game": game,
