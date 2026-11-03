@@ -10,7 +10,10 @@
     {% else %}
       <p>No cover available</p>
     {% endif %}
-    <h2><a href="{% url 'game_details' library_entry.games.rawg_id %}">{{ library_entry.games.game_title }}</a></h2>
+    <h2>
+      <a href="{% url 'game_details' library_entry.games.rawg_id %}">{{ library_entry.games.game_title }}</a>
+    </h2>
+    <p>Status: {{ library_entry.get_status_display }}</p>
     </article>
   {% empty %}
     <p>Your library is empty.</p>

@@ -31,6 +31,7 @@
   </p>
   {% if user.is_authenticated %}
     {% if in_library %}
+      <p>In Library</p>
        <form method="post" action="{% url 'remove_from_library' game.id %}">
         {% csrf_token %}
         <button type="submit">Remove from library</button>

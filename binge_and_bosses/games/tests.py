@@ -214,7 +214,7 @@ class LogoutTests(TestCase):
 class LibraryPageTests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create_user(username="user_b", password="TesTINGp#ass0r0d")
+        self.user = get_user_model().objects.create_user(username="user_b", email="user_b@example.com", password="TesTINGp#ass0r0d")
 
     def test_logged_out_user_redirected_to_login(self):
         response = self.client.get(reverse("library"))
@@ -225,6 +225,45 @@ class LibraryPageTests(TestCase):
         response = self.client.get(reverse("library"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "user_b's Library")
+
+    def test_logged_in_user_sees_saved_games_in_library(self):
+        game = Game.objects.create(
+            rawg_id=42,
+            game_title="Celeste",
+            game_description="Climb a mountain.",
+            game_rating=4.8,
+            game_image="https://example.com/celeste.jpg",
+        )
+        Catalog.objects.create(user=self.user, games=game)
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("library"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Celeste")
+        self.assertContains(response, "Status: Not Started")
+        self.assertContains(response, "https://example.com/celeste.jpg")
+        self.assertContains(response, reverse("game_details", args=[42]))
+        self.assertNotContains(response, "Your library is empty.")
+    
+    def test_library_does_not_show_other_users_games(self):
+        other_user = get_user_model().objects.create_user(
+            username="other_user", email="other@example.com", password="testpassword123"
+        )
+        other_game = Game.objects.create(
+            rawg_id=99,
+            game_title="Elden Ring",
+            game_description="Become the Elden Lord.",
+            game_rating=4.9,
+        )
+        Catalog.objects.create(user=other_user, games=other_game)
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("library"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Elden Ring")
+        self.assertContains(response, "Your library is empty.")
 
 # Test that Catalog's get_or_import method works as expected
 class CatalogGetOrImportTests(TestCase):
@@ -354,3 +393,54 @@ class AddToLibraryViewTests(TestCase):
 
         self.assertRedirects(response, f"{reverse('login')}?next={url}")
         self.assertEqual(Catalog.objects.count(), 0)
+
+class RemoveFromLibraryViewTests(TestCase):
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="player1", email="player1@example.com", password="testpassword123"
+        )
+        self.game = Game.objects.create(
+            rawg_id=10,
+            game_title="Portal",
+            game_description="A puzzle game.",
+            game_rating=4.7,
+        )
+
+    def test_remove_from_library_deletes_catalog_entry(self):
+        Catalog.objects.create(user=self.user, games=self.game)
+        self.client.force_login(self.user)
+
+        response = self.client.post(reverse("remove_from_library", args=[10]))
+
+        self.assertRedirects(response, reverse("game_details", args=[10]), fetch_redirect_response=False)
+        self.assertFalse(Catalog.objects.filter(user=self.user, games=self.game).exists())
+        self.assertTrue(Game.objects.filter(rawg_id=10).exists())
+
+    def test_remove_from_library_returns_404_when_not_in_library(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(reverse("remove_from_library", args=[999]))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_remove_from_library_cannot_delete_other_users_entry(self):
+        other_user = get_user_model().objects.create_user(
+            username="player2", email="player2@example.com", password="testpassword123"
+        )
+        Catalog.objects.create(user=other_user, games=self.game)
+        self.client.force_login(self.user)
+
+        response = self.client.post(reverse("remove_from_library", args=[10]))
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(Catalog.objects.filter(user=other_user, games=self.game).exists())
+
+    def test_remove_from_library_requires_login(self):
+        Catalog.objects.create(user=self.user, games=self.game)
+        url = reverse("remove_from_library", args=[10])
+
+        response = self.client.post(url)
+
+        self.assertRedirects(response, f"{reverse('login')}?next={url}")
+        self.assertTrue(Catalog.objects.filter(user=self.user, games=self.game).exists())
