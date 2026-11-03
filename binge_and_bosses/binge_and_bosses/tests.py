@@ -89,3 +89,11 @@ class NavBarAuthenticated(TestCase):
         response = self.client.get("/")
         self.assertContains(response, reverse("library"))
         self.assertContains(response, "Library")
+
+    def test_search_link_is_shown(self):
+        """
+            Test that both the word Search and the link to library are present
+        """
+        response = self.client.get("/")
+        self.assertContains(response, reverse("game_search"))
+        self.assertContains(response, "Search")
