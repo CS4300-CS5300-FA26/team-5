@@ -1,8 +1,8 @@
-<!DOCTYPE html>
-<html>
+{% extends "base.html" %}
+{% block content %}
 <head><title>{{ user.username }}'s Library</title></head>
-<body>
   <h1>{{ user.username }}'s Library</h1>
+
   {% for library_entry in library_entries %}
     <article>
     {% if library_entry.games.game_image %}
@@ -23,5 +23,4 @@
     {% csrf_token %}
     <button type="submit">Log out</button>
   </form>
-</body>
-</html>
+{% endblock %}
