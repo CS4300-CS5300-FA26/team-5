@@ -1,0 +1,14 @@
+changelog:
+  categories:
+    - title: Features
+      labels: [feature]
+    - title: Bug fixes
+      labels: [bug]
+    - title: Tests
+      labels: [tests]
+    - title: CI and tooling
+      labels: [ci]
+    - title: Documentation
+      labels: [documentation]
+    - title: Other changes
+      labels: ['*']

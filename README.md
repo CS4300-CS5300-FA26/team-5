@@ -95,6 +95,12 @@ uv run coverage report -m
 ## AI code review
 Every pull request gets an automatic review comment from OpenAI's `gpt-6-luna` model (`.github/workflows/ai-review.yml`). It posts a new comment-only review for each push and collapses its earlier reviews as outdated, so the latest review sits right after the latest commit. The review is advisory: a teammate still has to review and approve before merging. To change what the bot looks for, edit `.github/ai-review-guide.md`. The workflow reads the API key from the `OPENAI_API_KEY` repository secret.
 
+## Pull request labels and release notes
+Automatic labels: `ci` for `.github/**`; `tests` for `tests.py`, any `tests/` folder, and `binge_and_bosses/features/**`; `documentation` for `**/*.md`.
+Add `feature` by hand for new user-facing behavior, or `bug` for fixes.
+Starting with `sprint2`, generate GitHub Release notes to group PRs as Features, Bug fixes, Tests, CI and tooling, Documentation, then Other changes.
+A PR appears in the first matching category; add its manual label before generating the notes.
+
 ## Sprint Plan
 
 | Sprint  | Deliverables |  
@@ -125,6 +131,7 @@ Every pull request gets an automatic review comment from OpenAI's `gpt-6-luna` m
 | 10/19/2026 | Claude Code (Claude Opus 5.5) | Brought the team docs up to date with `main` (shared base template, login forms, library page, a table of the site's URLs, Behave status) and resolved the merge conflict in this log. Checked the course's sprint requirements first: the AI usage log must stay in this README. Laura reviewed it; submitted in a pull request for teammate review. |
 | 10/19/2026 | Claude Code (Claude Opus 5.5) | Designed the Behave setup with Laura (`docs/design/behave.md`), tried behave-django on our Django version first, then wrote the feature files for stories #7 and #8 (watched them fail before writing the steps), the step code, the CI step and the README instructions. Laura reviewed it; submitted in a pull request for teammate review. |
 | 10/22/2026 | OpenAI Codex | Prepared the Sprint 1 report and release notes from repository code, CI logs and browser checks; reconciled completed issues and GitHub Projects cards; created the sprint1 release. No application code was changed. Laura will review the submission documents before submitting them to Canvas. |
+| 11/02/2026 | Codex (GPT-6.1 Sol), Claude Code (Claude Opus 5.5) | Generated the PR path-label rules, labeler workflow, grouped release notes configuration, and README label instructions; validated the globs against merged PRs and ran configuration and Django checks. Submitted in a pull request for teammate review. |
 | 10/30/2026 | Claude Opus 5.5 | Created catalog.py, the add_to_library view and modified details.html to add a add to library button. Code was reviewd by Carlos |
 | 11/01/2026 | Google Gemini 4 Argon  | Created tests for catalog.py and for the add_to_library view. Test reviewed to cover good and bad paths and mutations were added to verify test were correctly catching bugs |
 | 11/02/2026 | Google Gemini 4 Argon  | Created and extended tests for the remove from library view and the library page. Test reviewed by Carlos |
