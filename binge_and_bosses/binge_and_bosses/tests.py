@@ -80,7 +80,7 @@ class NavBarAuthenticated(TestCase):
             Test that the login button no longer exists once authenticated
         """
         response = self.client.get("/")
-        self.assertNotContains(response, ">Login</a>")
+        self.assertNotContains(response, "Login")
 
     def test_library_link_is_shown(self):
         """
