@@ -84,7 +84,7 @@ def game_in_library_with_status(context, status):
 @then('the button reads "{label}" and cannot add a duplicate')
 def in_library_no_duplicate(context, label):
     context.test.assertContains(context.response, label)
-    remove = form_for(context.response, "remove_from_library", game_id(context))
+    remove = form_for(context.response, "remove_from_library", [game_id(context)])
     context.test.assertIsNotNone(remove, 'No "Remove from library" form on the page')
     context.test.assertEqual(remove.get("method", "").lower(), "post")
     context.test.assertIsNotNone(remove.find("button", string="Remove from library"))
