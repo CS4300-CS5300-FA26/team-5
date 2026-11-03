@@ -42,12 +42,11 @@ class NavBarUnauthenticated(TestCase):
         """
         response = self.client.get("/")
         self.assertNotContains(response, reverse("logout"))
-        self.assertNotContains(response, "Hello There")
-        self.assertNotContains(response, reverse("logout"))
+        self.assertNotContains(response, "Welcome,")
 
     def test_login_link_not_active(self):
         response = self.client.get("/")
-        self.assertNotContains(response, 'aria-current=page')
+        self.assertNotContains(response, 'auth-login-logout active')
 
 class NavBarAuthenticated(TestCase):
     """
@@ -83,3 +82,10 @@ class NavBarAuthenticated(TestCase):
         response = self.client.get("/")
         self.assertNotContains(response, ">Login</a>")
 
+    def test_library_link_is_shown(self):
+        """
+            Test that both the word Library and the link to Library are present
+        """
+        response = self.client.get("/")
+        self.assertContains(response, reverse("library"))
+        self.assertContains(response, "Library")
