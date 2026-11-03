@@ -32,6 +32,22 @@
       Unknown
     {% endfor %}
   </p>
+  {% if user.is_authenticated %}
+    {% if in_library %}
+      <p>In library</p>
+       <form method="post" action="{% url 'remove_from_library' game.id %}">
+        {% csrf_token %}
+        <button type="submit">Remove from library</button>
+      </form>
+    {% else %}
+      <form method="post" action="{% url 'add_to_library' game.id %}">
+        {% csrf_token %}
+        <button type="submit">Add to library</button>
+      </form>
+    {% endif %}
+  {% else %}
+    <a href="{% url 'login' %}?next={{ request.path }}">Log in to add to your library</a>
+  {% endif %}
 {% endif %}
 
 <a href="{% url 'game_search' %}">Search games</a>

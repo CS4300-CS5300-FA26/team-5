@@ -3,9 +3,11 @@ from datetime import date
 from bs4 import BeautifulSoup
 from django.contrib import messages
 from django.contrib.staticfiles import finders
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 
-from .models import Game
+from .models import Game, Catalog
+from .catalog import get_or_import
 
 from unittest.mock import patch,Mock
 from .rawg_client import search_game,get_game_details
@@ -219,7 +221,7 @@ class GameSearchandDetailsViewTests(TestCase):
 class LibraryPageTests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create_user(username="user_b", password="TesTINGp#ass0r0d")
+        self.user = get_user_model().objects.create_user(username="user_b", email="user_b@example.com", password="TesTINGp#ass0r0d")
 
     def test_logged_out_user_redirected_to_login(self):
         response = self.client.get(reverse("library"))
@@ -230,3 +232,233 @@ class LibraryPageTests(TestCase):
         response = self.client.get(reverse("library"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "user_b's Library")
+
+    def test_logged_in_user_sees_saved_games_in_library(self):
+        game = Game.objects.create(
+            rawg_id=42,
+            game_title="Celeste",
+            game_description="Climb a mountain.",
+            game_rating=4.8,
+            game_image="https://example.com/celeste.jpg",
+        )
+        Catalog.objects.create(user=self.user, games=game)
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("library"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Celeste")
+        self.assertContains(response, "Status: Not Started")
+        self.assertContains(response, "https://example.com/celeste.jpg")
+        self.assertContains(response, reverse("game_details", args=[42]))
+        self.assertNotContains(response, "Your games will show up here soon.")
+    
+    def test_library_does_not_show_other_users_games(self):
+        other_user = get_user_model().objects.create_user(
+            username="other_user", email="other@example.com", password="testpassword123"
+        )
+        other_game = Game.objects.create(
+            rawg_id=99,
+            game_title="Elden Ring",
+            game_description="Become the Elden Lord.",
+            game_rating=4.9,
+        )
+        Catalog.objects.create(user=other_user, games=other_game)
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("library"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Elden Ring")
+        self.assertContains(response, "Your games will show up here soon.")
+
+# Test that Catalog's get_or_import method works as expected
+class CatalogGetOrImportTests(TestCase):
+
+    @patch("games.catalog.get_game_details")
+    def test_returns_existing_game_without_calling_rawg(self, mock_details):
+        existing = Game.objects.create(
+            rawg_id=42,
+            game_title="Celeste",
+            game_description="Climb a mountain.",
+            game_rating=4.8,
+        )
+
+        result = get_or_import(42)
+
+        self.assertEqual(result, existing)
+        mock_details.assert_not_called()
+
+    @patch("games.catalog.get_game_details")
+    def test_imports_and_saves_new_game_from_rawg(self, mock_details):
+        mock_details.return_value = {
+            "id": 100,
+            "name": "Hades",
+            "description_raw": "Defy the god of the dead.",
+            "rating": 4.9,
+            "released": "2020-09-17",
+            "background_image": "https://example.com/hades.jpg",
+            "genres": [{"name": "Action"}, {"name": "Indie"}],
+        }
+
+
+        game = get_or_import(100)
+
+        self.assertIsNotNone(game)
+        self.assertEqual(Game.objects.count(), 1)
+        self.assertEqual(game.rawg_id, 100)
+        self.assertEqual(game.game_title, "Hades")
+        self.assertEqual(game.game_description, "Defy the god of the dead.")
+        self.assertEqual(game.game_rating, 4.9)
+        self.assertEqual(str(game.game_release), "2020-09-17")
+        self.assertEqual(game.game_image, "https://example.com/hades.jpg")
+        self.assertEqual(game.game_genre, "Action, Indie")
+
+    @patch("games.catalog.get_game_details")
+    def test_returns_none_when_rawg_fails(self, mock_details):
+        mock_details.return_value = None
+
+        result = get_or_import(999)
+
+        self.assertIsNone(result)
+        self.assertEqual(Game.objects.count(), 0)
+
+    @patch("games.catalog.get_game_details")
+    def test_handles_missing_or_null_rawg_fields(self, mock_details):
+        mock_details.return_value = {
+            "id": 101,
+            "name": "Mystery Game",
+            "description_raw": None,
+            "rating": None,
+            "released": None,
+            "background_image": None,
+            "genres": [],
+        }
+
+        game = get_or_import(101)
+
+        self.assertIsNotNone(game)
+        self.assertEqual(game.game_title, "Mystery Game")
+        self.assertEqual(game.game_description, "")
+        self.assertEqual(game.game_rating, 0)
+        self.assertIsNone(game.game_release)
+        self.assertEqual(game.game_image, "")
+        self.assertEqual(game.game_genre, "")
+
+class AddToLibraryViewTests(TestCase):
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="player1", email="player1@example.com", password="testpassword123"
+        )
+
+    @patch("games.views.get_or_import")
+    def test_add_to_library_creates_catalog_entry(self, mock_get_or_import):
+        game = Game.objects.create(
+            rawg_id=10,
+            game_title="Portal",
+            game_description="A puzzle game.",
+            game_rating=4.7,
+        )
+        mock_get_or_import.return_value = game
+        self.client.force_login(self.user)
+
+        response = self.client.post(reverse("add_to_library", args=[10]))
+
+        self.assertRedirects(response, reverse("game_details", args=[10]), fetch_redirect_response=False)
+        self.assertTrue(Catalog.objects.filter(user=self.user, games=game).exists())
+
+    @patch("games.views.get_or_import")
+    def test_add_to_library_does_not_duplicate_catalog_entry(self, mock_get_or_import):
+        game = Game.objects.create(
+            rawg_id=10,
+            game_title="Portal",
+            game_description="A puzzle game.",
+            game_rating=4.7,
+        )
+        mock_get_or_import.return_value = game
+        self.client.force_login(self.user)
+
+        self.client.post(reverse("add_to_library", args=[10]))
+        self.client.post(reverse("add_to_library", args=[10]))
+
+        self.assertEqual(Catalog.objects.filter(user=self.user, games=game).count(), 1)
+
+    @patch("games.views.get_or_import")
+    def test_add_to_library_handles_rawg_failure(self, mock_get_or_import):
+        mock_get_or_import.return_value = None
+        self.client.force_login(self.user)
+
+        response = self.client.post(reverse("add_to_library", args=[999]))
+
+        self.assertRedirects(response, reverse("game_details", args=[999]), fetch_redirect_response=False)
+        self.assertEqual(Catalog.objects.count(), 0)
+
+    def test_add_to_library_requires_login(self):
+        url = reverse("add_to_library", args=[10])
+        response = self.client.post(url)
+
+        self.assertRedirects(response, f"{reverse('login')}?next={url}")
+        self.assertEqual(Catalog.objects.count(), 0)
+
+        
+    def test_catalog_rejects_duplicate_user_and_game(self):
+        game = Game.objects.create(
+            rawg_id=10, game_title="Portal", game_description="A puzzle game.", game_rating=4.7,
+        )
+        Catalog.objects.create(user=self.user, games=game)
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Catalog.objects.create(user=self.user, games=game)
+
+class RemoveFromLibraryViewTests(TestCase):
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="player1", email="player1@example.com", password="testpassword123"
+        )
+        self.game = Game.objects.create(
+            rawg_id=10,
+            game_title="Portal",
+            game_description="A puzzle game.",
+            game_rating=4.7,
+        )
+
+    def test_remove_from_library_deletes_catalog_entry(self):
+        Catalog.objects.create(user=self.user, games=self.game)
+        self.client.force_login(self.user)
+
+        response = self.client.post(reverse("remove_from_library", args=[10]))
+
+        self.assertRedirects(response, reverse("game_details", args=[10]), fetch_redirect_response=False)
+        self.assertFalse(Catalog.objects.filter(user=self.user, games=self.game).exists())
+        self.assertTrue(Game.objects.filter(rawg_id=10).exists())
+
+    def test_remove_from_library_returns_404_when_not_in_library(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(reverse("remove_from_library", args=[999]))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_remove_from_library_cannot_delete_other_users_entry(self):
+        other_user = get_user_model().objects.create_user(
+            username="player2", email="player2@example.com", password="testpassword123"
+        )
+        Catalog.objects.create(user=other_user, games=self.game)
+        self.client.force_login(self.user)
+
+        response = self.client.post(reverse("remove_from_library", args=[10]))
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(Catalog.objects.filter(user=other_user, games=self.game).exists())
+
+    def test_remove_from_library_requires_login(self):
+        Catalog.objects.create(user=self.user, games=self.game)
+        url = reverse("remove_from_library", args=[10])
+
+        response = self.client.post(url)
+
+        self.assertRedirects(response, f"{reverse('login')}?next={url}")
+        self.assertTrue(Catalog.objects.filter(user=self.user, games=self.game).exists())

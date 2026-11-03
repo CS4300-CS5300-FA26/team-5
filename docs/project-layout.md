@@ -10,7 +10,7 @@ team-5/
 │   │   └── urls.py
 │   ├── templates/base.html    ← shared page layout (Bootstrap); new pages extend it
 │   ├── behave.ini             ← skips @wip scenarios by default
-│   ├── features/              ← account, search and details scenarios; steps in steps/
+│   ├── features/              ← account, search, details and library scenarios; steps in steps/
 │   ├── authentication/        ← accounts: custom User model, sign-up, log-in
 │   │   ├── models.py          ← User (settings.AUTH_USER_MODEL)
 │   │   ├── forms.py           ← SignupForm, LoginForm (Bootstrap-styled)
