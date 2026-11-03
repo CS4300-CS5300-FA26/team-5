@@ -55,7 +55,7 @@ Search and details use RAWG through `games/rawg_client.py` instead of the local 
 | URL | Name | What it is |
 | --- | --- | --- |
 | `/` | `index` | Home page |
-| `/search/?q=title` | `game_search` | Search RAWG by title; shows up to five results. No login required. |
+| `/search/?q=title` | `game_search` | Search RAWG by title; shows up to five results. If RAWG fails, shows this visitor's last results for the same search (kept in the session). No login required. |
 | `/<int:game_id>/` | `game_details` | Details for a RAWG game ID. If RAWG fails, goes back to the search results with an error when opened from a search, otherwise shows the error on this page. No login required. |
 | `/library/` | `library` | The user's library (placeholder for now). Requires login. |
 | `/accounts/signup/` | `signup` | Sign-up. Logs the new user in and goes to the library. |

@@ -131,6 +131,25 @@ class GameSearchandDetailsViewTests(TestCase):
         self.assertEqual(response.context['games'], [])
 
     @patch('games.views.search_game')
+    def test_search_failure_shows_last_results_for_same_query(self, mock_search_game):
+        mock_search_game.return_value = [
+            {'id': 1, 'name': 'Minecraft', 'background_image': 'https://example.com/m.jpg'},
+        ]
+        self.client.get('/search/?q=Minecraft')
+        mock_search_game.return_value = None
+
+        response = self.client.get('/search/?q=Minecraft')
+
+        self.assertFalse(response.context['error'])
+        self.assertContains(response, 'Minecraft')
+        self.assertContains(response, 'https://example.com/m.jpg')
+
+        response = self.client.get('/search/?q=Zelda')
+
+        self.assertTrue(response.context['error'])
+        self.assertEqual(response.context['games'], [])
+
+    @patch('games.views.search_game')
     def test_search_links_preserve_encoded_query(self, mock_search_game):
         mock_search_game.return_value = [{'id': 1, 'name': 'Pokemon Red'}]
 

@@ -60,7 +60,8 @@ def search_results_on_screen(context):
 
 
 @given("the game database is unavailable")
-def details_unavailable(context):
+def rawg_unavailable(context):
+    context.search_game.return_value = None
     context.get_game_details.return_value = None
 
 
