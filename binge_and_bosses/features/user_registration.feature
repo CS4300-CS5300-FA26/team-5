@@ -9,8 +9,6 @@ Feature: User registration
     When I submit a valid email and password
     Then I am logged in and see my empty library
 
-  # Emails aren't unique yet, so a second account is created. Fixed in #62.
-  @wip
   Scenario: Email already registered
     Given an account already exists for an email
     When I sign up with that email again

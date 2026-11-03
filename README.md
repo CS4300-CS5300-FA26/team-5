@@ -122,3 +122,4 @@ Every pull request gets an automatic review comment from OpenAI's `gpt-6-luna` m
 | 11/01/2026 | Google Gemini 4 Argon  | Created tests for catalog.py and for the add_to_library view. Test reviewed to cover good and bad paths and mutations were added to verify test were correctly catching bugs |
 | 11/02/2026 | Google Gemini 4 Argon  | Created and extended tests for the remove from library view and the library page. Test reviewed by Carlos |
 | 11/02/2026 | Claude Opus 5.5 | Created view for remove_from_library, assisted with modification of library page and created the behave step code and environment.py file for the add to library feature|
+| 11/02/2026 | Codex (GPT-6.1 Sol), Claude Code (Claude Opus 5.5) | Generated the generic sign-up error for a taken email or username and regression tests, and enabled story #7's duplicate-email Behave scenario. Submitted in a pull request for teammate review. |
