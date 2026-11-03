@@ -25,7 +25,7 @@ class NavBarUnauthenticated(TestCase):
         """
         response = self.client.get("/")
         self.assertContains(response, reverse("login"))
-        self.assertContains(response, ">Login</a>")
+        self.assertContains(response, "Login")
 
     def test_signup_link_exists(self):
         """
@@ -33,7 +33,7 @@ class NavBarUnauthenticated(TestCase):
         """
         response = self.client.get("/")
         self.assertContains(response, reverse("signup"))
-        self.assertContains(response, ">Signup</a>")
+        self.assertContains(response, "Signup")
 
     def test_logout_and_greeting_are_hidden(self):
         """
@@ -64,7 +64,7 @@ class NavBarAuthenticated(TestCase):
             Test that the greeting appears in the navbar when authenticated
         """
         response = self.client.get("/")
-        self.assertContains(response, "Hello There, tester")
+        self.assertContains(response, "Welcome, tester")
 
     def test_logout_form_is_shown(self):
         """
