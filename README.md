@@ -16,6 +16,8 @@ Binge & Bosses is a backlog management and social interaction platform geared fo
 - Get game recommendations
 - Track the time spent in-game
 
+For project layout, pull requests, testing and deployment, see [Team docs](docs/README.md).
+
 ## How to run Binge & Bosses
 ### Step 1. Install uv and the requirements
 This project uses [uv](https://docs.astral.sh/uv/) to manage Python and packages. Install it once:
@@ -31,11 +33,14 @@ This installs the Python version in `.python-version` (3.12) if you don't have i
 ### Step 2. Create .env file
 within `binge_and_bosses/` create a file called `.env` in the same directory as `manage.py`
 
-### Step 3. Add secret key
-Next, generate a secret key and place it within the `.env` file with the format like:
+### Step 3. Add secret key and RAWG API key
+Next, generate a secret key and place it within the `.env` file, with your RAWG API key, in the format like:
 ```.env
 SECRET_KEY=<SECRET_KEY_HERE>
+RAWG_API_KEY=<RAWG_API_KEY_HERE>
 ``` 
+Django won't start without both. Get a free RAWG key at [rawg.io/apidocs](https://rawg.io/apidocs). For running tests only, `RAWG_API_KEY=test-key` is enough, but searches on the running site need a real key.
+
 You can generate a secret key by running
 ```
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
@@ -112,11 +117,15 @@ Every pull request gets an automatic review comment from OpenAI's `gpt-6-luna` m
 | 10/12/2026 | Claude Code (Claude Opus 5.5) | Made the AI review handle huge diffs (per-file and per-directory limits, a list of all changed files) so a committed package can't hide the app's changes, with tests. Laura reviewed it; submitted in a pull request for teammate review. |
 | 10/12/2026 | Claude Code (Claude Opus 5.5) | Edited the AI reviewer guide so the bot stops asking authors to confirm how outside APIs behave, and keeps unlikely edge cases out of Must fix. Laura reviewed it; submitted in a pull request for teammate review. |
 | 10/12/2026 | Claude Code (Claude Opus 5.5) | Moved the project to uv: wrote `pyproject.toml`, generated `uv.lock` and the pinned `requirements.txt`, pinned Python 3.12, switched CI to uv with a check that `requirements.txt` matches the lock, and updated the README setup steps. Submitted in a pull request for teammate review. |
+| 10/14/2026 | Claude Code (Claude Opus 5.5) | Drafted the team docs in `docs/` (project layout, pull requests, testing, deployment) from the current code and workflows. Opened as a draft pull request for Laura and the team to review. |
 | 10/16/2026 | Claude Opus 5.5 | Generated log out button tests (log out button logs user out and removes their session from the database and index page displays correctly depending on if user is logged in) and library page tests(library page redirects logged out users to login and library displays correctly for logged in users) in `games/tests.py`. Also created placeholder library html template. |
 | 10/18/2026 | Claude Sonnet 5.5 | Help assisting in created HTML for the login and signup views. | 
 | 10/18/2026 | Codex (GPT-6 Astra) | Help with the rawg.io api implementation as the documentation was not useful, help with the process of calling the API and generated barebones HTML views to test the function out. Also used to help learn how test API functionality with patch and mock, so we can simulate calling the API. Also used it for refrence on how to make these API tests | 
 | 10/19/2026 | Claude Code (Claude Opus 5.5) | Compared the project with the Sprint 1 goals. Changed the login error to "Invalid username or password." so it's the same for a wrong password and an unknown username (story #8), with a test written first and seen failing. Laura reviewed it; submitted in a pull request for teammate review. |
+| 10/19/2026 | Claude Code (Claude Opus 5.5) | Brought the team docs up to date with `main` (shared base template, login forms, library page, a table of the site's URLs, Behave status) and resolved the merge conflict in this log. Checked the course's sprint requirements first: the AI usage log must stay in this README. Laura reviewed it; submitted in a pull request for teammate review. |
 | 10/19/2026 | Claude Code (Claude Opus 5.5) | Designed the Behave setup with Laura (`docs/design/behave.md`), tried behave-django on our Django version first, then wrote the feature files for stories #7 and #8 (watched them fail before writing the steps), the step code, the CI step and the README instructions. Laura reviewed it; submitted in a pull request for teammate review. |
 | 10/22/2026 | OpenAI Codex | Prepared the Sprint 1 report and release notes from repository code, CI logs and browser checks; reconciled completed issues and GitHub Projects cards; created the sprint1 release. No application code was changed. Laura will review the submission documents before submitting them to Canvas. |
 | 11/02/2026 | Codex (GPT-6.1 Sol), Claude Code (Claude Opus 5.5) | Generated the game details failure redirect, search query links and messages, placeholder cover, unit tests, and Behave scenarios and steps for stories #9 and #10. Submitted in a pull request for teammate review. |
+| 11/02/2026 | Codex (GPT-6.1 Sol), Claude Code (Claude Opus 5.5) | Merged main into the team docs branch, kept both sides' AI usage log rows, and updated the project layout, PR, testing and deployment pages for Behave, RAWG and current account behavior. Checked the documented commands and kept unconfirmed Render settings marked. Submitted in a pull request for teammate review. |
+| 11/02/2026 | Codex (GPT-6.1 Sol), Claude Code (Claude Opus 5.5) | Generated the PR template and proposed team conventions in `AGENTS.md` for #31, checked the documented commands and relative links, and kept new conventions marked for team discussion. Submitted in a pull request for teammate review. |
 | 11/02/2026 | Codex (GPT-6.1 Sol), Claude Code (Claude Opus 5.5) | Generated the generic sign-up error for a taken email or username and regression tests, and enabled story #7's duplicate-email Behave scenario. Submitted in a pull request for teammate review. |
