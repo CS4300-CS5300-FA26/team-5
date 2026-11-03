@@ -1,5 +1,5 @@
 """
-    Steps shared by many features: visiting pages, being logged in, and checking
+    Steps shared by many features: visiting pages, being logged in, being logged out and checking
     what the page shows. Check here before adding a step to another file, since
     two steps with the same text cause an error.
 """
@@ -29,6 +29,9 @@ def logged_in(context):
     )
     context.test.client.force_login(context.user)
 
+@given("I am not logged in")
+def not_logged_in(context):
+    context.test.client.logout()
 
 @then('I see "{text}"')
 def see_text(context, text):
