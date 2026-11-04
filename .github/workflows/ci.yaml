@@ -52,3 +52,26 @@ jobs:
         env:
           UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/no-dev-venv
         run: uv run --locked --no-dev python manage.py check
+  # Deploy to render on pull requests being accepted into main, not pushing; waits for CI checks to pass before
+  deploy:
+    name: Deploy to Render
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Trigger deployment on Render
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::error::Set the RENDER_DEPLOY_HOOK_URL repository secret to the Render service's deploy hook URL."
+            exit 1
+          fi
+          # Deploy the commit that passed this workflow's tests.
+          curl --fail --silent --show-error \
+            --connect-timeout 10 --max-time 60 \
+            --request POST --get --data-urlencode "ref=${GITHUB_SHA}" \
+            --output /dev/null \
+            --url "$RENDER_DEPLOY_HOOK_URL"
+          echo "Render accepted the deploy request for ${GITHUB_SHA}. Check Render for build and deployment status."
