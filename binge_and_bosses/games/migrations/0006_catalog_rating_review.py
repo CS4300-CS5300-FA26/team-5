@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='catalog',
             name='review',
-            field=models.TextField(blank=True),
+            field=models.TextField(blank=True, max_length=1000),
         ),
         migrations.AddField(
             model_name='catalog',

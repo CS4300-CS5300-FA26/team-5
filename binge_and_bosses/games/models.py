@@ -36,7 +36,7 @@ class Catalog(models.Model):
     rating = models.PositiveSmallIntegerField(
         null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)],
     )
-    review = models.TextField(blank=True)
+    review = models.TextField(max_length=1000, blank=True)
     review_edited = models.BooleanField(default=False)
 
 

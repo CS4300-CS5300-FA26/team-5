@@ -539,6 +539,16 @@ class ReviewTests(TestCase):
         self.save_review(5)
         self.assert_entry(5, "", False)
 
+    def test_review_over_1000_characters_changes_nothing_and_shows_error(self):
+        self.entry.rating, self.entry.review = 3, "Keep this."
+        self.entry.save()
+        response = self.save_review(5, "x" * 1001, follow=True)
+        self.assertContains(response, "Keep your review to 1,000 characters or fewer.")
+        self.assertNotContains(response, "Pick a rating from 1 to 5.")
+        self.assert_entry(3, "Keep this.", False)
+        self.save_review(5, "x" * 1000)
+        self.assert_entry(5, "x" * 1000, True)
+
     def test_invalid_rating_changes_nothing_and_shows_error(self):
         self.entry.rating, self.entry.review = 3, "Keep this."
         self.entry.review_edited = True
