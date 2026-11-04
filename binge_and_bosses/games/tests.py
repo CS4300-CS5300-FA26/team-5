@@ -3,6 +3,7 @@ from datetime import date
 from bs4 import BeautifulSoup
 from django.contrib import messages
 from django.contrib.staticfiles import finders
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 
@@ -481,3 +482,201 @@ class RemoveFromLibraryViewTests(TestCase):
 
         self.assertRedirects(response, f"{reverse('login')}?next={url}")
         self.assertTrue(Catalog.objects.filter(user=self.user, games=self.game).exists())
+
+
+class ReviewTests(TestCase):
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="player", email="player@example.com")
+        self.game = Game.objects.create(
+            rawg_id=42, game_title="Portal", game_description="Puzzles.", game_rating=4.7,
+        )
+        self.entry = Catalog.objects.create(user=self.user, games=self.game)
+        self.client.force_login(self.user)
+        patcher = patch("games.views.get_game_details", return_value={"id": 42, "name": "Portal"})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def save_review(self, rating="", review="", **kwargs):
+        return self.client.post(reverse("save_review", args=[42]), {
+            "rating": rating, "review": review,
+        }, **kwargs)
+
+    def assert_entry(self, rating, review, edited):
+        self.entry.refresh_from_db()
+        self.assertEqual(
+            (self.entry.rating, self.entry.review, self.entry.review_edited),
+            (rating, review, edited),
+        )
+
+    def test_save_review_requires_login(self):
+        self.client.logout()
+        url = reverse("save_review", args=[42])
+        response = self.save_review(4, "Fun.")
+        self.assertRedirects(response, f"{reverse('login')}?next={url}")
+        self.assert_entry(None, "", False)
+
+    def test_save_review_requires_library_entry(self):
+        self.entry.delete()
+        response = self.save_review(4, "Fun.")
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(Catalog.objects.exists())
+
+    def test_save_review_rejects_get(self):
+        response = self.client.get(reverse("save_review", args=[42]))
+        self.assertEqual(response.status_code, 405)
+        self.assert_entry(None, "", False)
+
+    def test_rating_is_saved_and_shown_in_library(self):
+        response = self.save_review(4)
+        self.assertRedirects(response, reverse("game_details", args=[42]))
+        self.assert_entry(4, "", False)
+        self.assertContains(self.client.get(reverse("library")), "Rating: 4/5")
+
+    def test_new_rating_replaces_old_rating(self):
+        self.entry.rating = 2
+        self.entry.save()
+        self.save_review(5)
+        self.assert_entry(5, "", False)
+
+    def test_review_over_1000_characters_changes_nothing_and_shows_error(self):
+        self.entry.rating, self.entry.review = 3, "Keep this."
+        self.entry.save()
+        response = self.save_review(5, "x" * 1001, follow=True)
+        self.assertContains(response, "Keep your review to 1,000 characters or fewer.")
+        self.assertNotContains(response, "Pick a rating from 1 to 5.")
+        self.assert_entry(3, "Keep this.", False)
+        self.save_review(5, "x" * 1000)
+        self.assert_entry(5, "x" * 1000, True)
+
+    def test_invalid_rating_changes_nothing_and_shows_error(self):
+        self.entry.rating, self.entry.review = 3, "Keep this."
+        self.entry.review_edited = True
+        self.entry.save()
+        for rating in (0, 6, "abc"):
+            with self.subTest(rating=rating):
+                response = self.save_review(rating, "Must not save.", follow=True)
+                self.assertRedirects(response, reverse("game_details", args=[42]))
+                self.assertContains(response, "Pick a rating from 1 to 5.")
+                shown = list(response.context["messages"])
+                self.assertEqual([(m.level, str(m)) for m in shown], [
+                    (messages.ERROR, "Pick a rating from 1 to 5."),
+                ])
+                self.assert_entry(3, "Keep this.", True)
+
+    def test_database_rejects_out_of_range_rating(self):
+        for rating in (0, 6):
+            with self.subTest(rating=rating), self.assertRaises(IntegrityError):
+                with transaction.atomic():
+                    self.entry.rating = rating
+                    self.entry.save()
+
+    def test_model_validators_reject_out_of_range_rating(self):
+        for rating in (0, 6):
+            with self.subTest(rating=rating), self.assertRaises(ValidationError):
+                self.entry.rating = rating
+                self.entry.full_clean()
+
+    def test_review_edited_tracks_text_changes_only(self):
+        for rating, review, edited in [
+            ("", "First review.", False),
+            (4, "First review.", False),
+            (4, "Changed review.", True),
+            (5, "Changed review.", True),
+            (5, "", False),
+            (5, "A fresh review.", False),
+        ]:
+            with self.subTest(rating=rating, review=review):
+                self.save_review(rating, review)
+                self.assert_entry(rating or None, review, edited)
+
+    def test_both_fields_can_be_cleared(self):
+        self.entry.rating, self.entry.review = 4, "Fun."
+        self.entry.review_edited = True
+        self.entry.save()
+        self.save_review()
+        self.assert_entry(None, "", False)
+        self.assertContains(self.client.get(reverse("library")), "Not rated")
+
+    def test_not_rated_clears_the_rating_and_keeps_the_review(self):
+        self.entry.rating, self.entry.review = 4, "Fun."
+        self.entry.save()
+        self.save_review("", "Fun.")
+        self.assert_entry(None, "Fun.", False)
+
+    def test_user_cannot_change_another_users_entry(self):
+        other = get_user_model().objects.create_user(username="other", email="other@example.com")
+        entry = Catalog.objects.create(user=other, games=self.game, rating=2, review="Their review.")
+        response = self.client.post(reverse("save_review", args=[42]), {
+            "rating": 5, "review": "My review.", "user": other.pk, "id": entry.pk,
+        })
+        self.assertRedirects(response, reverse("game_details", args=[42]))
+        self.assert_entry(5, "My review.", False)
+        self.entry.delete()
+        self.assertEqual(self.save_review(1, "Overwrite.").status_code, 404)
+        entry.refresh_from_db()
+        self.assertEqual((entry.rating, entry.review, entry.review_edited), (2, "Their review.", False))
+
+    def test_game_page_lists_all_reviews_in_username_order_for_everyone(self):
+        self.entry.rating, self.entry.review = 4, "<b>Fun.</b>"
+        self.entry.review_edited = True
+        self.entry.save()
+        for username, rating, review in [("alpha", 2, ""), ("beta", None, "Great puzzles."), ("empty", None, "")]:
+            user = get_user_model().objects.create_user(username=username, email=f"{username}@example.com")
+            Catalog.objects.create(user=user, games=self.game, rating=rating, review=review)
+        other_game = Game.objects.create(rawg_id=99, game_title="Other", game_description="", game_rating=0)
+        Catalog.objects.create(user=self.user, games=other_game, review="Wrong game.")
+        for logged_in in (True, False):
+            with self.subTest(logged_in=logged_in):
+                if not logged_in:
+                    self.client.logout()
+                response = self.client.get(reverse("game_details", args=[42]))
+                articles = BeautifulSoup(response.content, "html.parser").find_all("article")
+                self.assertEqual([a.h3.get_text(strip=True) for a in articles], ["alpha", "beta", "player"])
+                self.assertIn("Rating: 2/5", articles[0].get_text())
+                self.assertNotIn("edited", articles[0].get_text())
+                self.assertIn("Great puzzles.", articles[1].get_text())
+                self.assertNotIn("Rating:", articles[1].get_text())
+                self.assertIn("Rating: 4/5", articles[2].get_text())
+                self.assertIn("<b>Fun.</b>", articles[2].get_text())
+                self.assertIsNone(articles[2].find("b"))
+                self.assertIn("edited", articles[2].get_text())
+                self.assertNotContains(response, "Wrong game.")
+
+    def test_game_page_prefills_review_form_and_rating_choices(self):
+        self.entry.rating, self.entry.review = 4, "Fun puzzles."
+        self.entry.save()
+        response = self.client.get(reverse("game_details", args=[42]))
+        page = BeautifulSoup(response.content, "html.parser")
+        form = page.find("form", action=reverse("save_review", args=[42]))
+        self.assertIsNotNone(form)
+        self.assertEqual(form["method"], "post")
+        self.assertIsNotNone(form.find("input", attrs={"name": "csrfmiddlewaretoken"}))
+        radios = form.find_all("input", attrs={"type": "radio", "name": "rating"})
+        self.assertEqual([r["value"] for r in radios], ["", "1", "2", "3", "4", "5"])
+        self.assertEqual([r["value"] for r in radios if r.has_attr("checked")], ["4"])
+        for radio, label in zip(radios, ["Not rated", "1 star", "2 stars", "3 stars", "4 stars", "5 stars"]):
+            self.assertEqual(form.find("label", attrs={"for": radio["id"]}).get_text(strip=True), label)
+        self.assertEqual(form.find("textarea", attrs={"name": "review"}).get_text().strip(), "Fun puzzles.")
+        self.assertEqual(form.find("button").get_text(strip=True), "Save")
+
+    def test_review_form_hidden_without_library_entry_or_login(self):
+        url = reverse("save_review", args=[42])
+        self.client.logout()
+        response = self.client.get(reverse("game_details", args=[42]))
+        self.assertIsNone(BeautifulSoup(response.content, "html.parser").find("form", action=url))
+        self.client.force_login(self.user)
+        self.entry.delete()
+        response = self.client.get(reverse("game_details", args=[42]))
+        self.assertIsNone(BeautifulSoup(response.content, "html.parser").find("form", action=url))
+
+    def test_game_page_shows_no_reviews_for_unrated_entry(self):
+        response = self.client.get(reverse("game_details", args=[42]))
+        self.assertContains(response, "No reviews yet.")
+
+    def test_removing_game_deletes_rating_and_review(self):
+        self.entry.rating, self.entry.review = 4, "Fun."
+        self.entry.save()
+        self.client.post(reverse("remove_from_library", args=[42]))
+        self.assertFalse(Catalog.objects.filter(pk=self.entry.pk).exists())
+        self.assertContains(self.client.get(reverse("game_details", args=[42])), "No reviews yet.")

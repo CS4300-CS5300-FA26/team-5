@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
 {% block content %}
+{% for message in messages %}
+  <p class="alert alert-danger" role="alert">{{ message }}</p>
+{% endfor %}
 {% if error %}
   <p>Could not load game details. Try again.</p>
 {% else %}
@@ -39,6 +42,15 @@
         {% csrf_token %}
         <button type="submit">Remove from library</button>
       </form>
+      <form method="post" action="{% url 'save_review' game.id %}">
+        {% csrf_token %}
+        <fieldset>
+          <legend>Rating</legend>
+          {{ review_form.rating }}
+        </fieldset>
+        <p>{{ review_form.review.label_tag }} {{ review_form.review }}</p>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </form>
     {% else %}
       <form method="post" action="{% url 'add_to_library' game.id %}">
         {% csrf_token %}
@@ -49,6 +61,20 @@
     <a href="{% url 'login' %}?next={{ request.path }}">Log in to add to your library</a>
   {% endif %}
 {% endif %}
+
+<section aria-labelledby="reviews-heading">
+  <h2 id="reviews-heading">Reviews</h2>
+  {% for review in reviews %}
+    <article>
+      <h3>{{ review.user.username }}</h3>
+      {% if review.rating %}<p>Rating: {{ review.rating }}/5</p>{% endif %}
+      {% if review.review %}<p>{{ review.review }}</p>{% endif %}
+      {% if review.review_edited %}<span class="text-muted">edited</span>{% endif %}
+    </article>
+  {% empty %}
+    <p>No reviews yet.</p>
+  {% endfor %}
+</section>
 
 <a href="{% url 'game_search' %}">Search games</a>
 <p>Game data provided by <a href="https://rawg.io">RAWG</a>.</p>

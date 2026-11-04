@@ -23,7 +23,7 @@ Behave is on `main` (#63). From the same folder and with the same test environme
 uv run --locked python manage.py behave --simple
 ```
 
-`--simple` uses Django's test client, with no browser or server. The scenarios in `features/` cover sign-up, login, logout, search, game details and adding to the library. They check the same "Invalid username or password." message for an unknown username and a wrong password.
+`--simple` uses Django's test client, with no browser or server. The scenarios in `features/` cover sign-up, login, logout, search, game details, adding to the library, ratings and reviews. They check the same "Invalid username or password." message for an unknown username and a wrong password.
 
 `behave.ini` skips scenarios tagged `@wip` by default. Each has an issue comment. To include only those scenarios:
 

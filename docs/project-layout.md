@@ -10,7 +10,7 @@ team-5/
 │   │   └── urls.py
 │   ├── templates/base.html    ← shared page layout (Bootstrap); new pages extend it
 │   ├── behave.ini             ← skips @wip scenarios by default
-│   ├── features/              ← account, search, details and library scenarios; steps in steps/
+│   ├── features/              ← account, search, details, library, rating and review scenarios; steps in steps/
 │   ├── authentication/        ← accounts: custom User model, sign-up, log-in
 │   │   ├── models.py          ← User (settings.AUTH_USER_MODEL)
 │   │   ├── forms.py           ← SignupForm, LoginForm (Bootstrap-styled)
@@ -19,7 +19,8 @@ team-5/
 │   │   ├── static/authentication/css/
 │   │   └── templates/registration/  ← login.html, signup.html
 │   └── games/                 ← the "games" app
-│       ├── models.py          ← Game model
+│       ├── models.py          ← Game metadata and Catalog library entries (status, rating, review)
+│       ├── forms.py           ← ReviewForm validates the optional rating and review
 │       ├── views.py           ← home, library, RAWG search and details views
 │       ├── rawg_client.py     ← search_game and get_game_details call RAWG
 │       ├── urls.py
@@ -49,7 +50,7 @@ Using the home page as the example:
 
 New features follow the same path: URL → view → model → template.
 
-Search and details use RAWG through `games/rawg_client.py` instead of the local `Game` model. They don't save games to the database. The library is still a placeholder; there are no catalog or library-entry models yet.
+Search and details fetch RAWG data through `games/rawg_client.py`. Adding a game imports its metadata into `Game` through `games/catalog.py`. The library stores each player's saved games as `Catalog` entries, with their status, rating and review. The game page shows everyone's ratings and reviews; library owners can save their own through `ReviewForm`.
 
 ## Pages
 | URL | Name | What it is |
@@ -57,7 +58,10 @@ Search and details use RAWG through `games/rawg_client.py` instead of the local 
 | `/` | `index` | Home page |
 | `/search/?q=title` | `game_search` | Search RAWG by title; shows up to five results. If RAWG fails, shows this visitor's last results for the same search (kept in the session). No login required. |
 | `/<int:game_id>/` | `game_details` | Details for a RAWG game ID. If RAWG fails, goes back to the search results with an error when opened from a search, otherwise shows the error on this page. No login required. |
-| `/library/` | `library` | The user's library (placeholder for now). Requires login. |
+| `/library/` | `library` | The user's saved games, statuses and ratings. Requires login. |
+| `/<int:game_id>/add/` | `add_to_library` | Add a RAWG game to the user's library. POST and login required. |
+| `/<int:game_id>/remove/` | `remove_from_library` | Remove a game from the user's library. POST and login required. |
+| `/<int:game_id>/review/` | `save_review` | Save the user's rating and review. POST, login and a library entry required. |
 | `/accounts/signup/` | `signup` | Sign-up. Logs the new user in and goes to the library. |
 | `/accounts/login/` | `login` | Log-in. Goes to the library, or to `?next=` if set. |
 | `/accounts/logout/` | `logout` | Log-out. Must be a POST (a form with `{% csrf_token %}`), not a link. Goes to the login page. |

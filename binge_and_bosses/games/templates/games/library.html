@@ -14,6 +14,11 @@
       <a href="{% url 'game_details' library_entry.games.rawg_id %}">{{ library_entry.games.game_title }}</a>
     </h2>
     <p>Status: {{ library_entry.get_status_display }}</p>
+    {% if library_entry.rating %}
+      <p>Rating: {{ library_entry.rating }}/5</p>
+    {% else %}
+      <p>Not rated</p>
+    {% endif %}
     </article>
   {% empty %}
     <p>Your games will show up here soon.</p>
