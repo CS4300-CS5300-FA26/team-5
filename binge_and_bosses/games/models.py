@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 # Create your models here.
 
@@ -23,10 +24,19 @@ class Catalog(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["user", "games"], name="unique_catalog_user_game"),
+            models.CheckConstraint(
+                condition=models.Q(rating__isnull=True) | models.Q(rating__gte=1, rating__lte=5),
+                name="catalog_rating_1_to_5",
+            ),
         ]
 
     games = models.ForeignKey(Game,on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NOT_STARTED)
+    rating = models.PositiveSmallIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+    review = models.TextField(blank=True)
+    review_edited = models.BooleanField(default=False)
 
 
