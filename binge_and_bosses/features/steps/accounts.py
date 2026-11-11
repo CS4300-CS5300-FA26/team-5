@@ -60,7 +60,7 @@ def logged_in_with_empty_library(context):
     context.test.assertEqual(int(context.test.client.session["_auth_user_id"]), user.pk)
 
     library = context.test.client.get(reverse("library"))
-    context.test.assertContains(library, "Your games will show up here soon.")
+    context.test.assertContains(library, "Your library is empty")
 
 
 @given("an account already exists for an email")

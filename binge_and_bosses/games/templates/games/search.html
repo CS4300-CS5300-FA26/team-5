@@ -1,34 +1,57 @@
 {% extends "base.html" %}
+{% block title %}{% if query %}{{ query }} | {% endif %}Search | Binge and Bosses{% endblock %}
+{% block extra_head %}
+    {% include "games/_landing_head.html" %}
+{% endblock %}
 {% block content %}
-<h1>Search games</h1>
+<div class="landing home search">
+    <section class="home-top">
+        <h1>Search games</h1>
+        <form class="home-search" method="get" role="search">
+            <label class="visually-hidden" for="search-q">Game title</label>
+            <input id="search-q" class="form-control form-control-lg" name="q" value="{{ query }}" placeholder="Search for a game…" required>
+            <button class="btn btn-primary btn-lg btn-arcade" type="submit">Search</button>
+        </form>
+    </section>
 
-<form method="get">
-  <input name="q" value="{{ query }}" placeholder="Game title" required>
-  <button type="submit">Search</button>
-</form>
+    {% for message in messages %}
+        <p class="alert alert-danger" role="alert">{{ message }}</p>
+    {% endfor %}
 
-{% for message in messages %}
-  <p>{{ message }}</p>
-{% endfor %}
+    {% if error %}
+        <p class="alert alert-danger" role="alert">Could not load games. Try again.</p>
+    {% elif query %}
+        <section aria-labelledby="search-count">
+            <p id="search-count" class="search-count hud">{{ games|length }} result{{ games|length|pluralize }} for “{{ query }}”</p>
+            <ul class="search-results">
+                {% for game in games %}
+                    <li>
+                        <article>
+                            {% if game.background_image %}
+                                <img class="cover" src="{{ game.background_image }}" alt="{{ game.name }}" loading="lazy">
+                            {% else %}
+                                <span class="cover" style="--h: {% widthratio game.id 1 47 %}"></span>
+                            {% endif %}
+                            <div>
+                                <h2>
+                                    <a href="{% url 'game_details' game.id %}?q={{ query|urlencode:"" }}">{{ game.name }}</a>
+                                </h2>
+                                <span class="home-muted">{{ game.released|slice:":4"|default:"Release date unknown" }}</span>
+                            </div>
+                            {% if game.id in owned %}
+                                <span class="pill on status-in-library">In library</span>
+                            {% else %}
+                                <span class="search-cta" aria-hidden="true">View ›</span>
+                            {% endif %}
+                        </article>
+                    </li>
+                {% empty %}
+                    <li class="home-panel home-muted">No games found</li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
 
-{% if error %}
-  <p>Could not load games. Try again.</p>
-{% elif query %}
-  {% for game in games %}
-    <article>
-      <h2>
-        <a href="{% url 'game_details' game.id %}?q={{ query|urlencode:"" }}">
-          {{ game.name }}
-        </a>
-      </h2>
-      {% if game.background_image %}
-        <img src="{{ game.background_image }}" alt="{{ game.name }}" width="200">
-      {% endif %}
-    </article>
-  {% empty %}
-    <p>No games found</p>
-  {% endfor %}
-{% endif %}
-
-<p>Game data provided by <a href="https://rawg.io">RAWG</a>.</p>
+    <p class="search-credit">Game data provided by <a href="https://rawg.io">RAWG</a>.</p>
+</div>
 {% endblock %}

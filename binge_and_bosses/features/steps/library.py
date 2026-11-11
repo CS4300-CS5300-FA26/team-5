@@ -76,9 +76,10 @@ def game_in_library_with_status(context, status):
     entry = Catalog.objects.get(user=context.user, games__rawg_id=game_id(context))
     context.test.assertEqual(entry.get_status_display(), status)
 
-    library = context.test.client.get(reverse("library"))
-    context.test.assertContains(library, context.fake_game["name"])
-    context.test.assertContains(library, f"Status: {status}")
+    library = BeautifulSoup(context.test.client.get(reverse("library")).content, "html.parser")
+    card = library.select_one("main article")
+    context.test.assertIn(context.fake_game["name"], card.get_text())
+    context.test.assertIn(f"Status: {status}", card.get_text())
 
 
 @then('the button reads "{label}" and cannot add a duplicate')

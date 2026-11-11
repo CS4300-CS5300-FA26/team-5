@@ -87,7 +87,6 @@ class LandingPageTests(TestCase):
         self.assertIsNotNone(finders.find("games/css/landing.css"))
 
 
-# Dark mode: base.html gives every page a toggle and loads the script that applies the theme.
 class PlayerHomeTests(TestCase):
     """Logged-in players get a working home page: search, library stats, popular games, recent adds."""
 
@@ -198,6 +197,7 @@ class PlayerHomeTests(TestCase):
         self.assertIsNone(page.select_one(".home-library"))
 
 
+# Dark mode: base.html gives every page a toggle and loads the script that applies the theme.
 class DarkModeToggleTests(TestCase):
 
     def test_every_page_has_a_dark_mode_toggle(self):
@@ -435,11 +435,108 @@ class GameSearchandDetailsViewTests(TestCase):
 
 
 
+@patch("games.views.search_game")
+class SearchPageTests(TestCase):
+    """The search page: a labelled search box, result cards with year and cover, and what's already owned."""
+
+    RESULTS = [
+        {"id": 1, "name": "Celeste", "released": "2018-01-25", "background_image": "https://media.example.com/c.jpg"},
+        {"id": 2, "name": "Celeste Classic", "released": None, "background_image": None},
+    ]
+
+    def page(self, query="Celeste"):
+        response = self.client.get(reverse("game_search"), {"q": query} if query else {})
+        self.assertEqual(response.status_code, 200)
+        return BeautifulSoup(response.content, "html.parser").select_one("main")
+
+    def cards(self, page):
+        return {card.h2.get_text(strip=True): card for card in page.select("article")}
+
+    def test_search_box_is_labelled_and_keeps_the_query(self, mock_search):
+        mock_search.return_value = self.RESULTS
+
+        box = self.page().select_one('form[role="search"] input[name="q"]')
+
+        self.assertEqual(box["value"], "Celeste")
+        self.assertIsNotNone(self.page().find("label", attrs={"for": box["id"]}))
+
+    def test_results_show_count_year_and_cover(self, mock_search):
+        mock_search.return_value = self.RESULTS
+
+        page = self.page()
+        cards = self.cards(page)
+
+        self.assertIn("2 results", page.select_one(".search-count").get_text())
+        self.assertIn("2018", cards["Celeste"].get_text())
+        self.assertIsNotNone(cards["Celeste"].find("img", src="https://media.example.com/c.jpg"))
+        # No RAWG image: a generated cover instead of a missing picture
+        self.assertIsNone(cards["Celeste Classic"].find("img"))
+        self.assertIsNotNone(cards["Celeste Classic"].select_one("span.cover"))
+
+    def test_games_already_in_my_library_are_marked(self, mock_search):
+        mock_search.return_value = self.RESULTS
+        user = get_user_model().objects.create_user(username="p1", email="p1@example.com", password="Gr8Backlog!42")
+        game = Game.objects.create(rawg_id=1, game_title="Celeste", game_description="", game_rating=4.0)
+        Catalog.objects.create(user=user, games=game)
+        self.client.force_login(user)
+
+        cards = self.cards(self.page())
+
+        self.assertIn("In library", cards["Celeste"].get_text())
+        self.assertNotIn("In library", cards["Celeste Classic"].get_text())
+
+    def test_another_players_library_does_not_mark_results(self, mock_search):
+        mock_search.return_value = self.RESULTS
+        other = get_user_model().objects.create_user(username="p2", email="p2@example.com", password="Gr8Backlog!42")
+        game = Game.objects.create(rawg_id=1, game_title="Celeste", game_description="", game_rating=4.0)
+        Catalog.objects.create(user=other, games=game)
+
+        self.assertNotIn("In library", self.page().get_text())
+
+    def test_year_survives_a_rawg_outage(self, mock_search):
+        mock_search.return_value = self.RESULTS
+        self.page()
+        mock_search.return_value = None
+
+        self.assertIn("2018", self.cards(self.page())["Celeste"].get_text())
+
+    def test_error_is_shown_as_an_alert(self, mock_search):
+        mock_search.return_value = None
+
+        alert = self.page().select_one('[role="alert"]')
+
+        self.assertIn("Could not load games. Try again.", alert.get_text())
+
+    def test_empty_search_shows_no_results_or_count(self, mock_search):
+        page = self.page(query="")
+
+        mock_search.assert_not_called()
+        self.assertIsNone(page.select_one(".search-count"))
+        self.assertIn("RAWG", page.get_text())
+
+
 # Tests that the library page displays correctly and that logged out users are redirected to the login page when visiting.
 class LibraryPageTests(TestCase):
 
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="user_b", email="user_b@example.com", password="TesTINGp#ass0r0d")
+        self.next_rawg_id = 1
+
+    def add(self, title, user=None, **entry):
+        game = Game.objects.create(
+            rawg_id=self.next_rawg_id, game_title=title, game_description="", game_rating=4.0,
+        )
+        self.next_rawg_id += 1
+        return Catalog.objects.create(user=user or self.user, games=game, **entry)
+
+    def page(self, **params):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("library"), params)
+        self.assertEqual(response.status_code, 200)
+        return BeautifulSoup(response.content, "html.parser").select_one("main")
+
+    def titles(self, **params):
+        return [h2.get_text(strip=True) for h2 in self.page(**params).select("article h2")]
 
     def test_logged_out_user_redirected_to_login(self):
         response = self.client.get(reverse("library"))
@@ -460,35 +557,84 @@ class LibraryPageTests(TestCase):
             game_image="https://example.com/celeste.jpg",
         )
         Catalog.objects.create(user=self.user, games=game)
-        self.client.force_login(self.user)
 
-        response = self.client.get(reverse("library"))
+        card = self.page().select_one("article")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Celeste")
-        self.assertContains(response, "Status: Not Started")
-        self.assertContains(response, "https://example.com/celeste.jpg")
-        self.assertContains(response, reverse("game_details", args=[42]))
-        self.assertNotContains(response, "Your games will show up here soon.")
-    
+        self.assertIn("Celeste", card.get_text())
+        self.assertIn("Status: Not Started", card.get_text())
+        self.assertIsNotNone(card.find("img", src="https://example.com/celeste.jpg"))
+        self.assertIsNotNone(card.find("a", href=reverse("game_details", args=[42])))
+
     def test_library_does_not_show_other_users_games(self):
         other_user = get_user_model().objects.create_user(
             username="other_user", email="other@example.com", password="testpassword123"
         )
-        other_game = Game.objects.create(
-            rawg_id=99,
-            game_title="Elden Ring",
-            game_description="Become the Elden Lord.",
-            game_rating=4.9,
-        )
-        Catalog.objects.create(user=other_user, games=other_game)
-        self.client.force_login(self.user)
+        self.add("Elden Ring", user=other_user)
 
-        response = self.client.get(reverse("library"))
+        page = self.page()
 
-        self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "Elden Ring")
-        self.assertContains(response, "Your games will show up here soon.")
+        self.assertNotIn("Elden Ring", page.get_text())
+        self.assertIn("Your library is empty", page.get_text())
+
+    def test_card_reads_out_the_rating_or_says_not_rated(self):
+        self.add("Celeste", rating=4)
+        self.add("Balatro")
+
+        rated, unrated = self.page().select("article")[::-1]
+
+        self.assertIn("Rating: 4/5", rated.get_text())
+        self.assertIn("Not rated", unrated.get_text())
+
+    def test_header_counts_games_and_links_to_search(self):
+        self.add("Celeste")
+        self.add("Balatro")
+
+        page = self.page()
+
+        self.assertEqual(page.select_one(".library-top .hud").get_text(strip=True), "2 games")
+        self.assertIsNotNone(page.find("a", href=reverse("game_search")))
+
+    def test_newest_games_come_first_by_default(self):
+        for title in ("Celeste", "Balatro", "Hades II"):
+            self.add(title)
+
+        self.assertEqual(self.titles(), ["Hades II", "Balatro", "Celeste"])
+
+    def test_sort_by_title(self):
+        for title in ("celeste", "Balatro", "Hades II"):
+            self.add(title)
+
+        self.assertEqual(self.titles(sort="title"), ["Balatro", "celeste", "Hades II"])
+
+    def test_sort_by_rating_puts_unrated_games_last(self):
+        self.add("Celeste", rating=3)
+        self.add("Balatro")
+        self.add("Hades II", rating=5)
+
+        self.assertEqual(self.titles(sort="rating"), ["Hades II", "Celeste", "Balatro"])
+
+    def test_unknown_sort_falls_back_to_newest_first(self):
+        self.add("Celeste")
+        self.add("Balatro")
+
+        self.assertEqual(self.titles(sort="nonsense"), ["Balatro", "Celeste"])
+
+    def test_sort_links_mark_the_current_order(self):
+        self.add("Celeste")
+
+        current = self.page(sort="title").select('.library-sort a[aria-current="true"]')
+
+        self.assertEqual([a.get_text(strip=True) for a in current], ["Title"])
+
+    def test_empty_library_points_to_search_and_hides_sorting(self):
+        page = self.page()
+
+        self.assertIn("Your library is empty", page.get_text())
+        self.assertIsNotNone(page.find("a", href=reverse("game_search")))
+        self.assertIsNone(page.select_one(".library-sort"))
+
+    def test_logout_is_only_in_the_nav_bar(self):
+        self.assertIsNone(self.page().find("form", action=reverse("logout")))
 
 # Test that Catalog's get_or_import method works as expected
 class CatalogGetOrImportTests(TestCase):
@@ -733,7 +879,8 @@ class ReviewTests(TestCase):
         response = self.save_review(4)
         self.assertRedirects(response, reverse("game_details", args=[42]))
         self.assert_entry(4, "", False)
-        self.assertContains(self.client.get(reverse("library")), "Rating: 4/5")
+        library = BeautifulSoup(self.client.get(reverse("library")).content, "html.parser")
+        self.assertIn("Rating: 4/5", library.select_one("main article").get_text())
 
     def test_new_rating_replaces_old_rating(self):
         self.entry.rating = 2
