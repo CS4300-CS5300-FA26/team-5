@@ -75,6 +75,20 @@ class DarkModeToggleTests(TestCase):
         self.assertIsNotNone(finders.find("js/theme.js"))
 
 
+class BrandLogoTests(TestCase):
+
+    def test_every_page_shows_the_logo_beside_the_app_name(self):
+        for url in (reverse("index"), reverse("login"), reverse("signup")):
+            with self.subTest(url=url):
+                page = BeautifulSoup(self.client.get(url).content, "html.parser")
+                brand = page.select_one("nav a.navbar-brand")
+                logo = brand.select_one(".brand-logo")
+
+                self.assertIsNotNone(logo)
+                self.assertEqual(logo["aria-hidden"], "true")
+                self.assertEqual(brand.get_text(strip=True), "Binge and Bosses")
+
+
 class SearchAPICheckandDetails(TestCase):
 
     @patch('games.rawg_client.requests.get')
