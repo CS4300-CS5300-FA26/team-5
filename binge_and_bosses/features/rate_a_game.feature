@@ -1,7 +1,7 @@
 # Story 8: Rate a Game (#13)
 # As a player, I want to rate a game from 1 to 5, so that I remember how much I liked it.
 
-@fake_rawg
+@fake_igdb
 Feature: Ratings
 
   Scenario: Rate a game

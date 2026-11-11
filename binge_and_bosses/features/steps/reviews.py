@@ -1,4 +1,4 @@
-"""Rating and review steps. RAWG is faked by the @fake_rawg hook."""
+"""Rating and review steps. IGDB is faked by the @fake_igdb hook."""
 from behave import given, when, then
 from bs4 import BeautifulSoup
 from django.contrib.auth import get_user_model
@@ -10,7 +10,7 @@ from games.models import Catalog
 @given("a game in my library")
 def game_in_my_library(context):
     context.execute_steps("Given the game is already in my library")
-    context.entry = Catalog.objects.get(user=context.user, games__rawg_id=context.fake_game["id"])
+    context.entry = Catalog.objects.get(user=context.user, games__igdb_id=context.fake_game["id"])
 
 
 def submit_review(context, rating=None, review=None):

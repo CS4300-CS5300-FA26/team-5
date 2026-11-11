@@ -27,8 +27,8 @@
                 {% for game in games %}
                     <li>
                         <article>
-                            {% if game.background_image %}
-                                <img class="cover" src="{{ game.background_image }}" alt="{{ game.name }}" loading="lazy">
+                            {% if game.cover %}
+                                <img class="cover" src="{{ game.cover }}" alt="{{ game.name }}" loading="lazy">
                             {% else %}
                                 <span class="cover" style="--h: {% widthratio game.id 1 47 %}"></span>
                             {% endif %}
@@ -52,6 +52,6 @@
         </section>
     {% endif %}
 
-    <p class="search-credit">Game data provided by <a href="https://rawg.io">RAWG</a>.</p>
+    <p class="search-credit">Game data provided by <a href="https://www.igdb.com">IGDB</a>.</p>
 </div>
 {% endblock %}

@@ -33,13 +33,14 @@ This installs the Python version in `.python-version` (3.12) if you don't have i
 ### Step 2. Create .env file
 within `binge_and_bosses/` create a file called `.env` in the same directory as `manage.py`
 
-### Step 3. Add secret key and RAWG API key
-Next, generate a secret key and place it within the `.env` file, with your RAWG API key, in the format like:
+### Step 3. Add secret key and IGDB credentials
+Next, generate a secret key and place it within the `.env` file, with your IGDB credentials, in the format like:
 ```.env
 SECRET_KEY=<SECRET_KEY_HERE>
-RAWG_API_KEY=<RAWG_API_KEY_HERE>
-``` 
-Django won't start without both. Get a free RAWG key at [rawg.io/apidocs](https://rawg.io/apidocs). For running tests only, `RAWG_API_KEY=test-key` is enough, but searches on the running site need a real key.
+IGDB_CLIENT_ID=<CLIENT_ID_HERE>
+IGDB_CLIENT_SECRET=<CLIENT_SECRET_HERE>
+```
+Django won't start without all three. IGDB uses Twitch accounts: turn on two-factor login on your Twitch account, register an app at [dev.twitch.tv/console/apps](https://dev.twitch.tv/console/apps) (OAuth Redirect URL `http://localhost`, client type Confidential), and copy its Client ID and a new Client Secret. See [IGDB's getting started guide](https://api-docs.igdb.com/#getting-started). For running tests only, `IGDB_CLIENT_ID=test-id` and `IGDB_CLIENT_SECRET=test-secret` are enough, but searches on the running site need real credentials.
 
 You can generate a secret key by running
 ```

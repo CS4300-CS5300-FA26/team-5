@@ -6,7 +6,7 @@ from django.db.models.functions import Lower
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from .models import Catalog, Game
-from .rawg_client import search_game
+from .igdb_client import search_game
 from .catalog import get_or_import
 from .forms import ReviewForm
 # Create your views here.
@@ -65,7 +65,7 @@ def library(request):
         'sorts': {value: label for value, (label, _) in LIBRARY_SORTS.items()},
     })
 
-#Get the game details from rawg and add it to the user's library if it doesn't exist already
+#Get the game details from IGDB and add it to the user's library if it doesn't exist already
 @login_required
 @require_POST
 def add_to_library(request, game_id):
@@ -78,7 +78,7 @@ def add_to_library(request, game_id):
 @login_required
 @require_POST
 def remove_from_library(request, game_id):
-    game = get_object_or_404(Catalog, user=request.user, games__rawg_id=game_id)
+    game = get_object_or_404(Catalog, user=request.user, games__igdb_id=game_id)
     game.delete()
     return redirect("game_details", game_id=game_id)
 
@@ -86,7 +86,7 @@ def remove_from_library(request, game_id):
 @login_required
 @require_POST
 def save_review(request, game_id):
-    entry = get_object_or_404(Catalog, user=request.user, games__rawg_id=game_id)
+    entry = get_object_or_404(Catalog, user=request.user, games__igdb_id=game_id)
     old_review = entry.review
     form = ReviewForm(request.POST, instance=entry)
     if form.is_valid():
@@ -103,16 +103,15 @@ def save_review(request, game_id):
     return redirect("game_details", game_id=game_id)
 
 
-#return search results from rawg based on user input, return error on empty 
+#return search results from IGDB based on user input, return error on empty 
 def game_search(request):
     query = request.GET.get("q", "").strip()
     games = search_game(query) if query else []
     last_search = request.session.get("last_search", {})
     if games:
-        # Keep what search.html shows, so the results survive a RAWG outage.
+        # Keep what search.html shows, so the results survive an IGDB outage.
         request.session["last_search"] = {"q": query, "games": [
-            {"id": g["id"], "name": g["name"], "background_image": g.get("background_image"),
-             "released": g.get("released")}
+            {"id": g["id"], "name": g["name"], "cover": g["cover"], "released": g["released"]}
             for g in games
         ]}
     elif games is None and last_search.get("q") == query:
@@ -124,8 +123,8 @@ def game_search(request):
     owned = set()
     if games and request.user.is_authenticated:
         owned = set(Catalog.objects.filter(
-            user=request.user, games__rawg_id__in=[g["id"] for g in games],
-        ).values_list("games__rawg_id", flat=True))
+            user=request.user, games__igdb_id__in=[g["id"] for g in games],
+        ).values_list("games__igdb_id", flat=True))
 
     return render(request, "games/search.html", {
         "games": games,
@@ -137,7 +136,7 @@ def game_search(request):
 def game_details(request, game_id):
     game = get_or_import(game_id)
     entry = (
-        Catalog.objects.filter(user=request.user, games__rawg_id=game_id).first()
+        Catalog.objects.filter(user=request.user, games__igdb_id=game_id).first()
         if request.user.is_authenticated else None
     )
 
@@ -150,7 +149,7 @@ def game_details(request, game_id):
         "error": game is None,
         "in_library": entry is not None,
         "review_form": ReviewForm(instance=entry) if entry else None,
-        "reviews": Catalog.objects.filter(games__rawg_id=game_id).filter(
+        "reviews": Catalog.objects.filter(games__igdb_id=game_id).filter(
             Q(rating__isnull=False) | ~Q(review=""),
         ).select_related("user").order_by("user__username"),
     })

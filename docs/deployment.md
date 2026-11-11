@@ -17,7 +17,7 @@ If you add a model, commit its migration. `build.sh` applies it on the next depl
 ## Settings in production
 Render supplies the same environment variables as your local `.env` (see the table in [Project layout](project-layout.md#settings-come-from-the-environment)). Set them in the Render dashboard, never in code.
 
-`SECRET_KEY` and `RAWG_API_KEY` are required even at startup. Keep `DEBUG=False` in production. CI's dummy keys are only for tests; they can't make real RAWG requests work.
+`SECRET_KEY`, `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` are required even at startup. Keep `DEBUG=False` in production. CI's dummy values are only for tests; they can't make real IGDB requests work.
 `RENDER_DEPLOY_HOOK_URL` is already stored within the repository so it is not needed to add to you `.env`
 
 ## Free-tier behavior to know about

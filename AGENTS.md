@@ -13,7 +13,7 @@ and keep production credentials out of local `.env` files used for tests.
 See [Testing](docs/testing.md) for test behavior, coverage and skipped `@wip` scenarios.
 
 ```bash
-export SECRET_KEY=ci-only-not-a-real-key DEBUG=True RAWG_API_KEY=test-key
+export SECRET_KEY=ci-only-not-a-real-key DEBUG=True IGDB_CLIENT_ID=test-id IGDB_CLIENT_SECRET=test-secret
 unset DATABASE_URL
 uv sync --locked
 cd binge_and_bosses
@@ -30,7 +30,7 @@ Read [Project layout](docs/project-layout.md) before placing code or changing UR
 
 - Put Django code in `binge_and_bosses/`: accounts in `authentication/`, games in `games/`.
 - Use `settings.AUTH_USER_MODEL` in model fields and `get_user_model()` in code.
-- Use fake RAWG responses in tests; never call the real API.
+- Use fake IGDB responses in tests; never call the real API.
 - New pages extend `base.html` (the shared `templates/base.html`) and fill its blocks.
 - Commit migrations with model changes; never delete or edit existing migrations by hand.
 - Keep secrets, `.env`, databases, virtual environments and generated static files out of commits.

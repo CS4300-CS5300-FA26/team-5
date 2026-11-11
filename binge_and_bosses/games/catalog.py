@@ -1,28 +1,29 @@
-from .models import Game
-from .rawg_client import get_game_details
 from datetime import date
 
+from .igdb_client import get_game_details
+from .models import Game
 
-def get_or_import(rawg_id):
-    """Return our Game for this RAWG id, saving it from RAWG the first time."""
-    game = Game.objects.filter(rawg_id=rawg_id).first()
+
+def get_or_import(igdb_id):
+    """Return our Game for this IGDB id, saving it from IGDB the first time."""
+    game = Game.objects.filter(igdb_id=igdb_id).first()
     if game:
         return game
 
-    data = get_game_details(rawg_id)
+    data = get_game_details(igdb_id)
     if data is None:
         return None
 
     game, _ = Game.objects.get_or_create(
-        rawg_id=rawg_id,
+        igdb_id=igdb_id,
         defaults={
-            "game_title": data.get("name", ""),
-            "game_description": data.get("description_raw") or "",
-            "game_rating": data.get("rating") or 0,
-            "game_release": date.fromisoformat(data.get("released")) if data.get("released") else None,
-            "game_image": data.get("background_image") or "",
-            "game_genre": ", ".join(g["name"] for g in data.get("genres") or []),
-            "game_platforms": ", ".join(p["platform"]["name"] for p in data.get("platforms") or []),
+            "game_title": data["name"],
+            "game_description": data["summary"],
+            "game_rating": data["rating"] or 0,
+            "game_release": date.fromisoformat(data["released"]) if data["released"] else None,
+            "game_image": data["cover"],
+            "game_genre": ", ".join(data["genres"]),
+            "game_platforms": ", ".join(data["platforms"]),
         },
     )
     return game

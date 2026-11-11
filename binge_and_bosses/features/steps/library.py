@@ -1,6 +1,6 @@
 """
     Steps for adding games to the library.
-    RAWG is faked in environment.py for scenarios tagged @fake_rawg.
+    IGDB is faked in environment.py for scenarios tagged @fake_igdb.
 """
 from behave import given, when, then
 from bs4 import BeautifulSoup
@@ -20,8 +20,8 @@ def form_for(response, url_name, args):
     page = BeautifulSoup(response.content, "html.parser")
     return page.find("form", action=reverse(url_name, args=args))
 
-def add_form(response, rawg_id):
-    return form_for(response, "add_to_library", [rawg_id])
+def add_form(response, igdb_id):
+    return form_for(response, "add_to_library", [igdb_id])
 
 
 def is_logged_in(context):
@@ -40,9 +40,9 @@ def game_already_in_library(context):
     context.execute_steps("Given I am logged in")
     data = context.fake_game
     game = Game.objects.create(
-        rawg_id=data["id"],
+        igdb_id=data["id"],
         game_title=data["name"],
-        game_description=data["description_raw"],
+        game_description=data["summary"],
         game_rating=data["rating"],
     )
     Catalog.objects.create(user=context.user, games=game)
@@ -73,7 +73,7 @@ def game_in_library_with_status(context, status):
         context.response, reverse("game_details", args=[game_id(context)]),
         fetch_redirect_response=False,
     )
-    entry = Catalog.objects.get(user=context.user, games__rawg_id=game_id(context))
+    entry = Catalog.objects.get(user=context.user, games__igdb_id=game_id(context))
     context.test.assertEqual(entry.get_status_display(), status)
 
     library = BeautifulSoup(context.test.client.get(reverse("library")).content, "html.parser")
@@ -96,7 +96,7 @@ def in_library_no_duplicate(context, label):
     # Even a direct second add must not create a second entry
     context.test.client.post(reverse("add_to_library", args=[game_id(context)]))
     context.test.assertEqual(
-        Catalog.objects.filter(user=context.user, games__rawg_id=game_id(context)).count(), 1
+        Catalog.objects.filter(user=context.user, games__igdb_id=game_id(context)).count(), 1
     )
 
 

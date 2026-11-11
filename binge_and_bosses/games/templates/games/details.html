@@ -10,9 +10,9 @@
   <h1>{{ game.game_title }}</h1>
 
   {% if game.game_image %}
-    <img src="{{ game.game_image }}" alt="{{ game.game_title }}" width="400">
+    <img src="{{ game.game_image }}" alt="{{ game.game_title }}" width="264">
   {% else %}
-    <img src="{% static 'games/cover-placeholder.svg' %}" alt="No cover available" width="400">
+    <img src="{% static 'games/cover-placeholder.svg' %}" alt="No cover available" width="264">
   {% endif %}
 
   <p>{{ game.game_description|default:"No description available" }}</p>
@@ -30,11 +30,11 @@
   {% if user.is_authenticated %}
     {% if in_library %}
       <p>In library</p>
-       <form method="post" action="{% url 'remove_from_library' game.rawg_id %}">
+       <form method="post" action="{% url 'remove_from_library' game.igdb_id %}">
         {% csrf_token %}
         <button type="submit">Remove from library</button>
       </form>
-      <form method="post" action="{% url 'save_review' game.rawg_id %}">
+      <form method="post" action="{% url 'save_review' game.igdb_id %}">
         {% csrf_token %}
         <fieldset>
           <legend>Rating</legend>
@@ -44,7 +44,7 @@
         <button type="submit" class="btn btn-primary">Save</button>
       </form>
     {% else %}
-      <form method="post" action="{% url 'add_to_library' game.rawg_id %}">
+      <form method="post" action="{% url 'add_to_library' game.igdb_id %}">
         {% csrf_token %}
         <button type="submit">Add to library</button>
       </form>
@@ -69,5 +69,5 @@
 </section>
 
 <a href="{% url 'game_search' %}">Search games</a>
-<p>Game data provided by <a href="https://rawg.io">RAWG</a>.</p>
+<p>Game data provided by <a href="https://www.igdb.com">IGDB</a>.</p>
 {% endblock %}
