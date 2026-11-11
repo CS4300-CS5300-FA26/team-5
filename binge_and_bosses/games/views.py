@@ -1,7 +1,8 @@
+
 from django.contrib import messages
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, F, Max, Q
+from django.db.models import Avg, Count, F, Max, Q
 from django.db.models.functions import Lower
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -144,12 +145,17 @@ def game_details(request, game_id):
         messages.error(request, "Could not load game details. Try again.")
         return redirect(reverse("game_search", query={"q": request.GET["q"]}))
 
+    players = Catalog.objects.filter(games__igdb_id=game_id)
     return render(request, "games/details.html", {
         "game": game,
         "error": game is None,
+        "query": request.GET.get("q", ""),
+        "entry": entry,
         "in_library": entry is not None,
+        "statuses": Catalog.Status.choices,
         "review_form": ReviewForm(instance=entry) if entry else None,
-        "reviews": Catalog.objects.filter(games__igdb_id=game_id).filter(
+        "players": players.aggregate(average=Avg("rating"), ratings=Count("rating")),
+        "reviews": players.filter(
             Q(rating__isnull=False) | ~Q(review=""),
         ).select_related("user").order_by("user__username"),
     })

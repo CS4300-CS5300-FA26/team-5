@@ -1,73 +1,144 @@
 {% extends "base.html" %}
 {% load static %}
+{% block title %}{% if game %}{{ game.game_title }} | {% endif %}Binge and Bosses{% endblock %}
+{% block extra_head %}
+    {% include "games/_landing_head.html" %}
+    <script src="{% static 'games/js/details.js' %}" defer></script>
+{% endblock %}
 {% block content %}
-{% for message in messages %}
-  <p class="alert alert-danger" role="alert">{{ message }}</p>
-{% endfor %}
-{% if error %}
-  <p>Could not load game details. Try again.</p>
-{% else %}
-  <h1>{{ game.game_title }}</h1>
+<div class="landing home details-page">
+    {% for message in messages %}
+        <p class="alert alert-danger" role="alert">{{ message }}</p>
+    {% endfor %}
 
-  {% if game.game_image %}
-    <img src="{{ game.game_image }}" alt="{{ game.game_title }}" width="264">
-  {% else %}
-    <img src="{% static 'games/cover-placeholder.svg' %}" alt="No cover available" width="264">
-  {% endif %}
-
-  <p>{{ game.game_description|default:"No description available" }}</p>
-  <p>Released: {{ game.game_release|date:"M j, Y"|default:"Unknown" }}</p>
-
-  <p>
-    Genres:
-    {{ game.game_genre|default:"Unknown" }}
-  </p>
-
-  <p>
-    Platforms:
-    {{ game.game_platforms|default:"Unknown" }}
-  </p>
-  {% if user.is_authenticated %}
-    {% if in_library %}
-      <p>In library</p>
-       <form method="post" action="{% url 'remove_from_library' game.igdb_id %}">
-        {% csrf_token %}
-        <button type="submit">Remove from library</button>
-      </form>
-      <form method="post" action="{% url 'save_review' game.igdb_id %}">
-        {% csrf_token %}
-        <fieldset>
-          <legend>Rating</legend>
-          {{ review_form.rating }}
-        </fieldset>
-        <p>{{ review_form.review.label_tag }} {{ review_form.review }}</p>
-        <button type="submit" class="btn btn-primary">Save</button>
-      </form>
+    {% if error %}
+        <div class="home-panel">
+            <p class="alert alert-danger mb-0" role="alert">Could not load game details. Try again.</p>
+            <a href="{% url 'game_search' %}">Search for another game</a>
+        </div>
     {% else %}
-      <form method="post" action="{% url 'add_to_library' game.igdb_id %}">
-        {% csrf_token %}
-        <button type="submit">Add to library</button>
-      </form>
+        {% if query %}
+            <a class="details-back" href="{% url 'game_search' %}?q={{ query|urlencode:"" }}">‹ Back to results</a>
+        {% endif %}
+
+        <div class="details">
+            <div class="details-side">
+                <div class="details-cover">
+                    {% if game.game_image %}
+                        <img class="cover" src="{{ game.game_image }}" alt="{{ game.game_title }}">
+                    {% else %}
+                        <img class="cover cover-missing" src="{% static 'games/cover-placeholder.svg' %}" alt="No cover available">
+                    {% endif %}
+                </div>
+
+                <section class="savefile details-save" aria-labelledby="save-title">
+                    <div class="savefile-top">
+                        <h2 id="save-title">Your save file</h2>
+                        {% if in_library %}<span class="hud">In library</span>{% endif %}
+                    </div>
+
+                    {% if not user.is_authenticated %}
+                        <p class="home-muted">Track your status, rate it and write a review.</p>
+                        <a class="btn btn-primary btn-arcade" href="{% url 'login' %}?next={{ request.path }}">Log in to add to your library</a>
+                    {% elif not in_library %}
+                        <form method="post" action="{% url 'add_to_library' game.igdb_id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-primary btn-arcade">Add to library</button>
+                        </form>
+                        <p class="home-muted">It starts as Not Started. Then you can rate and review it.</p>
+                    {% else %}
+                        {# Story #12: wrap this fieldset in a form that posts to the change-status view, and remove "disabled". #}
+                        <fieldset class="status-picker" disabled>
+                            <legend class="hud">Status</legend>
+                            {% for value, label in statuses %}
+                                <input type="radio" name="status" id="status-{{ value }}" value="{{ value }}"{% if value == entry.status %} checked{% endif %}>
+                                <label class="pill status-{{ value }}" for="status-{{ value }}">{{ label }}</label>
+                            {% endfor %}
+                        </fieldset>
+
+                        <form class="details-review-form" method="post" action="{% url 'save_review' game.igdb_id %}">
+                            {% csrf_token %}
+                            <fieldset class="star-picker">
+                                <legend class="hud">Your rating</legend>
+                                {% for radio in review_form.rating %}
+                                    {{ radio.tag }}
+                                    {% if radio.data.value %}
+                                        <label class="star" for="{{ radio.id_for_label }}"><span class="visually-hidden">{{ radio.choice_label }}</span></label>
+                                    {% else %}
+                                        <label class="star-clear" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                                    {% endif %}
+                                {% endfor %}
+                            </fieldset>
+
+                            <label class="hud" for="{{ review_form.review.id_for_label }}">Your review</label>
+                            {{ review_form.review }}
+                            <div class="details-review-foot">
+                                <span class="home-muted" data-review-count>{{ review_form.review.value|default:""|length }} / 1,000</span>
+                                <button type="submit" class="btn btn-primary btn-arcade">Save</button>
+                            </div>
+                        </form>
+
+                        <form class="details-remove" method="post" action="{% url 'remove_from_library' game.igdb_id %}"
+                              data-confirm="Remove {{ game.game_title }} from your library? Your rating and review will be deleted too.">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-link link-danger">Remove from library</button>
+                        </form>
+                    {% endif %}
+                </section>
+            </div>
+
+            <div class="details-main">
+                <header class="details-head">
+                    <p class="hud details-kicker">{{ game.game_release.year|default:"TBA" }}{% if game.game_genre %} · {{ game.game_genre }}{% endif %}</p>
+                    <h1>{{ game.game_title }}</h1>
+                    <div class="details-scores">
+                        {% if game.game_rating %}
+                            <span class="score"><span class="hud">IGDB</span> <b>{{ game.game_rating|floatformat:1 }}</b> <span class="home-muted">/ 5</span></span>
+                        {% endif %}
+                        {% if players.ratings %}
+                            <span class="score"><span class="hud">Players</span> <b>{{ players.average|floatformat:1 }}</b> <span class="home-muted">/ 5 · {{ players.ratings }} rating{{ players.ratings|pluralize }}</span></span>
+                        {% endif %}
+                    </div>
+                </header>
+
+                <section class="details-about" aria-label="About the game">
+                    <p class="details-summary">{{ game.game_description|default:"No description available" }}</p>
+                    <dl class="details-facts">
+                        <div>
+                            <dt class="hud">Released</dt>
+                            <dd>{% if game.game_release %}<time datetime="{{ game.game_release|date:'Y-m-d' }}">{{ game.game_release|date:"M j, Y" }}</time>{% else %}Unknown{% endif %}</dd>
+                        </div>
+                        <div>
+                            <dt class="hud">Genres</dt>
+                            <dd>{{ game.game_genre|default:"Unknown" }}</dd>
+                        </div>
+                        <div>
+                            <dt class="hud">Platforms</dt>
+                            <dd>{{ game.game_platforms|default:"Unknown" }}</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section class="details-reviews" aria-labelledby="reviews-heading">
+                    <h2 id="reviews-heading">Reviews</h2>
+                    {% for review in reviews %}
+                        <article>
+                            <header>
+                                <h3>{{ review.user.username }}</h3>
+                                {% if review.user == user %}<span class="pill on status-in-library">You</span>{% endif %}
+                                {% if review.rating %}{% include "games/_stars.html" with rating=review.rating %}{% endif %}
+                            </header>
+                            {% if review.review %}<p>{{ review.review|linebreaksbr }}</p>{% endif %}
+                            {% if review.review_edited %}<span class="home-muted review-edited">edited</span>{% endif %}
+                        </article>
+                    {% empty %}
+                        <p class="home-panel home-muted">No reviews yet.</p>
+                    {% endfor %}
+                </section>
+            </div>
+        </div>
     {% endif %}
-  {% else %}
-    <a href="{% url 'login' %}?next={{ request.path }}">Log in to add to your library</a>
-  {% endif %}
-{% endif %}
 
-<section aria-labelledby="reviews-heading">
-  <h2 id="reviews-heading">Reviews</h2>
-  {% for review in reviews %}
-    <article>
-      <h3>{{ review.user.username }}</h3>
-      {% if review.rating %}<p>Rating: {{ review.rating }}/5</p>{% endif %}
-      {% if review.review %}<p>{{ review.review }}</p>{% endif %}
-      {% if review.review_edited %}<span class="text-muted">edited</span>{% endif %}
-    </article>
-  {% empty %}
-    <p>No reviews yet.</p>
-  {% endfor %}
-</section>
-
-<a href="{% url 'game_search' %}">Search games</a>
-<p>Game data provided by <a href="https://www.igdb.com">IGDB</a>.</p>
+    <p class="search-credit">Game data provided by <a href="https://www.igdb.com">IGDB</a>.</p>
+</div>
 {% endblock %}

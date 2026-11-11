@@ -1,0 +1,3 @@
+{# A 1-5 rating as stars. Screen readers hear "Rating: N/5" instead of the star characters. #}
+<span class="stars" aria-hidden="true">{% for star in "12345" %}{% if forloop.counter <= rating %}★{% else %}<span class="off">★</span>{% endif %}{% endfor %}</span>
+<span class="visually-hidden">Rating: {{ rating }}/5</span>

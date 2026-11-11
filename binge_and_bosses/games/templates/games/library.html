@@ -30,8 +30,7 @@
                         <div class="library-meta">
                             <span class="pill on status-{{ entry.status }}"><span class="visually-hidden">Status: </span>{{ entry.get_status_display }}</span>
                             {% if entry.rating %}
-                                <span class="stars" aria-hidden="true">{% for star in "12345" %}{% if forloop.counter <= entry.rating %}★{% else %}<span class="off">★</span>{% endif %}{% endfor %}</span>
-                                <span class="visually-hidden">Rating: {{ entry.rating }}/5</span>
+                                {% include "games/_stars.html" with rating=entry.rating %}
                             {% else %}
                                 <span class="home-muted">Not rated</span>
                             {% endif %}
