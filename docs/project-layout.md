@@ -46,7 +46,7 @@ Using the home page as the example:
 
 1. `binge_and_bosses/urls.py` sends `/` to the games app's `urls.py`.
 2. `games/urls.py` sends `""` to `views.index`.
-3. `views.index` renders `games/index.html`, the landing page.
+3. `views.index` renders `games/index.html`, the landing page. For a logged-in player it first reads their library counts and last two games from `Catalog`.
 4. The template shows different buttons to visitors and logged-in players (`user.is_authenticated`).
 
 New features follow the same path: URL → view → model → template.
@@ -56,7 +56,7 @@ Search and details fetch RAWG data through `games/rawg_client.py`. Adding a game
 ## Pages
 | URL | Name | What it is |
 | --- | --- | --- |
-| `/` | `index` | Landing page: what the app does, with Sign up and Log in for visitors, or Library and Search for players. Makes no RAWG calls. |
+| `/` | `index` | Landing page: what the app does, with Sign up and Log in and an example library for visitors, or Library and Search and the player's own library card for players. Makes no RAWG calls. |
 | `/search/?q=title` | `game_search` | Search RAWG by title; shows up to five results. If RAWG fails, shows this visitor's last results for the same search (kept in the session). No login required. |
 | `/<int:game_id>/` | `game_details` | Details for a RAWG game ID. If RAWG fails, goes back to the search results with an error when opened from a search, otherwise shows the error on this page. No login required. |
 | `/library/` | `library` | The user's saved games, statuses and ratings. Requires login. |
