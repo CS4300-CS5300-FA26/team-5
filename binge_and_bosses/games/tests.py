@@ -38,6 +38,12 @@ class LandingPageTests(TestCase):
         self.assertEqual(links["Sign up"], reverse("signup"))
         self.assertEqual(links["Log in"], reverse("login"))
 
+    def test_visitor_is_asked_to_sign_up_only_once_on_the_page(self):
+        page = BeautifulSoup(self.client.get(reverse("index")).content, "html.parser")
+        sign_up_links = page.select(f'main a[href="{reverse("signup")}"]')
+
+        self.assertEqual(len(sign_up_links), 1)
+
     def test_player_gets_library_and_search_links_and_no_sign_up(self):
         user = get_user_model().objects.create_user(
             username="player_one", email="player@example.com", password="Gr8Backlog!42"

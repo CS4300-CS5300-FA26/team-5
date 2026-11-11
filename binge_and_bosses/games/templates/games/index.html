@@ -109,14 +109,5 @@
             </li>
         </ol>
     </section>
-
-    <section class="landing-band">
-        <h2>Your next game is one search away.</h2>
-        {% if user.is_authenticated %}
-            <a class="btn btn-primary btn-arcade" href="{% url 'game_search' %}">Search games</a>
-        {% else %}
-            <a class="btn btn-primary btn-arcade" href="{% url 'signup' %}">Create a free account</a>
-        {% endif %}
-    </section>
 </div>
 {% endblock %}

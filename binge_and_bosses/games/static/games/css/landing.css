@@ -21,7 +21,7 @@
 
     display: grid;
     gap: clamp(2.5rem, 6vw, 4.5rem);
-    padding-block: clamp(0.5rem, 3vw, 2rem) 1rem;
+    padding-block: clamp(0.5rem, 3vw, 2rem) clamp(1.5rem, 4vw, 3rem);   /* the steps end the page, so leave room below */
 }
 
 .landing h1,
@@ -359,21 +359,6 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
 }
-
-/* Closing band: a slim strip, so it doesn't compete with the hero */
-.landing-band {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem 1.5rem;
-    padding: 0.875rem 1.25rem;
-    background: var(--sunk);
-    border: 1px solid var(--line);
-    border-radius: 0.75rem;
-}
-
-.landing-band h2 { font-size: 1.125rem; }
 
 @media (max-width: 991.98px) {
     .landing-steps ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
