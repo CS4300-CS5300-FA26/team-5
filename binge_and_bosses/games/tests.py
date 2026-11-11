@@ -31,6 +31,7 @@ class LandingPageTests(TestCase):
         self.assertContains(response, "One save file for")
         self.assertContains(response, "Find it")
         self.assertContains(response, "Rate it")
+        self.assertContains(response, "Example library")
 
     def test_visitor_gets_sign_up_and_log_in_links(self):
         links = self.links(self.client.get(reverse("index")))
@@ -65,6 +66,73 @@ class LandingPageTests(TestCase):
 
 
 # Dark mode: base.html gives every page a toggle and loads the script that applies the theme.
+class PlayerLibraryCardTests(TestCase):
+    """Logged-in players see their own library on the home page, not the example."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="player_one", email="player@example.com", password="Gr8Backlog!42"
+        )
+        self.client.force_login(self.user)
+
+    def add(self, title, user=None, **entry):
+        game = Game.objects.create(
+            game_title=title, game_description="", game_rating=4.0,
+            game_image=f"https://media.example.com/{title}.jpg",
+        )
+        return Catalog.objects.create(user=user or self.user, games=game, **entry)
+
+    def card(self):
+        page = BeautifulSoup(self.client.get(reverse("index")).content, "html.parser")
+        return page.select_one("main .savefile")
+
+    def test_player_sees_their_own_library_and_counts(self):
+        for title in ("Hades II", "Balatro", "Celeste"):
+            self.add(title)
+
+        card = self.card()
+        text = card.get_text(" ", strip=True)
+
+        self.assertIn("player_one's library", text)
+        self.assertIn("3 games", text)
+        self.assertIn("Not Started 3", text)
+        self.assertNotIn("Example library", text)
+
+    def test_card_lists_the_two_most_recently_added_games(self):
+        for title in ("Hades II", "Balatro", "Celeste"):
+            self.add(title)
+
+        titles = [b.get_text(strip=True) for b in self.card().select(".savefile-games b")]
+
+        self.assertEqual(titles, ["Celeste", "Balatro"])
+
+    def test_card_shows_each_game_cover_and_rating(self):
+        self.add("Hades II", rating=4)
+        self.add("Balatro")
+
+        rows = self.card().select(".savefile-games li")
+
+        self.assertEqual(rows[1].select_one("img.cover")["src"], "https://media.example.com/Hades II.jpg")
+        self.assertEqual(rows[1].select_one(".stars")["aria-label"], "Rated 4 out of 5")
+        self.assertIn("Not rated", rows[0].get_text())
+
+    def test_card_only_counts_the_players_own_games(self):
+        other = get_user_model().objects.create_user(username="someone_else", password="Gr8Backlog!42")
+        self.add("Hades II")
+        self.add("Balatro", user=other)
+
+        card = self.card()
+
+        self.assertEqual(card.select_one(".savefile-top .hud").get_text(strip=True), "1 game")
+        self.assertNotIn("Balatro", card.get_text())
+
+    def test_empty_library_points_to_search(self):
+        card = self.card()
+
+        self.assertIn("No games yet", card.get_text())
+        self.assertIsNotNone(card.select_one(f'a[href="{reverse("game_search")}"]'))
+
+
 class DarkModeToggleTests(TestCase):
 
     def test_every_page_has_a_dark_mode_toggle(self):

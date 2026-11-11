@@ -24,6 +24,48 @@
             </div>
         </div>
 
+        {% if user.is_authenticated %}
+        <figure class="savefile">
+            <figcaption class="savefile-top">
+                <strong>{{ user.username }}'s library</strong>
+                <span class="hud">{{ total }} game{{ total|pluralize }}</span>
+            </figcaption>
+            {% if total %}
+                <div class="bossbar" aria-hidden="true">
+                    {% for status in statuses %}{% if status.count %}
+                        <i class="status-{{ status.value }}" style="flex: {{ status.count }}"></i>
+                    {% endif %}{% endfor %}
+                </div>
+                <dl class="legend">
+                    {% for status in statuses %}
+                        <div class="status-{{ status.value }}"><dt>{{ status.label }}</dt><dd>{{ status.count }}</dd></div>
+                    {% endfor %}
+                </dl>
+                <ul class="savefile-games">
+                    {% for entry in recent %}
+                        <li>
+                            {% if entry.games.game_image %}
+                                <img class="cover" src="{{ entry.games.game_image }}" alt="" loading="lazy">
+                            {% else %}
+                                <span class="cover" style="--h: 220"></span>
+                            {% endif %}
+                            <span>
+                                <b>{{ entry.games.game_title }}</b>
+                                {% if entry.rating %}
+                                    <span class="stars" role="img" aria-label="Rated {{ entry.rating }} out of 5">{% for star in "12345" %}{% if forloop.counter <= entry.rating %}★{% else %}<span class="off">★</span>{% endif %}{% endfor %}</span>
+                                {% else %}
+                                    <span class="not-rated">Not rated</span>
+                                {% endif %}
+                            </span>
+                            <span class="pill on status-{{ entry.status }}">{{ entry.get_status_display }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="savefile-empty">No games yet. <a href="{% url 'game_search' %}">Search for one</a> to start your library.</p>
+            {% endif %}
+        </figure>
+        {% else %}
         <figure class="savefile" aria-label="Example library: 61 games, 24 finished. Finished 24, Playing 3, Not started 30, Dropped 4.">
             <figcaption class="savefile-top">
                 <strong>Example library</strong>
@@ -55,6 +97,7 @@
                 </li>
             </ul>
         </figure>
+        {% endif %}
     </section>
 
     <section class="landing-steps" aria-labelledby="how-it-works">

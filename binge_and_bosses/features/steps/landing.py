@@ -2,9 +2,11 @@
     Steps for the landing page. Link checks look inside <main>, because the nav bar
     in base.html has its own links.
 """
-from behave import then, when
+from behave import given, then, when
 from bs4 import BeautifulSoup
 from django.urls import reverse
+
+from games.models import Catalog, Game
 
 from common import PAGES
 
@@ -55,3 +57,18 @@ def see_player_links(context):
 @then('I do not see a "Sign up" link')
 def no_sign_up_link(context):
     context.test.assertNotIn(reverse("signup"), links(context, "body").values())
+
+
+@given('my library has "{first}" and "{second}"')
+def library_has(context, first, second):
+    for title in (first, second):
+        game = Game.objects.create(game_title=title, game_description="", game_rating=4.0)
+        Catalog.objects.create(user=context.user, games=game)
+
+
+@then('my library card lists "{first}" and "{second}"')
+def card_lists(context, first, second):
+    card = BeautifulSoup(context.response.content, "html.parser").select_one("main .savefile")
+    context.test.assertIn(f"{context.user.username}'s library", card.get_text(" ", strip=True))
+    titles = [b.get_text(strip=True) for b in card.select(".savefile-games b")]
+    context.test.assertEqual(titles, [first, second])

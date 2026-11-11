@@ -231,6 +231,27 @@
         linear-gradient(160deg, hsl(var(--h) 55% 34%), hsl(calc(var(--h) + 40) 50% 16%));
 }
 
+/* A player's real library card: RAWG covers, and colours by status value.
+   Add a class here for each status #12 brings in. */
+.landing img.cover {
+    width: 100%;
+    object-fit: cover;
+}
+
+.status-not_started { --c: var(--status-not-started); }
+
+.bossbar i[class^="status-"] { background: var(--c); }
+
+.not-rated {
+    display: block;
+    color: var(--muted);
+    font-size: 0.8125rem;
+}
+
+.savefile-empty {
+    color: var(--muted);
+}
+
 .stars {
     color: var(--gold);
     letter-spacing: 1px;
@@ -257,6 +278,8 @@
     background: var(--c);
     color: #fff;
 }
+
+.pill.on.status-not_started { color: var(--ink); }   /* white text is unreadable on the grey */
 
 /* How it works: find, add, track, rate */
 .landing-steps ol {

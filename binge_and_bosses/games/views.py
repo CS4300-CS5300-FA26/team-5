@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from .models import Catalog
@@ -12,7 +12,21 @@ from .forms import ReviewForm
 
 
 def index(request):
-    return render(request, 'games/index.html')
+    if not request.user.is_authenticated:
+        return render(request, 'games/index.html')
+
+    # Logged-in players see their own library card instead of the example one
+    entries = Catalog.objects.filter(user=request.user)
+    counts = dict(entries.values_list('status').annotate(Count('id')))
+    statuses = [
+        {'value': value, 'label': label, 'count': counts.get(value, 0)}
+        for value, label in Catalog.Status.choices
+    ]
+    return render(request, 'games/index.html', {
+        'statuses': statuses,
+        'total': sum(counts.values()),
+        'recent': entries.select_related('games').order_by('-id')[:2],
+    })
 
 @login_required
 def library(request):
