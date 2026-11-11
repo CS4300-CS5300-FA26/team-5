@@ -231,7 +231,7 @@
         linear-gradient(160deg, hsl(var(--h) 55% 34%), hsl(calc(var(--h) + 40) 50% 16%));
 }
 
-/* A player's real library card: RAWG covers, and colours by status value.
+/* Real library data on the player home page: RAWG covers, and colours by status value.
    Add a class here for each status #12 brings in. */
 .landing img.cover {
     width: 100%;
@@ -241,16 +241,6 @@
 .status-not_started { --c: var(--status-not-started); }
 
 .bossbar i[class^="status-"] { background: var(--c); }
-
-.not-rated {
-    display: block;
-    color: var(--muted);
-    font-size: 0.8125rem;
-}
-
-.savefile-empty {
-    color: var(--muted);
-}
 
 .stars {
     color: var(--gold);
@@ -390,12 +380,129 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* Player home page (games/home.html) */
+.home { gap: clamp(1.75rem, 4vw, 2.5rem); }
+
+.home h2 { font-size: 1.25rem; }
+
+.home-top {
+    display: grid;
+    gap: 1rem;
+}
+
+.home-top h1 {
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    letter-spacing: -0.01em;
+}
+
+.home-search {
+    display: flex;
+    gap: 0.75rem;
+    max-width: 40rem;
+}
+
+.home-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.home-panel {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1.25rem;
+    background: var(--sunk);
+    border-radius: 0.75rem;
+}
+
+.home-muted { color: var(--muted); }
+
+.home-library-foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.875rem;
+}
+
+.home a:not(.btn) {
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.home-rate ul,
+.home-covers {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.home-rate ul {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.home-rate a {
+    display: grid;
+    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem 0.5rem 0.5rem;
+    background: var(--surface);
+    border-radius: 0.5rem;
+    color: var(--ink);
+}
+
+.home-rate a:hover { box-shadow: inset 0 0 0 2px var(--accent); }
+
+.home-rate b,
+.home-cover-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.home-rate-cta {
+    color: var(--accent);
+    font-size: 0.875rem;
+}
+
+.home-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.75rem;
+}
+
+.home-covers {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.home-covers a {
+    display: grid;
+    gap: 0.5rem;
+    color: var(--ink);
+    font-size: 0.875rem;
+}
+
+.home-covers .cover { transition: transform 0.15s ease; }
+
+.home-covers a:hover .cover { transform: translateY(-3px); }
+
 @media (max-width: 991.98px) {
-    .landing-steps ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .landing-steps ol,
+    .home-covers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 767.98px) {
-    .landing-hero { grid-template-columns: minmax(0, 1fr); }
+    .landing-hero,
+    .home-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 479.98px) {
@@ -405,5 +512,6 @@
 
 @media (prefers-reduced-motion: reduce) {
     .caret { animation: none; }
-    .btn-arcade { transition: none; }
+    .btn-arcade,
+    .home-covers .cover { transition: none; }
 }

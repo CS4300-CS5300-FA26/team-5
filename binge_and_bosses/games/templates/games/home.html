@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Home | Binge and Bosses{% endblock %}
+{% block extra_head %}
+    {% include "games/_landing_head.html" %}
+{% endblock %}
+{% block content %}
+<div class="landing home">
+    <section class="home-top">
+        <h1>Welcome back, {{ user.username }}</h1>
+        <form class="home-search" action="{% url 'game_search' %}" method="get" role="search">
+            <label class="visually-hidden" for="home-q">Search for a game</label>
+            <input id="home-q" class="form-control form-control-lg" name="q" placeholder="Search for a game…" required>
+            <button class="btn btn-primary btn-lg btn-arcade" type="submit">Search</button>
+        </form>
+    </section>
+
+    {% if total %}
+        <div class="home-grid">
+            <section class="savefile home-library" aria-labelledby="home-library-title">
+                <div class="savefile-top">
+                    <h2 id="home-library-title">Your library</h2>
+                    <span class="hud">{{ total }} game{{ total|pluralize }}</span>
+                </div>
+                <div class="bossbar" aria-hidden="true">
+                    {% for status in statuses %}{% if status.count %}
+                        <i class="status-{{ status.value }}" style="flex: {{ status.count }}"></i>
+                    {% endif %}{% endfor %}
+                </div>
+                <dl class="legend">
+                    {% for status in statuses %}
+                        <div class="status-{{ status.value }}"><dt>{{ status.label }}</dt><dd>{{ status.count }}</dd></div>
+                    {% endfor %}
+                </dl>
+                <div class="home-library-foot">
+                    <span>{{ rated }} rated · {{ reviewed }} review{{ reviewed|pluralize }}</span>
+                    <a href="{% url 'library' %}">Open your library</a>
+                </div>
+            </section>
+
+            <section class="home-panel home-rate" aria-labelledby="home-rate-title">
+                <h2 id="home-rate-title">Rate these</h2>
+                {% if unrated %}
+                    <ul>
+                        {% for entry in unrated %}
+                            <li>
+                                <a href="{% url 'game_details' entry.games.rawg_id %}">
+                                    {% include "games/_cover.html" with game=entry.games %}
+                                    <b>{{ entry.games.game_title }}</b>
+                                    <span class="home-rate-cta" aria-hidden="true">Rate ›</span>
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="home-muted">You've rated every game in your library. Nice.</p>
+                {% endif %}
+            </section>
+        </div>
+
+        <section class="home-recent" aria-labelledby="home-recent-title">
+            <div class="home-head">
+                <h2 id="home-recent-title">Recently added</h2>
+                <a href="{% url 'library' %}">See all</a>
+            </div>
+            <ul class="home-covers">
+                {% for entry in recent %}
+                    <li>
+                        <a href="{% url 'game_details' entry.games.rawg_id %}">
+                            {% include "games/_cover.html" with game=entry.games %}
+                            <span class="home-cover-title">{{ entry.games.game_title }}</span>
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% else %}
+        <p class="home-panel home-muted">Your library is empty. Search for a game above to add your first one.</p>
+    {% endif %}
+</div>
+{% endblock %}

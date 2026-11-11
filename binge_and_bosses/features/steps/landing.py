@@ -49,9 +49,10 @@ def on_page(context, page):
 
 @then("I see links to my library and to search")
 def see_player_links(context):
-    hrefs = links(context).values()
-    context.test.assertIn(reverse("library"), hrefs)
-    context.test.assertIn(reverse("game_search"), hrefs)
+    main = BeautifulSoup(context.response.content, "html.parser").select_one("main")
+    # The nav bar's Library link counts: an empty library has no library card on the page
+    context.test.assertIn(reverse("library"), links(context, "body").values())
+    context.test.assertIsNotNone(main.select_one(f'form[action="{reverse("game_search")}"]'))
 
 
 @then('I do not see a "Sign up" link')
@@ -61,14 +62,14 @@ def no_sign_up_link(context):
 
 @given('my library has "{first}" and "{second}"')
 def library_has(context, first, second):
-    for title in (first, second):
-        game = Game.objects.create(game_title=title, game_description="", game_rating=4.0)
+    for rawg_id, title in enumerate((first, second), start=1):
+        game = Game.objects.create(rawg_id=rawg_id, game_title=title, game_description="", game_rating=4.0)
         Catalog.objects.create(user=context.user, games=game)
 
 
-@then('my library card lists "{first}" and "{second}"')
-def card_lists(context, first, second):
-    card = BeautifulSoup(context.response.content, "html.parser").select_one("main .savefile")
-    context.test.assertIn(f"{context.user.username}'s library", card.get_text(" ", strip=True))
-    titles = [b.get_text(strip=True) for b in card.select(".savefile-games b")]
+@then('I see "{first}" and "{second}" under Recently added')
+def recently_added(context, first, second):
+    section = BeautifulSoup(context.response.content, "html.parser").select_one("main .home-recent")
+    context.test.assertIsNotNone(section, "The home page has no Recently added section")
+    titles = [li.get_text(strip=True) for li in section.select("li")]
     context.test.assertEqual(titles, [first, second])

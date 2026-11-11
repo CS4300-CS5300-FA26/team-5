@@ -52,10 +52,11 @@ class LandingPageTests(TestCase):
         self.client.force_login(user)
 
         response = self.client.get(reverse("index"))
-        links = self.links(response)
+        page = BeautifulSoup(response.content, "html.parser")
 
-        self.assertIn(reverse("library"), links.values())
-        self.assertIn(reverse("game_search"), links.values())
+        # The nav bar's Library link counts: an empty library has no library card on the page
+        self.assertIn(reverse("library"), self.links(response, "body").values())
+        self.assertIsNotNone(page.select_one(f'main form[action="{reverse("game_search")}"]'))
         self.assertNotIn(reverse("signup"), self.links(response, "body").values())
 
     def test_page_loads_its_stylesheet(self):
@@ -66,71 +67,95 @@ class LandingPageTests(TestCase):
 
 
 # Dark mode: base.html gives every page a toggle and loads the script that applies the theme.
-class PlayerLibraryCardTests(TestCase):
-    """Logged-in players see their own library on the home page, not the example."""
+class PlayerHomeTests(TestCase):
+    """Logged-in players get a working home page: search, library stats, games to rate, recent adds."""
 
     def setUp(self):
         self.user = get_user_model().objects.create_user(
             username="player_one", email="player@example.com", password="Gr8Backlog!42"
         )
         self.client.force_login(self.user)
+        self.next_rawg_id = 1
 
     def add(self, title, user=None, **entry):
         game = Game.objects.create(
-            game_title=title, game_description="", game_rating=4.0,
+            rawg_id=self.next_rawg_id, game_title=title, game_description="", game_rating=4.0,
             game_image=f"https://media.example.com/{title}.jpg",
         )
+        self.next_rawg_id += 1
         return Catalog.objects.create(user=user or self.user, games=game, **entry)
 
-    def card(self):
-        page = BeautifulSoup(self.client.get(reverse("index")).content, "html.parser")
-        return page.select_one("main .savefile")
+    def page(self):
+        return BeautifulSoup(self.client.get(reverse("index")).content, "html.parser").select_one("main")
 
-    def test_player_sees_their_own_library_and_counts(self):
-        for title in ("Hades II", "Balatro", "Celeste"):
-            self.add(title)
+    def titles(self, section):
+        return [a.get_text(" ", strip=True) for a in self.page().select(f"{section} li a")]
 
-        card = self.card()
-        text = card.get_text(" ", strip=True)
+    def test_player_home_skips_the_pitch_and_the_steps(self):
+        text = self.page().get_text(" ", strip=True)
 
-        self.assertIn("player_one's library", text)
+        self.assertIn("Welcome back, player_one", text)
+        self.assertNotIn("One save file for", text)
+        self.assertNotIn("Find it", text)
+
+    def test_player_home_has_a_search_box(self):
+        form = self.page().select_one(f'form[action="{reverse("game_search")}"]')
+
+        self.assertEqual(form["method"], "get")
+        self.assertIsNotNone(form.select_one('input[name="q"]'))
+
+    def test_library_card_shows_counts_ratings_and_reviews(self):
+        self.add("Hades II", rating=5, review="Best one yet.")
+        self.add("Balatro", rating=4)
+        self.add("Celeste")
+
+        text = self.page().select_one(".home-library").get_text(" ", strip=True)
+
         self.assertIn("3 games", text)
         self.assertIn("Not Started 3", text)
-        self.assertNotIn("Example library", text)
+        self.assertIn("2 rated", text)
+        self.assertIn("1 review", text)
 
-    def test_card_lists_the_two_most_recently_added_games(self):
-        for title in ("Hades II", "Balatro", "Celeste"):
+    def test_rate_these_lists_up_to_three_unrated_games_newest_first(self):
+        self.add("Hades II", rating=5)
+        for title in ("Celeste", "Balatro", "Stardew Valley", "Elden Ring"):
             self.add(title)
 
-        titles = [b.get_text(strip=True) for b in self.card().select(".savefile-games b")]
+        rows = self.page().select(".home-rate li a")
 
-        self.assertEqual(titles, ["Celeste", "Balatro"])
+        self.assertEqual([a.select_one("b").get_text() for a in rows], ["Elden Ring", "Stardew Valley", "Balatro"])
+        self.assertEqual(rows[0]["href"], reverse("game_details", args=[5]))
 
-    def test_card_shows_each_game_cover_and_rating(self):
-        self.add("Hades II", rating=4)
-        self.add("Balatro")
+    def test_rate_these_says_when_everything_is_rated(self):
+        self.add("Hades II", rating=5)
 
-        rows = self.card().select(".savefile-games li")
+        self.assertIn("You've rated every game", self.page().select_one(".home-rate").get_text())
 
-        self.assertEqual(rows[1].select_one("img.cover")["src"], "https://media.example.com/Hades II.jpg")
-        self.assertEqual(rows[1].select_one(".stars")["aria-label"], "Rated 4 out of 5")
-        self.assertIn("Not rated", rows[0].get_text())
+    def test_recently_added_shows_the_six_newest_with_covers(self):
+        for n in range(1, 8):
+            self.add(f"Game {n}")
 
-    def test_card_only_counts_the_players_own_games(self):
+        items = self.page().select(".home-recent li")
+
+        self.assertEqual([li.get_text(strip=True) for li in items], [f"Game {n}" for n in range(7, 1, -1)])
+        self.assertEqual(items[0].select_one("img.cover")["src"], "https://media.example.com/Game 7.jpg")
+        self.assertEqual(items[0].select_one("a")["href"], reverse("game_details", args=[7]))
+
+    def test_home_only_shows_the_players_own_games(self):
         other = get_user_model().objects.create_user(username="someone_else", password="Gr8Backlog!42")
         self.add("Hades II")
         self.add("Balatro", user=other)
 
-        card = self.card()
+        page = self.page()
 
-        self.assertEqual(card.select_one(".savefile-top .hud").get_text(strip=True), "1 game")
-        self.assertNotIn("Balatro", card.get_text())
+        self.assertIn("1 game", page.select_one(".home-library .hud").get_text())
+        self.assertNotIn("Balatro", page.get_text())
 
     def test_empty_library_points_to_search(self):
-        card = self.card()
+        page = self.page()
 
-        self.assertIn("No games yet", card.get_text())
-        self.assertIsNotNone(card.select_one(f'a[href="{reverse("game_search")}"]'))
+        self.assertIn("Your library is empty", page.get_text())
+        self.assertIsNone(page.select_one(".home-library"))
 
 
 class DarkModeToggleTests(TestCase):

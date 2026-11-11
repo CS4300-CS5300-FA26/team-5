@@ -15,17 +15,22 @@ def index(request):
     if not request.user.is_authenticated:
         return render(request, 'games/index.html')
 
-    # Logged-in players see their own library card instead of the example one
-    entries = Catalog.objects.filter(user=request.user)
-    counts = dict(entries.values_list('status').annotate(Count('id')))
+    # Logged-in players get a working home page built from their own library
+    entries = Catalog.objects.filter(user=request.user).select_related('games').order_by('-id')
+    counts = dict(entries.values_list('status').annotate(Count('id')).order_by())
     statuses = [
         {'value': value, 'label': label, 'count': counts.get(value, 0)}
         for value, label in Catalog.Status.choices
     ]
-    return render(request, 'games/index.html', {
+    return render(request, 'games/home.html', {
         'statuses': statuses,
         'total': sum(counts.values()),
-        'recent': entries.select_related('games').order_by('-id')[:2],
+        **entries.aggregate(
+            rated=Count('id', filter=Q(rating__isnull=False)),
+            reviewed=Count('id', filter=~Q(review='')),
+        ),
+        'unrated': entries.filter(rating__isnull=True)[:3],
+        'recent': entries[:6],
     })
 
 @login_required

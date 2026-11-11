@@ -1,11 +1,7 @@
 {% extends "base.html" %}
-{% load static %}
 {% block title %}Binge and Bosses | Track every game you play{% endblock %}
 {% block extra_head %}
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&family=Chakra+Petch:wght@600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'games/css/landing.css' %}">
+    {% include "games/_landing_head.html" %}
 {% endblock %}
 {% block content %}
 <div class="landing">
@@ -14,58 +10,11 @@
             <h1>One save file for <em>every game</em> you play.</h1>
             <p class="landing-lede">Keep your library, your play status and your ratings in one place, and finally see how much of the backlog you've beaten.</p>
             <div class="landing-cta">
-                {% if user.is_authenticated %}
-                    <a class="btn btn-primary btn-lg btn-arcade" href="{% url 'library' %}">Open your library</a>
-                    <a class="landing-link" href="{% url 'game_search' %}">Search games</a>
-                {% else %}
-                    <a class="btn btn-primary btn-lg btn-arcade" href="{% url 'signup' %}">Sign up</a>
-                    <a class="landing-link" href="{% url 'login' %}">Log in</a>
-                {% endif %}
+                <a class="btn btn-primary btn-lg btn-arcade" href="{% url 'signup' %}">Sign up</a>
+                <a class="landing-link" href="{% url 'login' %}">Log in</a>
             </div>
         </div>
 
-        {% if user.is_authenticated %}
-        <figure class="savefile">
-            <figcaption class="savefile-top">
-                <strong>{{ user.username }}'s library</strong>
-                <span class="hud">{{ total }} game{{ total|pluralize }}</span>
-            </figcaption>
-            {% if total %}
-                <div class="bossbar" aria-hidden="true">
-                    {% for status in statuses %}{% if status.count %}
-                        <i class="status-{{ status.value }}" style="flex: {{ status.count }}"></i>
-                    {% endif %}{% endfor %}
-                </div>
-                <dl class="legend">
-                    {% for status in statuses %}
-                        <div class="status-{{ status.value }}"><dt>{{ status.label }}</dt><dd>{{ status.count }}</dd></div>
-                    {% endfor %}
-                </dl>
-                <ul class="savefile-games">
-                    {% for entry in recent %}
-                        <li>
-                            {% if entry.games.game_image %}
-                                <img class="cover" src="{{ entry.games.game_image }}" alt="" loading="lazy">
-                            {% else %}
-                                <span class="cover" style="--h: 220"></span>
-                            {% endif %}
-                            <span>
-                                <b>{{ entry.games.game_title }}</b>
-                                {% if entry.rating %}
-                                    <span class="stars" role="img" aria-label="Rated {{ entry.rating }} out of 5">{% for star in "12345" %}{% if forloop.counter <= entry.rating %}★{% else %}<span class="off">★</span>{% endif %}{% endfor %}</span>
-                                {% else %}
-                                    <span class="not-rated">Not rated</span>
-                                {% endif %}
-                            </span>
-                            <span class="pill on status-{{ entry.status }}">{{ entry.get_status_display }}</span>
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p class="savefile-empty">No games yet. <a href="{% url 'game_search' %}">Search for one</a> to start your library.</p>
-            {% endif %}
-        </figure>
-        {% else %}
         <figure class="savefile" aria-label="Example library: 61 games, 24 finished. Finished 24, Playing 3, Not started 30, Dropped 4.">
             <figcaption class="savefile-top">
                 <strong>Example library</strong>
@@ -97,7 +46,6 @@
                 </li>
             </ul>
         </figure>
-        {% endif %}
     </section>
 
     <section class="landing-steps" aria-labelledby="how-it-works">

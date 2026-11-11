@@ -20,8 +20,8 @@ Feature: Landing page
     Then I see links to my library and to search
     And I do not see a "Sign up" link
 
-  Scenario: Logged-in player sees their own library
+  Scenario: Logged-in player sees their own games
     Given I am logged in
     And my library has "Hades II" and "Balatro"
     When I visit the home page
-    Then my library card lists "Balatro" and "Hades II"
+    Then I see "Balatro" and "Hades II" under Recently added
