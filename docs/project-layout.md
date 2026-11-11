@@ -10,7 +10,7 @@ team-5/
 │   │   └── urls.py
 │   ├── templates/base.html    ← shared page layout (Bootstrap); new pages extend it
 │   ├── behave.ini             ← skips @wip scenarios by default
-│   ├── features/              ← account, search, details, library, rating and review scenarios; steps in steps/
+│   ├── features/              ← landing, account, search, details, library, rating and review scenarios; steps in steps/
 │   ├── authentication/        ← accounts: custom User model, sign-up, log-in
 │   │   ├── models.py          ← User (settings.AUTH_USER_MODEL)
 │   │   ├── forms.py           ← SignupForm, LoginForm (Bootstrap-styled)
@@ -24,7 +24,8 @@ team-5/
 │       ├── views.py           ← home, library, RAWG search and details views
 │       ├── rawg_client.py     ← search_game and get_game_details call RAWG
 │       ├── urls.py
-│       ├── templates/games/   ← index.html, library.html, search.html, details.html
+│       ├── templates/games/   ← index.html (landing page), library.html, search.html, details.html
+│       ├── static/games/css/  ← landing.css
 │       ├── migrations/        ← committed; never delete or edit by hand
 │       └── tests.py
 ├── .github/
@@ -45,8 +46,8 @@ Using the home page as the example:
 
 1. `binge_and_bosses/urls.py` sends `/` to the games app's `urls.py`.
 2. `games/urls.py` sends `""` to `views.index`.
-3. `views.index` loads every `Game` from the database.
-4. It renders `games/index.html` with those games.
+3. `views.index` renders `games/index.html`, the landing page.
+4. The template shows different buttons to visitors and logged-in players (`user.is_authenticated`).
 
 New features follow the same path: URL → view → model → template.
 
@@ -55,7 +56,7 @@ Search and details fetch RAWG data through `games/rawg_client.py`. Adding a game
 ## Pages
 | URL | Name | What it is |
 | --- | --- | --- |
-| `/` | `index` | Home page |
+| `/` | `index` | Landing page: what the app does, with Sign up and Log in for visitors, or Library and Search for players. Makes no RAWG calls. |
 | `/search/?q=title` | `game_search` | Search RAWG by title; shows up to five results. If RAWG fails, shows this visitor's last results for the same search (kept in the session). No login required. |
 | `/<int:game_id>/` | `game_details` | Details for a RAWG game ID. If RAWG fails, goes back to the search results with an error when opened from a search, otherwise shows the error on this page. No login required. |
 | `/library/` | `library` | The user's saved games, statuses and ratings. Requires login. |

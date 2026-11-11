@@ -17,33 +17,45 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 
 
-# Tests for the landing page (URL "/" -> index view -> Game model -> index.html).
-# Django's TestCase runs against a temporary test database, so these tests
-# never read or write the real development or production data.
+# Tests for the landing page (URL "/" -> index view -> games/index.html).
 class LandingPageTests(TestCase):
 
-    def test_home_page_lists_saved_game(self):
-        Game.objects.create(
-            game_title="Hollow Knight",
-            game_description="Explore the ruined kingdom of Hallownest.",
-            game_rating=9.5,
-            game_release=date(2017, 2, 24),
+    def links(self, response, scope="main"):
+        page = BeautifulSoup(response.content, "html.parser").select_one(scope)
+        return {a.get_text(" ", strip=True): a["href"] for a in page.select("a[href]")}
+
+    def test_visitor_sees_what_the_app_is_for(self):
+        response = self.client.get(reverse("index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "One save file for")
+        self.assertContains(response, "Find it")
+        self.assertContains(response, "Rate it")
+
+    def test_visitor_gets_sign_up_and_log_in_links(self):
+        links = self.links(self.client.get(reverse("index")))
+
+        self.assertEqual(links["Sign up"], reverse("signup"))
+        self.assertEqual(links["Log in"], reverse("login"))
+
+    def test_player_gets_library_and_search_links_and_no_sign_up(self):
+        user = get_user_model().objects.create_user(
+            username="player_one", email="player@example.com", password="Gr8Backlog!42"
         )
+        self.client.force_login(user)
 
-        response = self.client.get("/")
+        response = self.client.get(reverse("index"))
+        links = self.links(response)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Hollow Knight")
-        self.assertContains(response, "Explore the ruined kingdom of Hallownest.")
-        self.assertContains(response, "9.5")
-        self.assertContains(response, "Feb. 24, 2017")
-        self.assertNotContains(response, "No games yet...")
+        self.assertIn(reverse("library"), links.values())
+        self.assertIn(reverse("game_search"), links.values())
+        self.assertNotIn(reverse("signup"), self.links(response, "body").values())
 
-    def test_home_page_shows_empty_message_without_games(self):
-        response = self.client.get("/")
+    def test_page_loads_its_stylesheet(self):
+        response = self.client.get(reverse("index"))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No games yet...")
+        self.assertContains(response, "games/css/landing.css")
+        self.assertIsNotNone(finders.find("games/css/landing.css"))
 
 
 class SearchAPICheckandDetails(TestCase):

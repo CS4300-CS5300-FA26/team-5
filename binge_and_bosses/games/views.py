@@ -4,16 +4,15 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.urls import reverse
 from django.views.decorators.http import require_POST
-from .models import Game, Catalog
-from .rawg_client import search_game 
+from .models import Catalog
+from .rawg_client import search_game
 from .catalog import get_or_import
 from .forms import ReviewForm
 # Create your views here.
 
 
 def index(request):
-    games = Game.objects.all()
-    return render(request,'games/index.html',{'games':games})
+    return render(request, 'games/index.html')
 
 @login_required
 def library(request):
