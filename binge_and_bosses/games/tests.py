@@ -58,6 +58,23 @@ class LandingPageTests(TestCase):
         self.assertIsNotNone(finders.find("games/css/landing.css"))
 
 
+# Dark mode: base.html gives every page a toggle and loads the script that applies the theme.
+class DarkModeToggleTests(TestCase):
+
+    def test_every_page_has_a_dark_mode_toggle(self):
+        for url in (reverse("index"), reverse("login"), reverse("signup")):
+            with self.subTest(url=url):
+                page = BeautifulSoup(self.client.get(url).content, "html.parser")
+                toggle = page.select_one("nav button#theme-toggle")
+
+                self.assertIsNotNone(toggle)
+                self.assertEqual(toggle["aria-label"], "Dark mode")
+                self.assertIsNotNone(page.select_one('head script[src$="js/theme.js"]'))
+
+    def test_theme_script_exists(self):
+        self.assertIsNotNone(finders.find("js/theme.js"))
+
+
 class SearchAPICheckandDetails(TestCase):
 
     @patch('games.rawg_client.requests.get')

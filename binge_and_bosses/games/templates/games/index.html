@@ -4,14 +4,13 @@
 {% block extra_head %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Chakra+Petch:wght@600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&family=Chakra+Petch:wght@600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'games/css/landing.css' %}">
 {% endblock %}
 {% block content %}
 <div class="landing">
     <section class="landing-hero">
         <div>
-            <p class="hud landing-eyebrow">Your gaming backlog, tracked</p>
             <h1>One save file for <em>every game</em> you play.</h1>
             <p class="landing-lede">Keep your library, your play status and your ratings in one place, and finally see how much of the backlog you've beaten.</p>
             <div class="landing-cta">
@@ -25,12 +24,12 @@
             </div>
         </div>
 
-        <figure class="savefile" aria-label="Example library: 61 games, 37 not finished yet. Finished 24, Playing 3, Not started 30, Dropped 4.">
+        <figure class="savefile" aria-label="Example library: 61 games, 24 finished. Finished 24, Playing 3, Not started 30, Dropped 4.">
             <figcaption class="savefile-top">
                 <strong>Example library</strong>
                 <span class="hud">61 games</span>
             </figcaption>
-            <div class="bossbar-label hud" aria-hidden="true"><span>Backlog boss</span><span><b>37</b> / 61 HP left</span></div>
+            <div class="bossbar-label hud" aria-hidden="true"><span>Progress</span><span><b>24</b> of 61 finished</span></div>
             <div class="bossbar" aria-hidden="true">
                 <i style="flex: 24; background: var(--status-finished)"></i>
                 <i style="flex: 3; background: var(--status-playing)"></i>
@@ -87,8 +86,8 @@
                     <span class="pills">
                         <span class="pill" style="--c: var(--status-not-started-ink)">Not Started</span>
                         <span class="pill on" style="--c: var(--status-playing)">Playing</span>
-                        <span class="pill" style="--c: var(--status-finished)">Finished</span>
-                        <span class="pill" style="--c: var(--status-dropped)">Dropped</span>
+                        <span class="pill" style="--c: var(--status-finished-ink)">Finished</span>
+                        <span class="pill" style="--c: var(--status-dropped-ink)">Dropped</span>
                     </span>
                 </div>
                 <p>Move it from Not Started to Playing, Finished or Dropped as you go.</p>

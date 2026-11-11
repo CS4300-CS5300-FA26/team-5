@@ -14,7 +14,10 @@
     --status-not-started: var(--bs-border-color);
     --status-not-started-ink: var(--bs-secondary-color);
     --status-dropped: var(--bs-danger);
-    --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --status-finished-ink: var(--status-finished);   /* text and outlines; lighter in dark mode */
+    --status-dropped-ink: var(--status-dropped);
+    --font-display: "Outfit", "Segoe UI", system-ui, sans-serif;
+    --band-bg: var(--bs-dark);
     --font-hud: "Chakra Petch", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
     display: grid;
@@ -26,6 +29,7 @@
 .landing h2,
 .landing h3 {
     font-family: var(--font-display);
+    font-weight: 700;
     color: var(--ink);
     text-wrap: balance;
     margin: 0;
@@ -42,6 +46,15 @@
     text-transform: uppercase;
 }
 
+/* In dark mode the page is already near-black, so the band turns deep blue */
+[data-bs-theme="dark"] .landing {
+    --accent: var(--bs-primary-text-emphasis);   /* #0d6efd is too dark for text on the dark page */
+    --band-bg: var(--bs-primary-bg-subtle);
+    --gold: #f2b53e;
+    --status-finished-ink: var(--bs-success-text-emphasis);
+    --status-dropped-ink: var(--bs-danger-text-emphasis);
+}
+
 /* Hero */
 .landing-hero {
     display: grid;
@@ -50,13 +63,10 @@
     align-items: center;
 }
 
-.landing-eyebrow { color: var(--accent); }
-
 .landing-hero h1 {
     font-size: clamp(2.25rem, 5.4vw, 3.75rem);
-    font-weight: 800;
     letter-spacing: -0.02em;
-    margin-block: 0.75rem 1rem;
+    margin-bottom: 1rem;
 }
 
 .landing-hero h1 em {
@@ -141,6 +151,7 @@
 
 .savefile-top strong {
     font-family: var(--font-display);
+    font-weight: 700;
     font-size: 1.125rem;
     color: var(--ink);
 }
@@ -155,7 +166,7 @@
     color: var(--muted);
 }
 
-.bossbar-label b { color: var(--status-dropped); }
+.bossbar-label b { color: var(--status-finished-ink); }
 
 .bossbar {
     display: flex;
@@ -358,7 +369,7 @@
     justify-content: space-between;
     gap: 1rem 1.5rem;
     padding: 1.5rem 1.75rem;
-    background: var(--bs-dark);
+    background: var(--band-bg);
     border-radius: 0.75rem;
 }
 
