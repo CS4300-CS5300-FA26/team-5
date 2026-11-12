@@ -8,7 +8,7 @@ class UsernameChangeForm(forms.ModelForm):
         model = User
         fields = ["username"]
 
-    def sanitize_username(self):
+    def clean_username(self):
         username = self.cleaned_data["username"]
 
         # ensure that username is unique
