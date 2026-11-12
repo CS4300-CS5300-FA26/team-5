@@ -21,6 +21,7 @@ def get_or_import(rawg_id):
             "game_release": data.get("released"),
             "game_image": data.get("background_image") or "",
             "game_genre": ", ".join(g["name"] for g in data.get("genres", [])),
+            "game_platforms": ", ".join(p["platform"]["name"] for p in data.get("platforms") or []),
         },
     )
     return game

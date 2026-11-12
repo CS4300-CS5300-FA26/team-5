@@ -160,7 +160,7 @@ class GameSearchandDetailsViewTests(TestCase):
             response, 'href="/1/?q=Pok%C3%A9mon%20%26%20Red%2FBlue"'
         )
 
-    @patch('games.views.get_game_details')
+    @patch('games.catalog.get_game_details')
     def test_game_details_view(self,mock_search_game_detail):
 
         mock_search_game_detail.return_value = {
@@ -183,7 +183,7 @@ class GameSearchandDetailsViewTests(TestCase):
         self.assertContains(response,1)
         self.assertContains(response,'2011-11-18')
 
-    @patch('games.views.get_game_details')
+    @patch('games.catalog.get_game_details')
     def test_details_api_failure(self, mock_get_game_details):
 
         mock_get_game_details.return_value = None
@@ -199,7 +199,7 @@ class GameSearchandDetailsViewTests(TestCase):
         self.assertContains(response, 'Could not load game details. Try again.')
 
     @patch('games.views.search_game')
-    @patch('games.views.get_game_details')
+    @patch('games.catalog.get_game_details')
     def test_details_failure_returns_to_search_with_message(self, mock_details, mock_search):
         mock_details.return_value = None
         mock_search.return_value = [{'id': 1, 'name': 'Pokemon Red'}]
@@ -216,7 +216,7 @@ class GameSearchandDetailsViewTests(TestCase):
         self.assertEqual(shown_messages[0].level, messages.ERROR)
         mock_search.assert_called_once_with('Pokémon & Red/Blue')
 
-    @patch('games.views.get_game_details')
+    @patch('games.catalog.get_game_details')
     def test_missing_cover_uses_placeholder(self, mock_details):
         for image in ['', None]:
             with self.subTest(background_image=image):
@@ -493,7 +493,7 @@ class ReviewTests(TestCase):
         )
         self.entry = Catalog.objects.create(user=self.user, games=self.game)
         self.client.force_login(self.user)
-        patcher = patch("games.views.get_game_details", return_value={"id": 42, "name": "Portal"})
+        patcher = patch("games.catalog.get_game_details", return_value={"id": 42, "name": "Portal"})
         patcher.start()
         self.addCleanup(patcher.stop)
 
