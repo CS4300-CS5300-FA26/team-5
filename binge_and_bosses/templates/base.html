@@ -41,11 +41,29 @@
                                 Library
                             </a>
                         </li>
+                        
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'game_search' %}">
                                 Search
                             </a>
                         </li>
+                        
+                        {# Dropdown tab for Settings #}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'change_username' %}active{% endif %}"
+                            href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Settings
+                            </a>
+                            <ul class="dropdown-menu shadow-sm border-0">
+                                <li>
+                                    <a class="dropdown-item {% if request.resolver_match.url_name == 'change_username' %}active{% endif %}"
+                                    href="{% url 'profiles:change_username' %}">
+                                        Change Username
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
                     </ul>
 
                     {# Right side controls #}

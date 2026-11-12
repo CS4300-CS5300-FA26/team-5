@@ -1,11 +1,65 @@
 {% extends "base.html" %}
+{% load static %}
+
+{% block title %}Change Username | Binge and Bosses{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/settings.css' %}">
+{% endblock %}
+
 {% block content %}
-    <h2>
-        Change username
-    </h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Save</button>
-    </form>
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-5">
+        <div class="card settings-card shadow-sm border-0">
+            <div class="card-body p-4 p-md-5">
+                
+                <h2 class="settings-title mb-1">Change username</h2>
+                <p class="text-body-secondary mb-4">
+                    Current username: <strong>{{ user.username }}</strong>
+                </p>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{message.tags }} py-2" role="alert">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                
+                {# Errors that apply to the whole form #}
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2" role="alert">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
+                                {{ field.label }}
+                            </label>
+                            {{ field }}
+
+                            {% if field.help_text %}
+                                <div class="form-text">{{field.help_text|safe }}</div>
+                            {% endif %}
+                            
+                            {# Validation errors #}
+                            {% for error in field.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary px-4">Save</button>
+                        <a href="{% url 'library' %}" class="btn btn-outline-secondary px-4">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+</div>
 {% endblock %}
