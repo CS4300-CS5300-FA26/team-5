@@ -1,7 +1,10 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from .forms import UsernameChangeForm
+from .forms import UsernameChangeForm, StyledPasswordChangeForm
+from django.contrib.auth.views import PasswordChangeView
+from django.contrib.messages.views import SuccessMessageMixin
+from django.urls import reverse_lazy
 
 # Create your views here.
 @login_required
@@ -19,4 +22,9 @@ def change_username(request):
 
     return render(request, "profiles/change_username.html", {"form":form})
 
-        
+class ChangePasswordView(SuccessMessageMixin, PasswordChangeView):
+    form_class = StyledPasswordChangeForm
+    template_name = "profiles/change_password.html"
+    success_url = reverse_lazy("profiles:change_password")
+    success_message = "Your password has been updated!"
+    

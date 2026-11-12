@@ -55,6 +55,7 @@ class NavBarUnauthenticated(TestCase):
         response = self.client.get("/")
         self.assertNotContains(response, "Settings")
         self.assertNotContains(response, reverse("profiles:change_username"))
+        self.assertNotContains(response, reverse("profiles:change_password"))
 
 class NavBarAuthenticated(TestCase):
     """
@@ -114,3 +115,4 @@ class NavBarAuthenticated(TestCase):
         self.assertContains(response, "Settings")
         self.assertContains(response, reverse("profiles:change_username"))
         self.assertContains(response, "Change Username")
+        self.assertContains(response, "Change Password")

@@ -4,6 +4,7 @@ from . import views
 app_name = "profiles"
 
 urlpatterns = [
-    path("settings/username/", views.change_username, name="change_username")
+    path("settings/username/", views.change_username, name="change_username"),
+    path("settings/password/", views.ChangePasswordView.as_view(), name="change_password"),
 ]
 

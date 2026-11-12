@@ -47,7 +47,7 @@
                                 Search
                             </a>
                         </li>
-                        
+
                         {# Dropdown tab for Settings #}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'change_username' %}active{% endif %}"
@@ -61,9 +61,15 @@
                                         Change Username
                                     </a>
                                 </li>
+
+                                <li>
+                                    <a class="dropdown-item {% if request.resolver_match.url_name == 'change_password' %}active{% endif %}"
+                                    href="{% url 'profiles:change_password' %}">
+                                        Change Password
+                                    </a>
+                                </li>
                             </ul>
                         </li>
-
                     </ul>
 
                     {# Right side controls #}

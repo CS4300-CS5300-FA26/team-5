@@ -7,6 +7,7 @@ from django.urls import reverse
 
 User = get_user_model()
 PASSWORD = "1FindY0urL@ckoFP@$$w0RDSD1$turbing"
+NEW_PASSWORD = "Sw33t-Dee-Is-a-B1rd!"
 CHANGE_USERNAME_TEMPLATE = "profiles/change_username.html"
 DIFFERENT_USERNAME = "dennis_reynolds"
 
@@ -139,3 +140,140 @@ class ChangeUsernameTests(TestCase):
         response = self.client.post(self.url, {"username": "d" * 151})
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context["form"].errors["username"])
+
+class ChangePasswordTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="Mac", email="mac@paddyspub.com", password=PASSWORD)
+        self.url = reverse("profiles:change_password")
+
+    def login(self):
+        """
+            Function that logs in the 'Mac' user
+        """
+        self.client.login(username="Mac", password=PASSWORD)
+
+    def post_password_change(self, old=PASSWORD, new=NEW_PASSWORD, confirm=None):
+        """
+            Change the password. If confirm is None then have the password match, else use confirm as second password
+        """
+        return self.client.post(self.url, {
+            "old_password": old,
+            "new_password1": new,
+            "new_password2": new if confirm is None else confirm
+        })
+
+    def test_anonymous_redirect_to_login(self):
+        """
+            Test that if an unauthenticated user manually tries to go to this URL they are redirected
+            to the login page
+        """
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(settings.LOGIN_URL, response["Location"])
+
+    def test_anonymous_post_changes_nothing(self):
+        response = self.post_password_change()
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(PASSWORD))
+
+    def test_password_values_are_not_rendered_back(self):
+        """
+            Test that the password values are not rendered back to the user
+        """
+        self.login()
+        response = self.post_password_change(confirm="something-else-entirely")
+        self.assertNotContains(response, NEW_PASSWORD)
+        self.assertNotContains(response, PASSWORD)
+
+    def test_successful_password_change(self):
+        """
+            Test that a user can successfully change their password when both new passwords match and old password is correct
+        """
+        self.login()
+        response = self.client.post(self.url, {
+            "old_password": PASSWORD,
+            "new_password1": NEW_PASSWORD,
+            "new_password2": NEW_PASSWORD
+        }, follow=True)
+        self.assertRedirects(response, self.url)
+        self.assertContains(response, "Your password has been updated!")
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(NEW_PASSWORD))
+
+    def test_user_stays_logged_in_after_change(self):
+        """
+            Test that the user stays logged in after a successful password change
+        """
+        self.login()
+        self.post_password_change()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_old_password_stops_working_after_change(self):
+        """
+            Test that the old password no longer logs the user in once they successfully change their password
+        """
+        self.login()
+        self.post_password_change()
+        self.client.logout()
+        self.assertFalse(self.client.login(username="Mac", password=PASSWORD))
+        self.assertTrue(self.client.login(username="Mac", password=NEW_PASSWORD))
+
+    def test_wrong_current_rejected(self):
+        """
+            Test that when the user enters the wrong current password, it is rejected
+        """
+        self.login()
+        response = self.post_password_change(old="notthepassword")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].errors["old_password"])
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(PASSWORD))
+
+    def test_confirmation_mismatch_rejected(self):
+        """
+            Test that when the user enters 2 different passwords when changing it fails
+        """
+        self.login()
+        response = self.post_password_change(confirm="Different-P@$$w0rd")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].errors["new_password2"])
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(PASSWORD))
+
+    def test_password_too_short(self):
+        """
+            Test that if the password is not enough characters long, it is rejected
+        """
+        self.login()
+        response = self.post_password_change(new="aB!")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].errors["new_password2"])
+
+    def test_common_password(self):
+        """
+            Test that a common password is rejected
+        """
+        self.login()
+        response = self.post_password_change(new="password")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].errors["new_password2"])
+
+    def test_numeric_only_password(self):
+        """
+            Test that only numeric passwords are rejected
+        """
+        self.login()
+        response = self.post_password_change(new="289123908341092")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].errors["new_password2"])
+
+    def test_empty_fields(self):
+        """
+            Test that when leaving the fields empty it rejects
+        """
+        self.login()
+        response = self.post_password_change(old="", new="")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].errors)
