@@ -58,7 +58,6 @@ def before_scenario(context, scenario):
     # Patch every place that imported a RAWG function
     for target, fake in [
         ("games.views.search_game", context.search_game),
-        ("games.views.get_game_details", context.get_game_details),
         ("games.catalog.get_game_details", context.get_game_details),
     ]:
         patcher = patch(target, fake)
