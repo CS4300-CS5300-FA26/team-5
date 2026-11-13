@@ -15,6 +15,7 @@ class Game(models.Model):
     game_release = models.DateField(null=True, blank=True)
     game_image = models.URLField(blank=True)
     game_genre = models.TextField(blank=True)
+    game_platforms = models.TextField(blank=True)
 
 class Catalog(models.Model):
 

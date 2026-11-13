@@ -7,42 +7,34 @@
 {% if error %}
   <p>Could not load game details. Try again.</p>
 {% else %}
-  <h1>{{ game.name }}</h1>
+  <h1>{{ game.game_title }}</h1>
 
-  {% if game.background_image %}
-    <img src="{{ game.background_image }}" alt="{{ game.name }}" width="400">
+  {% if game.game_image %}
+    <img src="{{ game.game_image }}" alt="{{ game.game_title }}" width="400">
   {% else %}
     <img src="{% static 'games/cover-placeholder.svg' %}" alt="No cover available" width="400">
   {% endif %}
 
-  <p>{{ game.description_raw|default:"No description available" }}</p>
-  <p>Released: {{ game.released|default:"Unknown" }}</p>
+  <p>{{ game.game_description|default:"No description available" }}</p>
+  <p>Released: {{ game.game_release|default:"Unknown" }}</p>
 
   <p>
     Genres:
-    {% for genre in game.genres %}
-      {{ genre.name }}{% if not forloop.last %}, {% endif %}
-    {% empty %}
-      Unknown
-    {% endfor %}
+    {{ game.game_genre|default:"Unknown" }}
   </p>
 
   <p>
     Platforms:
-    {% for item in game.platforms %}
-      {{ item.platform.name }}{% if not forloop.last %}, {% endif %}
-    {% empty %}
-      Unknown
-    {% endfor %}
+    {{ game.game_platforms|default:"Unknown" }}
   </p>
   {% if user.is_authenticated %}
     {% if in_library %}
       <p>In library</p>
-       <form method="post" action="{% url 'remove_from_library' game.id %}">
+       <form method="post" action="{% url 'remove_from_library' game.rawg_id %}">
         {% csrf_token %}
         <button type="submit">Remove from library</button>
       </form>
-      <form method="post" action="{% url 'save_review' game.id %}">
+      <form method="post" action="{% url 'save_review' game.rawg_id %}">
         {% csrf_token %}
         <fieldset>
           <legend>Rating</legend>
@@ -52,7 +44,7 @@
         <button type="submit" class="btn btn-primary">Save</button>
       </form>
     {% else %}
-      <form method="post" action="{% url 'add_to_library' game.id %}">
+      <form method="post" action="{% url 'add_to_library' game.rawg_id %}">
         {% csrf_token %}
         <button type="submit">Add to library</button>
       </form>
