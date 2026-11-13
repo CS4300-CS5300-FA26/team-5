@@ -161,7 +161,7 @@ class GameSearchandDetailsViewTests(TestCase):
         )
 
     @patch('games.catalog.get_game_details')
-    def test_game_details_view(self,mock_search_game_detail):
+    def test_game_details_view_for_new_games_not_in_database(self,mock_search_game_detail):
 
         mock_search_game_detail.return_value = {
             'id':1,
@@ -180,8 +180,24 @@ class GameSearchandDetailsViewTests(TestCase):
         mock_search_game_detail.assert_called_once_with(1)
 
         self.assertContains(response,"Minecraft")
-        self.assertContains(response,1)
+        self.assertTrue(Game.objects.filter(rawg_id=1).exists())
         self.assertContains(response,'2011-11-18')
+
+    @patch('games.catalog.get_game_details')
+    def test_game_details_view_when_game_is_in_database(self,mock_details):
+
+        Game.objects.create(
+        rawg_id=1, game_title="Minecraft", game_description="Build things.",
+        game_rating=4.5, game_genre="Sandbox", game_platforms="PC",
+        )
+
+        response = self.client.get(reverse('game_details', args=[1]))
+
+        mock_details.assert_not_called()
+        self.assertContains(response, "Minecraft")
+        self.assertContains(response, "Build things.")
+        self.assertContains(response, "Sandbox")
+        self.assertContains(response, "PC")
 
     @patch('games.catalog.get_game_details')
     def test_details_api_failure(self, mock_get_game_details):
@@ -319,6 +335,7 @@ class CatalogGetOrImportTests(TestCase):
             "released": "2020-09-17",
             "background_image": "https://example.com/hades.jpg",
             "genres": [{"name": "Action"}, {"name": "Indie"}],
+            "platforms": [{"platform": {"name": "PC"}}]
         }
 
 
@@ -333,6 +350,7 @@ class CatalogGetOrImportTests(TestCase):
         self.assertEqual(str(game.game_release), "2020-09-17")
         self.assertEqual(game.game_image, "https://example.com/hades.jpg")
         self.assertEqual(game.game_genre, "Action, Indie")
+        self.assertEqual(game.game_platforms, "PC")
 
     @patch("games.catalog.get_game_details")
     def test_returns_none_when_rawg_fails(self, mock_details):
@@ -352,7 +370,8 @@ class CatalogGetOrImportTests(TestCase):
             "rating": None,
             "released": None,
             "background_image": None,
-            "genres": [],
+            "genres": None,
+            "platforms": None,
         }
 
         game = get_or_import(101)
@@ -364,6 +383,7 @@ class CatalogGetOrImportTests(TestCase):
         self.assertIsNone(game.game_release)
         self.assertEqual(game.game_image, "")
         self.assertEqual(game.game_genre, "")
+        self.assertEqual(game.game_platforms, "")
 
 class AddToLibraryViewTests(TestCase):
 
