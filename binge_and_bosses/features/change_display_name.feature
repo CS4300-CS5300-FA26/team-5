@@ -2,6 +2,6 @@
 
 Feature: Profile Customization
     Scenario: Change display name
-        Given I am logged in
-        When I save a new display name
-        Then it shows on my profile.
+        Given I am logged in as "tom"
+        When I change my username to "Tom"
+        Then I see "Your username has been updated!"
