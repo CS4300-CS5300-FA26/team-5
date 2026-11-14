@@ -986,12 +986,13 @@ class DetailsPageTests(TestCase):
         self.assertIsNotNone(save.find("form", action=reverse("add_to_library", args=[42])))
         self.assertIsNone(save.find("form", action=reverse("save_review", args=[42])))
 
-    def test_owner_sees_current_status_read_only(self):
+    def test_owner_can_change_status_in_review_form(self):
         self.own()
 
-        status = self.page().select_one(".details-save fieldset.status-picker")
+        form = self.page().find("form", action=reverse("save_review", args=[42]))
+        status = form.select_one("fieldset.status-picker")
 
-        self.assertTrue(status.has_attr("disabled"))
+        self.assertFalse(status.has_attr("disabled"))
         checked = status.select('input[name="status"][checked]')
         self.assertEqual([i["value"] for i in checked], ["not_started"])
         self.assertEqual(status.find("label", attrs={"for": checked[0]["id"]}).get_text(strip=True), "Not Started")

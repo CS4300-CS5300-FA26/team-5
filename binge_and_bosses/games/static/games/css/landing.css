@@ -816,8 +816,6 @@
     cursor: pointer;
 }
 
-.status-picker:disabled .pill { cursor: default; }
-
 .status-picker input:checked + .pill {
     background: var(--c);
     color: #fff;
