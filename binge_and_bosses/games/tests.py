@@ -9,6 +9,7 @@ from django.test import TestCase
 
 from .models import Game, Catalog
 from .catalog import get_or_import
+from .forms import ReviewForm
 
 from unittest.mock import patch,Mock
 import requests
@@ -1108,7 +1109,7 @@ class ReviewTests(TestCase):
     def test_review_over_1000_characters_changes_nothing_and_shows_error(self):
         self.entry.rating, self.entry.review = 3, "Keep this."
         self.entry.save()
-        response = self.save_review(5, "x" * 1001, follow=True)
+        response = self.save_review(5, "x" * 1001, status=Catalog.Status.PLAYING, follow=True)
         self.assertContains(response, "Keep your review to 1,000 characters or fewer.")
         self.assertNotContains(response, "Pick a rating from 1 to 5.")
         self.assert_entry(3, "Keep this.", False)
@@ -1121,7 +1122,7 @@ class ReviewTests(TestCase):
         self.entry.save()
         for rating in (0, 6, "abc"):
             with self.subTest(rating=rating):
-                response = self.save_review(rating, "Must not save.", follow=True)
+                response = self.save_review(rating, "Must not save.", status=Catalog.Status.PLAYING, follow=True)
                 self.assertRedirects(response, reverse("game_details", args=[42]))
                 self.assertContains(response, "Pick a rating from 1 to 5.")
                 shown = list(response.context["messages"])
@@ -1174,14 +1175,14 @@ class ReviewTests(TestCase):
         other = get_user_model().objects.create_user(username="other", email="other@example.com")
         entry = Catalog.objects.create(user=other, games=self.game, rating=2, review="Their review.")
         response = self.client.post(reverse("save_review", args=[42]), {
-            "rating": 5, "review": "My review.", "status": self.entry.status, "user": other.pk, "id": entry.pk,
+            "rating": 5, "review": "My review.", "status": Catalog.Status.COMPLETED, "user": other.pk, "id": entry.pk,
         })
         self.assertRedirects(response, reverse("game_details", args=[42]))
-        self.assert_entry(5, "My review.", False)
+        self.assert_entry(5, "My review.", False, status=Catalog.Status.COMPLETED)
         self.entry.delete()
         self.assertEqual(self.save_review(1, "Overwrite.").status_code, 404)
         entry.refresh_from_db()
-        self.assertEqual((entry.rating, entry.review, entry.review_edited), (2, "Their review.", False))
+        self.assertEqual((entry.rating, entry.review, entry.review_edited, entry.status), (2, "Their review.", False, Catalog.Status.NOT_STARTED))
 
     def test_game_page_lists_all_reviews_in_username_order_for_everyone(self):
         self.entry.rating, self.entry.review = 4, "<b>Fun.</b>"
@@ -1210,7 +1211,7 @@ class ReviewTests(TestCase):
                 self.assertNotContains(response, "Wrong game.")
 
     def test_game_page_prefills_review_form_and_rating_choices(self):
-        self.entry.rating, self.entry.review = 4, "Fun puzzles."
+        self.entry.rating, self.entry.review, self.entry.status = 4, "Fun puzzles.", Catalog.Status.PLAYING
         self.entry.save()
         response = self.client.get(reverse("game_details", args=[42]))
         page = BeautifulSoup(response.content, "html.parser")
@@ -1225,6 +1226,9 @@ class ReviewTests(TestCase):
             self.assertEqual(form.find("label", attrs={"for": radio["id"]}).get_text(strip=True), label)
         self.assertEqual(form.find("textarea", attrs={"name": "review"}).get_text().strip(), "Fun puzzles.")
         self.assertEqual(form.find("button").get_text(strip=True), "Save")
+        selected = form.select_one('select[name="status"] option[selected]')
+        self.assertIsNotNone(selected)
+        self.assertEqual(selected["value"], Catalog.Status.PLAYING)
 
     def test_review_form_hidden_without_library_entry_or_login(self):
         url = reverse("save_review", args=[42])
@@ -1246,3 +1250,61 @@ class ReviewTests(TestCase):
         self.client.post(reverse("remove_from_library", args=[42]))
         self.assertFalse(Catalog.objects.filter(pk=self.entry.pk).exists())
         self.assertContains(self.client.get(reverse("game_details", args=[42])), "No reviews yet.")
+
+    # This section of tests tests the status field of the Catalog model, which tracks whether a user has started, is playing, or has completed a game.
+    
+    def test_status_only_save_does_not_create_review(self):
+        self.entry.status = Catalog.Status.DROPPED
+        self.entry.save()
+
+        for status, label in Catalog.Status.choices:
+            with self.subTest(status=status):
+                response = self.save_review(status=status, follow=True)
+
+                self.assertRedirects(response, reverse("game_details", args=[42]))
+                self.assert_entry(None, "", False, status=status)
+                self.assertEqual(
+                    list(Catalog.objects.values_list("pk", flat=True)),
+                    [self.entry.pk],
+                )
+                self.assertContains(response, "No reviews yet.")
+                self.assertContains(
+                    self.client.get(reverse("library")), f"Status: {label}"
+                )
+
+    def test_status_change_preserves_existing_review(self):
+        for edited in (False, True):
+            with self.subTest(edited=edited):
+                self.entry.rating, self.entry.review = 4, "Keep this."
+                self.entry.review_edited = edited
+                self.entry.status = Catalog.Status.NOT_STARTED
+                self.entry.save()
+
+                response = self.save_review(
+                    4, "Keep this.", status=Catalog.Status.COMPLETED
+                )
+
+                self.assertRedirects(response, reverse("game_details", args=[42]))
+                self.assert_entry(
+                    4, "Keep this.", edited, status=Catalog.Status.COMPLETED
+                )
+
+    def test_missing_or_invalid_status_changes_nothing(self):
+        self.entry.rating, self.entry.review = 3, "Keep this."
+        self.entry.review_edited = True
+        self.entry.status = Catalog.Status.PLAYING
+        self.entry.save()
+
+        for status_data in ({}, {"status": ""}, {"status": "invalid"}):
+            with self.subTest(status_data=status_data):
+                response = self.client.post(
+                    reverse("save_review", args=[42]),
+                    {"rating": 5, "review": "Must not save.", **status_data},
+                    follow=True,
+                )
+
+                self.assertRedirects(response, reverse("game_details", args=[42]))
+                self.assertContains(response, "Pick a valid play status.")
+                self.assert_entry(
+                    3, "Keep this.", True, status=Catalog.Status.PLAYING
+                )
