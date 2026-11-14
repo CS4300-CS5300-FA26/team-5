@@ -21,4 +21,4 @@ Closes #
 
 ## Reviewer
 <!-- Existing approval rules: [Pull requests](../blob/main/docs/pull-requests.md). -->
-- [ ] Proposed: before approving, CI is green and every AI review [Must fix](../blob/main/.github/ai-review-guide.md#output-format-github-markdown) was fixed or answered.
+- [ ] Before approving, CI is green and every AI review [Must fix](../blob/main/.github/ai-review-guide.md#output-format-github-markdown) was fixed or answered.
