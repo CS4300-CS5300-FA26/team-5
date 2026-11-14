@@ -1062,16 +1062,16 @@ class ReviewTests(TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def save_review(self, rating="", review="", **kwargs):
+    def save_review(self, rating="", review="", status=Catalog.Status.NOT_STARTED, **kwargs):
         return self.client.post(reverse("save_review", args=[42]), {
-            "rating": rating, "review": review,
+            "rating": rating, "review": review, "status": status
         }, **kwargs)
 
-    def assert_entry(self, rating, review, edited):
+    def assert_entry(self, rating, review, edited, status=Catalog.Status.NOT_STARTED):
         self.entry.refresh_from_db()
         self.assertEqual(
-            (self.entry.rating, self.entry.review, self.entry.review_edited),
-            (rating, review, edited),
+            (self.entry.rating, self.entry.review, self.entry.review_edited, self.entry.status),
+            (rating, review, edited, status),
         )
 
     def test_save_review_requires_login(self):
@@ -1174,7 +1174,7 @@ class ReviewTests(TestCase):
         other = get_user_model().objects.create_user(username="other", email="other@example.com")
         entry = Catalog.objects.create(user=other, games=self.game, rating=2, review="Their review.")
         response = self.client.post(reverse("save_review", args=[42]), {
-            "rating": 5, "review": "My review.", "user": other.pk, "id": entry.pk,
+            "rating": 5, "review": "My review.", "status": self.entry.status, "user": other.pk, "id": entry.pk,
         })
         self.assertRedirects(response, reverse("game_details", args=[42]))
         self.assert_entry(5, "My review.", False)
