@@ -48,7 +48,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'games'
+    'games',
+    'profiles'
 ]
 
 # behave-django is a dev dependency, so Render doesn't install it.

@@ -48,6 +48,15 @@ class NavBarUnauthenticated(TestCase):
         response = self.client.get("/")
         self.assertNotContains(response, 'auth-login-logout active')
 
+    def test_settings_dropdown_is_hidden(self):
+        """
+            Test that when not logged in you cannot see 'settings' tab
+        """
+        response = self.client.get("/")
+        self.assertNotContains(response, "Settings")
+        self.assertNotContains(response, reverse("profiles:change_username"))
+        self.assertNotContains(response, reverse("profiles:change_password"))
+
 class NavBarAuthenticated(TestCase):
     """
         Basic Tests for when a user is authenticated
@@ -97,3 +106,13 @@ class NavBarAuthenticated(TestCase):
         response = self.client.get("/")
         self.assertContains(response, reverse("game_search"))
         self.assertContains(response, "Search")
+
+    def test_settings_link_visible(self):
+        """
+            Test that when you are logged in, the settings tab exists
+        """
+        response = self.client.get("/")
+        self.assertContains(response, "Settings")
+        self.assertContains(response, reverse("profiles:change_username"))
+        self.assertContains(response, "Change Username")
+        self.assertContains(response, "Change Password")

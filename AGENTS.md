@@ -1,7 +1,7 @@
 # Team conventions
 
-Proposed: adopt this guide and the PR template after the team agrees on Discord (#31).
-Existing rules below come from the linked team docs; new proposals are marked.
+The team agreed on this guide and the PR template on Discord (#31).
+Rules below come from the linked team docs and that agreement.
 
 ## Build/setup and tests
 
@@ -38,15 +38,15 @@ Read [Project layout](docs/project-layout.md) before placing code or changing UR
 ## Pull requests and definition of done
 
 Read [Pull requests](docs/pull-requests.md) before opening, reviewing or merging a PR.
-Proposed: aim for under ~400 changed lines per PR; split unrelated work.
-Proposed: use merge commits when merging PRs.
+Aim for under ~400 changed lines per PR; split unrelated work.
+Use merge commits when merging PRs.
 
 - Link the story or issue with `Closes #<number>` and explain what changed and why.
 - For each feature, include the story's Gherkin as a Behave `.feature` file in the same PR
   ([agreed design, decision 9](docs/design/behave.md#decisions)).
 - Write tests first and see them fail before implementing the behavior; record commands and results.
 - CI's `test` check passes, including unit tests, Behave and at least 80% combined coverage.
-- Proposed: before approving, CI is green and every AI review
+- Before approving, CI is green and every AI review
   [Must fix](.github/ai-review-guide.md#output-format-github-markdown) is fixed or answered.
 - When AI helps, describe the tool and its work in the PR and add a matching
   [README AI usage log](README.md#ai-usage-log) row.
