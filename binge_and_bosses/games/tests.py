@@ -165,6 +165,17 @@ class PlayerHomeTests(TestCase):
         )
         self.assertEqual(rows[0]["href"], reverse("game_details", args=[balatro.igdb_id]))
 
+    def test_popular_skips_games_without_an_id_to_link_to(self):
+        self.add("Hades II")   # the cards only show once your library has a game
+        ana = self.player("ana")
+        orphan = self.add("Saved by hand", user=ana).games   # e.g. added in the admin without an id
+        orphan.igdb_id = None
+        orphan.save()
+
+        page = self.page()
+
+        self.assertNotIn("Saved by hand", page.select_one(".home-popular").get_text())
+
     def test_popular_says_when_there_is_nothing_to_suggest(self):
         self.add("Hades II")
 
