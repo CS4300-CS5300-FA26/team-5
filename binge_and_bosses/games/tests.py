@@ -39,6 +39,27 @@ class LandingPageTests(TestCase):
         self.assertEqual(links["Sign up"], reverse("signup"))
         self.assertEqual(links["Log in"], reverse("login"))
 
+    def test_example_games_show_their_igdb_covers(self):
+        page = BeautifulSoup(self.client.get(reverse("index")).content, "html.parser")
+        covers = [img["src"] for img in page.select("main img.cover")]
+
+        self.assertEqual(covers, [
+            "https://images.igdb.com/igdb/image/upload/t_cover_big/coaknx.jpg",   # Hades II
+            "https://images.igdb.com/igdb/image/upload/t_cover_big/co9gam.jpg",   # Clair Obscur: Expedition 33
+            "https://images.igdb.com/igdb/image/upload/t_cover_big/cobebu.jpg",   # Hollow Knight: Silksong
+        ])
+        self.assertIn("IGDB", page.select_one("main").get_text())
+
+    def test_demos_use_the_play_statuses_from_story_12(self):
+        page = BeautifulSoup(self.client.get(reverse("index")).content, "html.parser")
+        pills = [pill.get_text() for pill in page.select(".landing-steps .pills .pill")]
+        legend = [dt.get_text() for dt in page.select(".landing-hero .legend dt")]
+
+        statuses = ["Not Started", "Playing", "Completed", "On Hold", "Dropped"]
+        self.assertEqual(pills, statuses)
+        self.assertEqual(sorted(legend), sorted(statuses))
+        self.assertNotIn("Finished", page.get_text())
+
     def test_visitor_is_asked_to_sign_up_only_once_on_the_page(self):
         page = BeautifulSoup(self.client.get(reverse("index")).content, "html.parser")
         sign_up_links = page.select(f'main a[href="{reverse("signup")}"]')
@@ -68,7 +89,7 @@ class LandingPageTests(TestCase):
 
 # Dark mode: base.html gives every page a toggle and loads the script that applies the theme.
 class PlayerHomeTests(TestCase):
-    """Logged-in players get a working home page: search, library stats, games to rate, recent adds."""
+    """Logged-in players get a working home page: search, library stats, popular games, recent adds."""
 
     def setUp(self):
         self.user = get_user_model().objects.create_user(
@@ -116,20 +137,38 @@ class PlayerHomeTests(TestCase):
         self.assertIn("2 rated", text)
         self.assertIn("1 review", text)
 
-    def test_rate_these_lists_up_to_three_unrated_games_newest_first(self):
-        self.add("Hades II", rating=5)
-        for title in ("Celeste", "Balatro", "Stardew Valley", "Elden Ring"):
-            self.add(title)
+    def player(self, name):
+        return get_user_model().objects.create_user(username=name, email=f"{name}@example.com")
 
-        rows = self.page().select(".home-rate li a")
+    def test_popular_lists_what_other_players_have_that_you_dont(self):
+        ana, ben, cy = self.player("ana"), self.player("ben"), self.player("cy")
+        balatro = self.add("Balatro", user=ana).games
+        hades = self.add("Hades II", user=ana).games
+        celeste = self.add("Celeste", user=ana).games
+        self.add("Elden Ring", user=ana)
+        self.add("Stardew Valley", user=ben)
+        for player in (ben, cy):
+            Catalog.objects.create(user=player, games=balatro)
+        for player in (ben, cy, self.user):   # the most popular, but you already have it
+            Catalog.objects.create(user=player, games=celeste)
+        Catalog.objects.create(user=ben, games=hades)
 
-        self.assertEqual([a.select_one("b").get_text() for a in rows], ["Elden Ring", "Stardew Valley", "Balatro"])
-        self.assertEqual(rows[0]["href"], reverse("game_details", args=[5]))
+        rows = self.page().select(".home-popular li a")
 
-    def test_rate_these_says_when_everything_is_rated(self):
-        self.add("Hades II", rating=5)
+        # Most players first; a tie goes to the game someone added most recently
+        self.assertEqual(
+            [a.get_text(" ", strip=True) for a in rows],
+            ["Balatro 3 players", "Hades II 2 players", "Stardew Valley 1 player"],
+        )
+        self.assertEqual(rows[0]["href"], reverse("game_details", args=[balatro.rawg_id]))
 
-        self.assertIn("You've rated every game", self.page().select_one(".home-rate").get_text())
+    def test_popular_says_when_there_is_nothing_to_suggest(self):
+        self.add("Hades II")
+
+        card = self.page().select_one(".home-popular")
+
+        self.assertIn("Nothing to suggest yet", card.get_text())
+        self.assertEqual(card.select_one("a")["href"], reverse("game_search"))
 
     def test_recently_added_shows_the_six_newest_with_covers(self):
         for n in range(1, 8):
@@ -141,7 +180,7 @@ class PlayerHomeTests(TestCase):
         self.assertEqual(items[0].select_one("img.cover")["src"], "https://media.example.com/Game 7.jpg")
         self.assertEqual(items[0].select_one("a")["href"], reverse("game_details", args=[7]))
 
-    def test_home_only_shows_the_players_own_games(self):
+    def test_library_stats_and_recent_adds_count_only_the_players_own_games(self):
         other = get_user_model().objects.create_user(username="someone_else", password="Gr8Backlog!42")
         self.add("Hades II")
         self.add("Balatro", user=other)
@@ -149,7 +188,8 @@ class PlayerHomeTests(TestCase):
         page = self.page()
 
         self.assertIn("1 game", page.select_one(".home-library .hud").get_text())
-        self.assertNotIn("Balatro", page.get_text())
+        self.assertNotIn("Balatro", page.select_one(".home-recent").get_text())
+        self.assertIn("Balatro", page.select_one(".home-popular").get_text())   # suggested, not counted
 
     def test_empty_library_points_to_search(self):
         page = self.page()

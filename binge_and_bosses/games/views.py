@@ -1,10 +1,10 @@
 from django.contrib import messages
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q
+from django.db.models import Count, Max, Q
 from django.urls import reverse
 from django.views.decorators.http import require_POST
-from .models import Catalog
+from .models import Catalog, Game
 from .rawg_client import search_game
 from .catalog import get_or_import
 from .forms import ReviewForm
@@ -22,6 +22,14 @@ def index(request):
         {'value': value, 'label': label, 'count': counts.get(value, 0)}
         for value, label in Catalog.Status.choices
     ]
+    # Games in other players' libraries that this player doesn't have yet. Most players first;
+    # a tie goes to the game someone added most recently.
+    popular = (
+        Game.objects.exclude(catalog__user=request.user)
+        .annotate(players=Count('catalog'), last_added=Max('catalog__id'))
+        .filter(players__gt=0)
+        .order_by('-players', '-last_added')[:3]
+    )
     return render(request, 'games/home.html', {
         'statuses': statuses,
         'total': sum(counts.values()),
@@ -29,7 +37,7 @@ def index(request):
             rated=Count('id', filter=Q(rating__isnull=False)),
             reviewed=Count('id', filter=~Q(review='')),
         ),
-        'unrated': entries.filter(rating__isnull=True)[:3],
+        'popular': popular,
         'recent': entries[:6],
     })
 

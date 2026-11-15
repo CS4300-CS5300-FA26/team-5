@@ -15,34 +15,36 @@
             </div>
         </div>
 
-        <figure class="savefile" aria-label="Example library: 61 games, 24 finished. Finished 24, Playing 3, Not started 30, Dropped 4.">
+        <figure class="savefile" aria-label="Example library: 61 games, 24 completed. Completed 24, Playing 3, On hold 2, Not started 28, Dropped 4.">
             <figcaption class="savefile-top">
                 <strong>Example library</strong>
                 <span class="hud">61 games</span>
             </figcaption>
-            <div class="bossbar-label hud" aria-hidden="true"><span>Progress</span><span><b>24</b> of 61 finished</span></div>
+            <div class="bossbar-label hud" aria-hidden="true"><span>Progress</span><span><b>24</b> of 61 completed</span></div>
             <div class="bossbar" aria-hidden="true">
-                <i style="flex: 24; background: var(--status-finished)"></i>
+                <i style="flex: 24; background: var(--status-completed)"></i>
                 <i style="flex: 3; background: var(--status-playing)"></i>
-                <i style="flex: 30; background: var(--status-not-started)"></i>
+                <i style="flex: 2; background: var(--status-on-hold)"></i>
+                <i style="flex: 28; background: var(--status-not-started)"></i>
                 <i style="flex: 4; background: var(--status-dropped)"></i>
             </div>
             <dl class="legend" aria-hidden="true">
-                <div style="--c: var(--status-finished)"><dt>Finished</dt><dd>24</dd></div>
+                <div style="--c: var(--status-completed)"><dt>Completed</dt><dd>24</dd></div>
                 <div style="--c: var(--status-playing)"><dt>Playing</dt><dd>3</dd></div>
-                <div style="--c: var(--status-not-started)"><dt>Not Started</dt><dd>30</dd></div>
+                <div style="--c: var(--status-on-hold)"><dt>On Hold</dt><dd>2</dd></div>
+                <div style="--c: var(--status-not-started)"><dt>Not Started</dt><dd>28</dd></div>
                 <div style="--c: var(--status-dropped)"><dt>Dropped</dt><dd>4</dd></div>
             </dl>
             <ul class="savefile-games" aria-hidden="true">
                 <li>
-                    <span class="cover" style="--h: 18"></span>
+                    <img class="cover" style="--h: 18" src="https://images.igdb.com/igdb/image/upload/t_cover_big/coaknx.jpg" alt="">
                     <span><b>Hades II</b><span class="stars">★★★★★</span></span>
                     <span class="pill on" style="--c: var(--status-playing)">Playing</span>
                 </li>
                 <li>
-                    <span class="cover" style="--h: 268"></span>
+                    <img class="cover" style="--h: 268" src="https://images.igdb.com/igdb/image/upload/t_cover_big/co9gam.jpg" alt="">
                     <span><b>Clair Obscur: Expedition 33</b><span class="stars">★★★★<span class="off">★</span></span></span>
-                    <span class="pill on" style="--c: var(--status-finished)">Finished</span>
+                    <span class="pill on" style="--c: var(--status-completed)">Completed</span>
                 </li>
             </ul>
         </figure>
@@ -65,7 +67,7 @@
                 <span class="hud">Step 2</span>
                 <h3>Add it</h3>
                 <div class="demo demo-add" aria-hidden="true">
-                    <span class="cover" style="--h: 200"></span>
+                    <img class="cover" style="--h: 200" src="https://images.igdb.com/igdb/image/upload/t_cover_big/cobebu.jpg" alt="">
                     <span class="demo-add-info">
                         <b>Hollow Knight: Silksong</b>
                         <span class="demo-muted">2025 · Team Cherry</span>
@@ -82,11 +84,12 @@
                     <span class="pills">
                         <span class="pill" style="--c: var(--status-not-started-ink)">Not Started</span>
                         <span class="pill on" style="--c: var(--status-playing)">Playing</span>
-                        <span class="pill" style="--c: var(--status-finished-ink)">Finished</span>
+                        <span class="pill" style="--c: var(--status-completed-ink)">Completed</span>
+                        <span class="pill" style="--c: var(--status-on-hold-ink)">On Hold</span>
                         <span class="pill" style="--c: var(--status-dropped-ink)">Dropped</span>
                     </span>
                 </div>
-                <p>Move it from Not Started to Playing, Finished or Dropped as you go.</p>
+                <p>Move it from Not Started to Playing, Completed, On Hold or Dropped as you go.</p>
             </li>
             <li>
                 <span class="hud">Step 4</span>
@@ -100,5 +103,7 @@
             </li>
         </ol>
     </section>
+
+    <p class="search-credit">Cover art from <a href="https://www.igdb.com">IGDB</a>.</p>
 </div>
 {% endblock %}

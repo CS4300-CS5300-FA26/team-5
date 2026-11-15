@@ -37,22 +37,28 @@
                 </div>
             </section>
 
-            <section class="home-panel home-rate" aria-labelledby="home-rate-title">
-                <h2 id="home-rate-title">Rate these</h2>
-                {% if unrated %}
+            <section class="savefile home-popular" aria-labelledby="home-popular-title">
+                <div class="savefile-top">
+                    <h2 id="home-popular-title">Popular with players</h2>
+                    <span class="hud">New to you</span>
+                </div>
+                {% if popular %}
                     <ul>
-                        {% for entry in unrated %}
+                        {% for game in popular %}
                             <li>
-                                <a href="{% url 'game_details' entry.games.rawg_id %}">
-                                    {% include "games/_cover.html" with game=entry.games %}
-                                    <b>{{ entry.games.game_title }}</b>
-                                    <span class="home-rate-cta" aria-hidden="true">Rate ›</span>
+                                <a href="{% url 'game_details' game.rawg_id %}">
+                                    {% include "games/_cover.html" %}
+                                    <b>{{ game.game_title }}</b>
+                                    <span class="home-muted">{{ game.players }} player{{ game.players|pluralize }}</span>
                                 </a>
                             </li>
                         {% endfor %}
                     </ul>
                 {% else %}
-                    <p class="home-muted">You've rated every game in your library. Nice.</p>
+                    <div class="home-popular-empty">
+                        <p><b>Nothing to suggest yet</b><br><span class="home-muted">As other players add games, the most popular ones show up here.</span></p>
+                        <a href="{% url 'game_search' %}">Find a game ›</a>
+                    </div>
                 {% endif %}
             </section>
         </div>

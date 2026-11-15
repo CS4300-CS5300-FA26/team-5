@@ -56,7 +56,7 @@ Search and details fetch RAWG data through `games/rawg_client.py`. Adding a game
 ## Pages
 | URL | Name | What it is |
 | --- | --- | --- |
-| `/` | `index` | Visitors get the landing page: what the app does, an example library, Sign up and Log in. Players get their home page: a search box, library stats, unrated games to rate, and recently added games. Makes no RAWG calls. |
+| `/` | `index` | Visitors get the landing page: what the app does, an example library, Sign up and Log in. Players get their home page: a search box, library stats, games popular with other players that they don't have yet, and recently added games. Makes no RAWG calls. |
 | `/search/?q=title` | `game_search` | Search RAWG by title; shows up to five results. If RAWG fails, shows this visitor's last results for the same search (kept in the session). No login required. |
 | `/<int:game_id>/` | `game_details` | Details for a RAWG game ID. If RAWG fails, goes back to the search results with an error when opened from a search, otherwise shows the error on this page. No login required. |
 | `/library/` | `library` | The user's saved games, statuses and ratings. Requires login. |

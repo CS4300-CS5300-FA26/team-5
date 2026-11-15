@@ -9,12 +9,14 @@
     --sunk: var(--bs-tertiary-bg);
     --surface: var(--bs-body-bg);
     --gold: #e0a100;
-    --status-playing: var(--bs-primary);
-    --status-finished: var(--bs-success);
     --status-not-started: var(--bs-border-color);
     --status-not-started-ink: var(--bs-secondary-color);
+    --status-playing: var(--bs-primary);
+    --status-completed: var(--bs-success);
+    --status-completed-ink: var(--status-completed);   /* text and outlines; lighter in dark mode */
+    --status-on-hold: var(--bs-warning);
+    --status-on-hold-ink: var(--bs-warning-text-emphasis);   /* yellow text is unreadable on white */
     --status-dropped: var(--bs-danger);
-    --status-finished-ink: var(--status-finished);   /* text and outlines; lighter in dark mode */
     --status-dropped-ink: var(--status-dropped);
     --font-display: "Outfit", "Segoe UI", system-ui, sans-serif;
     --font-hud: "Chakra Petch", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -48,7 +50,7 @@
 [data-bs-theme="dark"] .landing {
     --accent: var(--bs-primary-text-emphasis);   /* #0d6efd is too dark for text on the dark page */
     --gold: #f2b53e;
-    --status-finished-ink: var(--bs-success-text-emphasis);
+    --status-completed-ink: var(--bs-success-text-emphasis);
     --status-dropped-ink: var(--bs-danger-text-emphasis);
 }
 
@@ -147,7 +149,7 @@
     color: var(--muted);
 }
 
-.bossbar-label b { color: var(--status-finished-ink); }
+.bossbar-label b { color: var(--status-completed-ink); }
 
 .bossbar {
     display: flex;
@@ -220,7 +222,7 @@
     white-space: nowrap;
 }
 
-/* Generated cover art for the example games */
+/* Game covers. The gradient (tinted by --h) shows while an image loads, and stands in when a game has none */
 .landing .cover {
     display: block;
     aspect-ratio: 3 / 4;
@@ -231,14 +233,17 @@
         linear-gradient(160deg, hsl(var(--h) 55% 34%), hsl(calc(var(--h) + 40) 50% 16%));
 }
 
-/* Real library data on the player home page: RAWG covers, and colours by status value.
-   Add a class here for each status #12 brings in. */
+/* IGDB cover images, and colours by status value (the statuses from story #12) */
 .landing img.cover {
     width: 100%;
     object-fit: cover;
 }
 
 .status-not_started { --c: var(--status-not-started); }
+.status-playing { --c: var(--status-playing); }
+.status-completed { --c: var(--status-completed); }
+.status-on_hold { --c: var(--status-on-hold); }
+.status-dropped { --c: var(--status-dropped); }
 
 .bossbar i[class^="status-"] { background: var(--c); }
 
@@ -269,7 +274,9 @@
     color: #fff;
 }
 
-.pill.on.status-not_started { color: var(--ink); }   /* white text is unreadable on the grey */
+/* White text is unreadable on the grey and the yellow */
+.pill.on.status-not_started { color: var(--ink); }
+.pill.on.status-on_hold { color: #000; }
 
 /* How it works: find, add, track, rate */
 .landing-steps ol {
@@ -405,8 +412,12 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.25rem;
-    align-items: start;
 }
+
+/* Both cards share the row height; the library footer sits on the bottom edge */
+.home-grid .savefile { align-content: start; }
+.home-library { grid-template-rows: auto auto auto 1fr; }
+.home-library-foot { align-self: end; }
 
 .home-panel {
     display: grid;
@@ -434,41 +445,58 @@
     text-decoration: none;
 }
 
-.home-rate ul,
+.home-popular ul,
 .home-covers {
     list-style: none;
     margin: 0;
     padding: 0;
 }
 
-.home-rate ul {
+.home-popular ul {
     display: grid;
+    align-content: start;
     gap: 0.5rem;
 }
 
-.home-rate a {
+/* Nothing to suggest yet: fill the card instead of leaving one line at the top */
+.home-popular { grid-template-rows: auto 1fr; }
+
+.home-popular-empty {
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    text-align: center;
+    background: var(--sunk);
+    border-radius: 0.5rem;
+}
+
+.home-popular-empty p { margin: 0; }
+
+.home-popular li a {
     display: grid;
     grid-template-columns: 2.25rem minmax(0, 1fr) auto;
     align-items: center;
     gap: 0.75rem;
     padding: 0.5rem 0.75rem 0.5rem 0.5rem;
-    background: var(--surface);
+    background: var(--sunk);
     border-radius: 0.5rem;
     color: var(--ink);
 }
 
-.home-rate a:hover { box-shadow: inset 0 0 0 2px var(--accent); }
+.home-popular li a:hover { box-shadow: inset 0 0 0 2px var(--accent); }
 
-.home-rate b,
+.home-popular b,
 .home-cover-title {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.home-rate-cta {
-    color: var(--accent);
+.home-popular li .home-muted {
     font-size: 0.875rem;
+    white-space: nowrap;
 }
 
 .home-head {
