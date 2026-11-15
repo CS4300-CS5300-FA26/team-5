@@ -181,7 +181,7 @@ class GameSearchandDetailsViewTests(TestCase):
 
         self.assertContains(response,"Minecraft")
         self.assertTrue(Game.objects.filter(rawg_id=1).exists())
-        self.assertContains(response,'2011-11-18')
+        self.assertContains(response,'Nov 18, 2011')
 
     @patch('games.catalog.get_game_details')
     def test_game_details_view_when_game_is_in_database(self,mock_details):
