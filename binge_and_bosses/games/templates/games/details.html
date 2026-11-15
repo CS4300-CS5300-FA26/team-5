@@ -16,7 +16,7 @@
   {% endif %}
 
   <p>{{ game.game_description|default:"No description available" }}</p>
-  <p>Released: {{ game.game_release|default:"Unknown" }}</p>
+  <p>Released: {{ game.game_release|date:"M j, Y"|default:"Unknown" }}</p>
 
   <p>
     Genres:
