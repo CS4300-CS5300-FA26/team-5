@@ -107,4 +107,3 @@ def asked_to_log_in(context):
     )
     context.test.assertContains(context.game_page, "Log in to add to your library")
     context.test.assertFalse(Catalog.objects.exists())
-    context.test.assertFalse(Game.objects.exists())

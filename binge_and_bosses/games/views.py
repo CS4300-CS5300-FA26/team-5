@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from .models import Game, Catalog
-from .rawg_client import search_game, get_game_details 
+from .rawg_client import search_game 
 from .catalog import get_or_import
 from .forms import ReviewForm
 # Create your views here.
@@ -79,7 +79,7 @@ def game_search(request):
         })
 
 def game_details(request, game_id):
-    game = get_game_details(game_id)
+    game = get_or_import(game_id)
     entry = (
         Catalog.objects.filter(user=request.user, games__rawg_id=game_id).first()
         if request.user.is_authenticated else None
