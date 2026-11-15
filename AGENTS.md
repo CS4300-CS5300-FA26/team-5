@@ -6,7 +6,7 @@ Rules below come from the linked team docs and that agreement.
 ## Build/setup and tests
 
 For local app setup, read the [README](README.md#how-to-run-binge--bosses).
-For Render's build process, read [Deployment](docs/deployment.md).
+For production deployment, read [Deployment](docs/deployment.md).
 Run the following from the repository root; after `cd`, all tests run from
 `binge_and_bosses/`. These are test-only values; leave `DATABASE_URL` unset
 and keep production credentials out of local `.env` files used for tests.
