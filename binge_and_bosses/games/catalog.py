@@ -1,5 +1,6 @@
 from .models import Game
 from .rawg_client import get_game_details
+from datetime import date
 
 
 def get_or_import(rawg_id):
@@ -18,7 +19,7 @@ def get_or_import(rawg_id):
             "game_title": data.get("name", ""),
             "game_description": data.get("description_raw") or "",
             "game_rating": data.get("rating") or 0,
-            "game_release": data.get("released"),
+            "game_release": date.fromisoformat(data.get("released")) if data.get("released") else None,
             "game_image": data.get("background_image") or "",
             "game_genre": ", ".join(g["name"] for g in data.get("genres") or []),
             "game_platforms": ", ".join(p["platform"]["name"] for p in data.get("platforms") or []),
