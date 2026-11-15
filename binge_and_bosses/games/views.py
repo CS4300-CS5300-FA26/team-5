@@ -23,9 +23,9 @@ def index(request):
         for value, label in Catalog.Status.choices
     ]
     # Games in other players' libraries that this player doesn't have yet. Most players first;
-    # a tie goes to the game someone added most recently.
+    # a tie goes to the game someone added most recently. A game needs an id to link to.
     popular = (
-        Game.objects.exclude(catalog__user=request.user)
+        Game.objects.exclude(catalog__user=request.user).exclude(rawg_id=None)
         .annotate(players=Count('catalog'), last_added=Max('catalog__id'))
         .filter(players__gt=0)
         .order_by('-players', '-last_added')[:3]
