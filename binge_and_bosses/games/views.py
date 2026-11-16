@@ -1,7 +1,8 @@
 from django.contrib import messages
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Max, Q
+from django.db.models import Count, F, Max, Q
+from django.db.models.functions import Lower
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from .models import Catalog, Game
@@ -41,10 +42,28 @@ def index(request):
         'recent': entries[:6],
     })
 
+# Library sort options: URL value -> (link label, ordering). The first one is the default.
+LIBRARY_SORTS = {
+    'recent': ('Recent', ['-id']),
+    'title': ('Title', [Lower('games__game_title')]),
+    'rating': ('Rating', [F('rating').desc(nulls_last=True), Lower('games__game_title')]),
+}
+
+
 @login_required
 def library(request):
-    library_entries = Catalog.objects.filter(user=request.user).select_related('games')
-    return render(request,'games/library.html', {'library_entries': library_entries})
+    sort = request.GET.get('sort')
+    if sort not in LIBRARY_SORTS:
+        sort = next(iter(LIBRARY_SORTS))
+    library_entries = (
+        Catalog.objects.filter(user=request.user).select_related('games')
+        .order_by(*LIBRARY_SORTS[sort][1])
+    )
+    return render(request, 'games/library.html', {
+        'library_entries': library_entries,
+        'sort': sort,
+        'sorts': {value: label for value, (label, _) in LIBRARY_SORTS.items()},
+    })
 
 #Get the game details from rawg and add it to the user's library if it doesn't exist already
 @login_required
@@ -92,17 +111,28 @@ def game_search(request):
     if games:
         # Keep what search.html shows, so the results survive a RAWG outage.
         request.session["last_search"] = {"q": query, "games": [
-            {"id": g["id"], "name": g["name"], "background_image": g.get("background_image")}
+            {"id": g["id"], "name": g["name"], "background_image": g.get("background_image"),
+             "released": g.get("released")}
             for g in games
         ]}
     elif games is None and last_search.get("q") == query:
         games = last_search["games"]
+    error = games is None
+    games = games or []
+
+    # Mark the results this player already owns
+    owned = set()
+    if games and request.user.is_authenticated:
+        owned = set(Catalog.objects.filter(
+            user=request.user, games__rawg_id__in=[g["id"] for g in games],
+        ).values_list("games__rawg_id", flat=True))
 
     return render(request, "games/search.html", {
-        "games": games if games is not None else[], 
+        "games": games,
         "query": query,
-        "error": games is None
-        })
+        "error": error,
+        "owned": owned,
+    })
 
 def game_details(request, game_id):
     game = get_or_import(game_id)

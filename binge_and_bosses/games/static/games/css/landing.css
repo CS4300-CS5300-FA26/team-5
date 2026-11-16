@@ -1,5 +1,5 @@
-/* Landing page (games/index.html). Colors come from Bootstrap's variables so the
-   page matches the nav bar, and follows Bootstrap's dark mode if the site turns it on. */
+/* Shared look for the landing, home, library and search pages (wrapped in .landing).
+   Colors come from Bootstrap's variables so the pages match the nav bar and follow its dark mode. */
 .landing {
     --accent: var(--bs-primary);
     --accent-press: #084298;              /* same pressed shadow as .auth-signup in navbar.css */
@@ -244,6 +244,7 @@
 .status-completed { --c: var(--status-completed); }
 .status-on_hold { --c: var(--status-on-hold); }
 .status-dropped { --c: var(--status-dropped); }
+.status-in-library { --c: var(--status-completed); }
 
 .bossbar i[class^="status-"] { background: var(--c); }
 
@@ -523,6 +524,150 @@
 
 .home-covers a:hover .cover { transform: translateY(-3px); }
 
+/* Library page (games/library.html) */
+.library-top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: end;
+    gap: 1rem;
+}
+
+.library-top div {
+    display: grid;
+    gap: 0.375rem;
+}
+
+.library-top h1 {
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    letter-spacing: -0.01em;
+}
+
+.library-top .hud,
+.library-sort .hud,
+.search-count { color: var(--muted); }
+
+.library-sort {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: calc(-1 * clamp(0.75rem, 2vw, 1.25rem));   /* sits close to the grid it sorts */
+}
+
+.library-sort .hud { margin-right: 0.25rem; }
+
+.home .library-sort a {
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    background: var(--sunk);
+    color: var(--ink);
+    font-size: 0.875rem;
+}
+
+.home .library-sort a:hover { box-shadow: inset 0 0 0 2px var(--accent); }
+
+.home .library-sort a[aria-current="true"] {
+    background: var(--bs-primary);
+    color: #fff;
+}
+
+.library-grid,
+.search-results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+}
+
+.library-grid {
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    gap: 1.5rem 1.25rem;
+}
+
+/* The title link stretches over its whole card, so the cover is clickable too */
+.library-grid article,
+.search-results article { position: relative; }
+
+.library-grid h2 a::after,
+.search-results h2 a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+.library-grid article {
+    display: grid;
+    align-content: start;
+    gap: 0.5rem;
+}
+
+.library-grid h2,
+.search-results h2 {
+    font-size: 1rem;
+    line-height: 1.25;
+}
+
+.home .library-grid h2 a,
+.home .search-results h2 a { color: var(--ink); }
+
+.library-grid .cover { transition: transform 0.15s ease; }
+
+.library-grid article:hover .cover { transform: translateY(-3px); }
+
+.library-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem 0.625rem;
+    font-size: 0.8125rem;
+}
+
+/* Search page (games/search.html): results look like step 2 on the landing page */
+.landing .search-count { margin-bottom: 0.75rem; }   /* beats .landing p */
+
+.search-results {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.search-results article {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 1rem 0.5rem 0.5rem;
+    background: var(--sunk);
+    border-radius: 0.75rem;
+}
+
+.search-results article:hover { box-shadow: inset 0 0 0 2px var(--accent); }
+
+.search-results .cover {
+    aspect-ratio: 16 / 9;
+    border-radius: 0.4rem;
+}
+
+.search-results article > div {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 0;
+    font-size: 0.875rem;
+}
+
+.search-cta {
+    color: var(--accent);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.search-results .home-panel { grid-column: 1 / -1; }
+
+.search-credit {
+    color: var(--muted);
+    font-size: 0.8125rem;
+}
+
 @media (max-width: 991.98px) {
     .landing-steps ol,
     .home-covers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -530,16 +675,23 @@
 
 @media (max-width: 767.98px) {
     .landing-hero,
-    .home-grid { grid-template-columns: minmax(0, 1fr); }
+    .home-grid,
+    .search-results { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 479.98px) {
     .landing-steps ol,
     .legend { grid-template-columns: minmax(0, 1fr); }
+
+    .search-results article {
+        grid-template-columns: 5rem minmax(0, 1fr) auto;
+        gap: 0.75rem;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .caret { animation: none; }
     .btn-arcade,
-    .home-covers .cover { transition: none; }
+    .home-covers .cover,
+    .library-grid .cover { transition: none; }
 }
