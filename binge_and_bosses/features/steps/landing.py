@@ -2,6 +2,8 @@
     Steps for the landing page. Link checks look inside <main>, because the nav bar
     in base.html has its own links.
 """
+from urllib.parse import urljoin
+
 from behave import given, then, when
 from bs4 import BeautifulSoup
 from django.urls import reverse
@@ -38,7 +40,9 @@ def see_two_links(context, first, second):
 
 @when('I follow "{text}"')
 def follow_link(context, text):
-    context.response = context.test.client.get(links(context)[text])
+    # Resolve the link against the current page, as a browser does (the sort links are "?sort=...")
+    here = context.response.request["PATH_INFO"]
+    context.response = context.test.client.get(urljoin(here, links(context)[text]))
 
 
 @then("I am on the {page} page")

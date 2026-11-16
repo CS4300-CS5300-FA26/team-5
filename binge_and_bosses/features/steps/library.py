@@ -76,9 +76,10 @@ def game_in_library_with_status(context, status):
     entry = Catalog.objects.get(user=context.user, games__rawg_id=game_id(context))
     context.test.assertEqual(entry.get_status_display(), status)
 
-    library = context.test.client.get(reverse("library"))
-    context.test.assertContains(library, context.fake_game["name"])
-    context.test.assertContains(library, f"Status: {status}")
+    library = BeautifulSoup(context.test.client.get(reverse("library")).content, "html.parser")
+    card = library.select_one("main article")
+    context.test.assertIn(context.fake_game["name"], card.get_text())
+    context.test.assertIn(f"Status: {status}", card.get_text())
 
 
 @then('the button reads "{label}" and cannot add a duplicate')
@@ -107,3 +108,18 @@ def asked_to_log_in(context):
     )
     context.test.assertContains(context.game_page, "Log in to add to your library")
     context.test.assertFalse(Catalog.objects.exists())
+
+
+@given("I added these games to my library, in this order:")
+def library_from_table(context):
+    for rawg_id, row in enumerate(context.table, start=1):
+        game = Game.objects.create(rawg_id=rawg_id, game_title=row["title"], game_description="", game_rating=4.0)
+        Catalog.objects.create(user=context.user, games=game, rating=int(row["rating"]) if row["rating"] else None)
+
+
+@then('my library lists "{titles}"')
+def library_lists(context, titles):
+    context.test.assertEqual(context.response.status_code, 200)
+    page = BeautifulSoup(context.response.content, "html.parser")
+    shown = [h2.get_text(strip=True) for h2 in page.select("main .library-grid h2")]
+    context.test.assertEqual(shown, titles.split(", "))
