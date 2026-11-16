@@ -66,8 +66,8 @@ def no_sign_up_link(context):
 
 @given('my library has "{first}" and "{second}"')
 def library_has(context, first, second):
-    for rawg_id, title in enumerate((first, second), start=1):
-        game = Game.objects.create(rawg_id=rawg_id, game_title=title, game_description="", game_rating=4.0)
+    for igdb_id, title in enumerate((first, second), start=1):
+        game = Game.objects.create(igdb_id=igdb_id, game_title=title, game_description="", game_rating=4.0)
         Catalog.objects.create(user=context.user, games=game)
 
 

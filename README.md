@@ -33,13 +33,14 @@ This installs the Python version in `.python-version` (3.12) if you don't have i
 ### Step 2. Create .env file
 within `binge_and_bosses/` create a file called `.env` in the same directory as `manage.py`
 
-### Step 3. Add secret key and RAWG API key
-Next, generate a secret key and place it within the `.env` file, with your RAWG API key, in the format like:
+### Step 3. Add secret key and IGDB credentials
+Next, generate a secret key and place it within the `.env` file, with your IGDB credentials, in the format like:
 ```.env
 SECRET_KEY=<SECRET_KEY_HERE>
-RAWG_API_KEY=<RAWG_API_KEY_HERE>
-``` 
-Django won't start without both. Get a free RAWG key at [rawg.io/apidocs](https://rawg.io/apidocs). For running tests only, `RAWG_API_KEY=test-key` is enough, but searches on the running site need a real key.
+IGDB_CLIENT_ID=<CLIENT_ID_HERE>
+IGDB_CLIENT_SECRET=<CLIENT_SECRET_HERE>
+```
+Django won't start without all three. IGDB uses Twitch accounts: turn on two-factor login on your Twitch account, register an app at [dev.twitch.tv/console/apps](https://dev.twitch.tv/console/apps) (OAuth Redirect URL `http://localhost`, client type Confidential), and copy its Client ID and a new Client Secret. See [IGDB's getting started guide](https://api-docs.igdb.com/#getting-started). For running tests only, `IGDB_CLIENT_ID=test-id` and `IGDB_CLIENT_SECRET=test-secret` are enough, but searches on the running site need real credentials.
 
 You can generate a secret key by running
 ```
@@ -145,4 +146,5 @@ A PR appears in the first matching category; add its manual label before generat
 | 11/12/2026 |Claude Opus 5.5| Helped identify and change tests and models that needed to change with game detail's view using catalog.py get_or_import|
 | 11/15/2026 | Claude Code (Claude Opus 5.5) | Built the landing page (#79) and the player home page: the example library, the four how-it-works steps, dark mode and the logo, library stats, games popular with other players and recently added games. Wrote the unit tests and Behave scenarios first, and checked the pages at phone and desktop width in light and dark mode. Submitted in a pull request for teammate review. |
 | 11/15/2026 | Claude Code (Claude Opus 5.5) | Redesigned the Library page (cover grid, status and rating on each card, sort by recent, title or rating) and the Search page (result cards with cover and year, and an In library marker) to match the landing page. Wrote the unit tests first. Submitted in a pull request for teammate review. |
+| 11/15/2026 | Claude Code (Claude Opus 5.5) | Replaced RAWG with IGDB: a client that caches the Twitch token and retries once with a new one, search ranking that leaves out mods and alternate editions, cover images, the `rawg_id` to `igdb_id` migration, and updated tests, Behave fakes, CI settings and docs. Kept the database caching from #81. Wrote the client tests first with fake responses. Submitted in a pull request for teammate review. |
 | 11/15/2026 | OpenAI Codex (GPT-6 Luna) | Updated the CI deploy job for direct Heroku Git deployment after CI, added Heroku web and release commands, removed obsolete Render build configuration, and updated deployment docs. Ran the existing CI and local production-command checks. No application behavior changed. |

@@ -21,8 +21,8 @@ team-5/
 │   └── games/                 ← the "games" app
 │       ├── models.py          ← Game metadata and Catalog library entries (status, rating, review)
 │       ├── forms.py           ← ReviewForm validates the optional rating and review
-│       ├── views.py           ← home, library, RAWG search and details views
-│       ├── rawg_client.py     ← search_game and get_game_details call RAWG
+│       ├── views.py           ← home, library, IGDB search and details views
+│       ├── igdb_client.py     ← search_game and get_game_details call IGDB
 │       ├── urls.py
 │       ├── templates/games/   ← index.html (visitor landing page), home.html (player home page), library.html, search.html, details.html
 │       ├── static/games/css/  ← landing.css (shared by the landing, home, library and search pages)
@@ -50,16 +50,16 @@ Using the home page as the example:
 
 New features follow the same path: URL → view → model → template.
 
-Search and details fetch RAWG data through `games/rawg_client.py`. Adding a game imports its metadata into `Game` through `games/catalog.py`. The library stores each player's saved games as `Catalog` entries, with their status, rating and review. The game page shows everyone's ratings and reviews; library owners can save their own through `ReviewForm`.
+Search and details fetch IGDB data through `games/igdb_client.py`, which gets and caches the Twitch access token IGDB needs. Adding a game imports its metadata into `Game` through `games/catalog.py`. The library stores each player's saved games as `Catalog` entries, with their status, rating and review. The game page shows everyone's ratings and reviews; library owners can save their own through `ReviewForm`.
 
 ## Pages
 | URL | Name | What it is |
 | --- | --- | --- |
-| `/` | `index` | Visitors get the landing page: what the app does, an example library, Sign up and Log in. Players get their home page: a search box, library stats, games popular with other players that they don't have yet, and recently added games. Makes no RAWG calls. |
-| `/search/?q=title` | `game_search` | Search RAWG by title; shows up to five results with their release year, and marks games already in your library. If RAWG fails, shows this visitor's last results for the same search (kept in the session). No login required. |
-| `/<int:game_id>/` | `game_details` | Details for a RAWG game ID. If RAWG fails, goes back to the search results with an error when opened from a search, otherwise shows the error on this page. No login required. |
+| `/` | `index` | Visitors get the landing page: what the app does, an example library, Sign up and Log in. Players get their home page: a search box, library stats, games popular with other players that they don't have yet, and recently added games. Makes no IGDB calls. |
+| `/search/?q=title` | `game_search` | Search IGDB by title (main games, remakes, remasters, ports and expansions; no mods or alternate editions); shows up to five results with their release year, and marks games already in your library. If IGDB fails, shows this visitor's last results for the same search (kept in the session). No login required. |
+| `/<int:game_id>/` | `game_details` | Details for an IGDB game ID. If IGDB fails, goes back to the search results with an error when opened from a search, otherwise shows the error on this page. No login required. |
 | `/library/` | `library` | The user's saved games, statuses and ratings. `?sort=recent` (default), `title` or `rating` (unrated last). Requires login. |
-| `/<int:game_id>/add/` | `add_to_library` | Add a RAWG game to the user's library. POST and login required. |
+| `/<int:game_id>/add/` | `add_to_library` | Add an IGDB game to the user's library. POST and login required. |
 | `/<int:game_id>/remove/` | `remove_from_library` | Remove a game from the user's library. POST and login required. |
 | `/<int:game_id>/review/` | `save_review` | Save the user's rating and review. POST, login and a library entry required. |
 | `/accounts/signup/` | `signup` | Sign-up. Logs the new user in and goes to the library. |
@@ -103,7 +103,8 @@ Then add it to `INSTALLED_APPS` in `settings.py`. `startapp` doesn't create a `u
 | Variable | Default | What it does |
 | --- | --- | --- |
 | `SECRET_KEY` | none (required) | Django's signing key. Never commit it. |
-| `RAWG_API_KEY` | none (required) | RAWG API key. Required even to start Django. Tests and CI use the dummy value `test-key`; real searches need a valid key. |
+| `IGDB_CLIENT_ID` | none (required) | Client ID of a Twitch developer app, used for IGDB. Required even to start Django. Tests and CI use the dummy value `test-id`. |
+| `IGDB_CLIENT_SECRET` | none (required) | That app's Client Secret. Required even to start Django. Tests and CI use the dummy value `test-secret`; real searches need working credentials. |
 | `DEBUG` | `False` | Set `DEBUG=True` in your local `.env` to get error pages and static files while developing. Never `True` in production. |
 | `ALLOWED_HOSTS` | `localhost,127.0.0.1` | Hostnames the site answers to. |
 | `CSRF_TRUSTED_ORIGINS` | empty | Origins allowed to submit forms (needed for the production URL). |

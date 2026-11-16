@@ -25,9 +25,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
-#Get RAWG_API_KEY from env file and save base url for RAWP API
-RAWG_API_KEY = config('RAWG_API_KEY')
-RAWG_BASE_URL = "https://api.rawg.io/api"
+# IGDB game data: the Client ID and Secret of a Twitch developer app (dev.twitch.tv/console/apps)
+IGDB_CLIENT_ID = config('IGDB_CLIENT_ID')
+IGDB_CLIENT_SECRET = config('IGDB_CLIENT_SECRET')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # debug set to false for production 

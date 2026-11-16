@@ -1,6 +1,6 @@
 """
     Steps for searching and opening game details (stories #9 and #10).
-    RAWG is faked in environment.py for scenarios tagged @fake_rawg.
+    IGDB is faked in environment.py for scenarios tagged @fake_igdb.
 """
 from behave import given, when, then
 from bs4 import BeautifulSoup
@@ -34,7 +34,7 @@ def matching_titles_and_covers(context):
     for game in matching_games(context):
         context.test.assertContains(context.response, game["name"])
         context.test.assertIsNotNone(page.find("img", attrs={
-            "src": game["background_image"], "alt": game["name"],
+            "src": game["cover"], "alt": game["name"],
         }))
 
 
@@ -46,7 +46,7 @@ def search_results_on_screen(context):
 
 
 @given("the game database is unavailable")
-def rawg_unavailable(context):
+def igdb_unavailable(context):
     for fake in (context.search_game, context.get_game_details):
         fake.side_effect = None
         fake.return_value = None
@@ -66,13 +66,11 @@ def game_details(context):
     context.test.assertContains(context.response, context.game["name"])
     page = BeautifulSoup(context.response.content, "html.parser")
     context.test.assertIsNotNone(page.find("img", attrs={
-        "src": context.game["background_image"], "alt": context.game["name"],
+        "src": context.game["cover"], "alt": context.game["name"],
     }))
-    context.test.assertContains(context.response, context.game["description_raw"])
-    for genre in context.game["genres"]:
-        context.test.assertContains(context.response, genre["name"])
-    for platform in context.game["platforms"]:
-        context.test.assertContains(context.response, platform["platform"]["name"])
+    context.test.assertContains(context.response, context.game["summary"])
+    for name in context.game["genres"] + context.game["platforms"]:
+        context.test.assertContains(context.response, name)
 
 
 @then("I stay on the search results")
@@ -84,7 +82,7 @@ def stay_on_search_results(context):
 @given("a game has no description or cover")
 def missing_fields(context):
     context.game = context.fake_game
-    context.game.update(description_raw="", background_image="")
+    context.game.update(summary="", cover="")
 
 
 @when("I open its details page")

@@ -14,7 +14,7 @@ The root [Procfile](../Procfile) declares the web process and a release command.
 
 The Heroku app needs these config vars:
 
-- `SECRET_KEY` and `RAWG_API_KEY` (both required at startup)
+- `SECRET_KEY`, `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` (all required at startup; CI's dummy values can't make real IGDB requests)
 - `DEBUG=False`
 - `ALLOWED_HOSTS` containing `binge-and-bosses-team5-4e736711771e.herokuapp.com`
 - `CSRF_TRUSTED_ORIGINS` containing `https://binge-and-bosses-team5-4e736711771e.herokuapp.com`
