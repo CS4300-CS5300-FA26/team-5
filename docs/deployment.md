@@ -1,29 +1,27 @@
 # Deployment
 
-Production is at [binge-and-bosses.onrender.com](https://binge-and-bosses.onrender.com/), on [Render](https://render.com)'s free tier, built from this repo's `main` branch. `\.github\workflows\ci.yaml` contains the specific job that checks if the push passes all the CI checks, and only if it does will it allow a deployment to our website on Render.
+Production target: [binge-and-bosses-team5](https://binge-and-bosses-team5-4e736711771e.herokuapp.com/), with PostgreSQL on Neon. The Heroku app and Neon project exist; the Neon database is empty and cutover is pending. The old Render database is disposable, so no data transfer is planned.
 
-## What a deploy does
-Render runs [build.sh](../binge_and_bosses/build.sh) from the repository root. It:
+## CI deployment
 
-1. Installs the packages in `requirements.txt`. That file is generated from `uv.lock`, so production gets the same app package versions as CI and your machine, without dev packages. Render doesn't use uv itself.
-2. Collects static files (CSS, images) into `staticfiles/`, which WhiteNoise serves.
-3. Applies database migrations.
-4. Tries to create the admin superuser. The build continues if that command fails, including when the user already exists.
+`.github/workflows/ci.yaml` runs the test job on pushes and pull requests. After the test job passes on a push to `main`, the deploy job checks out that exact commit and pushes it to the Heroku Git `main` branch over HTTPS. GitHub Actions uses the `heroku-production` environment and its `HEROKU_API_KEY` secret. Deploys to this app are serialized. This uses Git directly; it does not require the Heroku CLI or a GitHub deployment App.
 
-Then Render starts the site with the start command set in its dashboard (gunicorn is in `requirements.txt` for this).
+The root `.python-version` and `uv.lock` are the Python buildpack's runtime and dependency files. Keep `uv.lock` as the only package-manager lock or requirements file in the repository; the buildpack rejects multiple package-manager files. Heroku finds `binge_and_bosses/manage.py` and runs `collectstatic` during the build. WhiteNoise serves the collected files.
 
-If you add a model, commit its migration. `build.sh` applies it on the next deploy.
+## Processes and database
 
-## Settings in production
-Render supplies the same environment variables as your local `.env` (see the table in [Project layout](project-layout.md#settings-come-from-the-environment)). Set them in the Render dashboard, never in code.
+The root [Procfile](../Procfile) declares the web process and a release command. The web process runs Gunicorn and binds to Heroku's `PORT`. The release command applies Django migrations with `--noinput` on each deployment.
 
-`SECRET_KEY`, `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` are required even at startup. Keep `DEBUG=False` in production. CI's dummy values are only for tests; they can't make real IGDB requests work.
-`RENDER_DEPLOY_HOOK_URL` is already stored within the repository so it is not needed to add to you `.env`
+The Heroku app needs these config vars:
 
-## Free-tier behavior to know about
-- **The site sleeps after 15 minutes without visitors.** The next visit takes about a minute while it wakes up. That's expected, not a crash.
-- **Files written on the server are lost** on every deploy, restart, or sleep. Anything that must be kept goes in the database.
-- **Which database production uses is an open question**, tracked in #53. If `DATABASE_URL` isn't set, production falls back to SQLite on that wiped disk.
+- `SECRET_KEY`, `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` (all required at startup; CI's dummy values can't make real IGDB requests)
+- `DEBUG=False`
+- `ALLOWED_HOSTS` containing `binge-and-bosses-team5-4e736711771e.herokuapp.com`
+- `CSRF_TRUSTED_ORIGINS` containing `https://binge-and-bosses-team5-4e736711771e.herokuapp.com`
+- `DATABASE_URL` set to the Neon PostgreSQL connection string with SSL enabled
 
-- **Smoke test after each deploy** (#35, Sprint 2).
-- **Custom domain** (#39, Sprint 3). Must be a domain we own, not a subdomain.
+Keep credentials in Heroku config vars, never in the repository or local test `.env` files. The first release migration creates the schema in the empty Neon database. No Render data migration is needed.
+
+## Cutover checklist
+
+Deployment and the production smoke test remain pending. After the CI deploy succeeds, verify the Heroku release and check the site, sign-up, login, and static files at the production URL before treating cutover as complete.

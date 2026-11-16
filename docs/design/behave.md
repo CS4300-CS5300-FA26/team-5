@@ -56,7 +56,7 @@ Django's `manage.py test` only collects files named `test*.py`, so it won't try 
 Behave matches each step's text against every step function, whichever file it's in. Steps like `Then I see "..."` are used by many features, so they go in `common.py` once. Feature-specific steps go in the file for their area (`accounts.py`, `games.py`). Two step functions with the same text cause an error, so check `common.py` before adding a step.
 
 ### 5. `behave_django` only where it's installed
-`behave-django` is a dev dependency (`uv add --dev behave-django`), so Render doesn't install it: it installs from `requirements.txt`, which leaves dev packages out. If `settings.py` always listed `behave_django` in `INSTALLED_APPS`, production would crash on startup. So `settings.py` adds it only when the package is installed:
+`behave-django` is a dev dependency (`uv add --dev behave-django`), so Heroku doesn't install it from the production dependency group in `uv.lock`. If `settings.py` always listed `behave_django` in `INSTALLED_APPS`, production would crash on startup. So `settings.py` adds it only when the package is installed:
 
 ```python
 from importlib.util import find_spec
@@ -70,10 +70,9 @@ Behave runs as its own CI step after the unit tests. Both run under coverage, an
 
 ```mermaid
 flowchart LR
-  A[uv sync --locked] --> B[requirements.txt matches uv.lock]
-  B --> C["coverage run manage.py test<br/>(unit tests)"]
-  C --> D["coverage run --append manage.py behave --simple<br/>(acceptance tests)"]
-  D --> E["coverage report --fail-under=80"]
+  A[uv sync --locked] --> B["coverage run manage.py test<br/>(unit tests)"]
+  B --> C["coverage run --append manage.py behave --simple<br/>(acceptance tests)"]
+  C --> D["coverage report --fail-under=80"]
 ```
 
 A failing scenario fails the build, the same as a failing unit test.
@@ -164,7 +163,7 @@ classDiagram
 #7 is closed, but its second scenario isn't met. It moved to #62 in Sprint 2, along with unique emails.
 
 ## What changes
-- `pyproject.toml`, `uv.lock`: `behave-django` as a dev dependency. `requirements.txt` doesn't change, because it has no dev packages.
+- `pyproject.toml`, `uv.lock`: `behave-django` as a dev dependency, kept out of production installs.
 - `settings.py`: add `behave_django` when it's installed (decision 5).
 - `binge_and_bosses/features/`: the two feature files, the steps, and `environment.py`.
 - `.github/workflows/ci.yaml`: the Behave step and the `--append` coverage (decision 6).

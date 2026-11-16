@@ -86,12 +86,8 @@ uv run coverage report -m
 
 ## Adding or updating packages
 - Add a package: `uv add <package>`. For tools only needed in development or CI (like `coverage`), use `uv add --dev <package>`.
-- Then regenerate `requirements.txt`, which Render installs from:
-  ```bash
-  uv export --locked --no-dev --no-emit-project -o requirements.txt
-  ```
-- Commit `pyproject.toml`, `uv.lock`, and `requirements.txt` together. CI fails if `uv.lock` or `requirements.txt` is out of date.
-- Don't `pip install` into the project or edit `requirements.txt` by hand.
+- Commit `pyproject.toml` and `uv.lock` together. Heroku's Python buildpack installs production dependencies from `uv.lock`; CI checks that the lock file matches `pyproject.toml`.
+- Use `uv run` for project commands so they use the locked environment.
 
 ## AI code review
 Every pull request gets an automatic review comment from OpenAI's `gpt-6-luna` model (`.github/workflows/ai-review.yml`). It posts a new comment-only review for each push and collapses its earlier reviews as outdated, so the latest review sits right after the latest commit. The review is advisory: a teammate still has to review and approve before merging. To change what the bot looks for, edit `.github/ai-review-guide.md`. The workflow reads the API key from the `OPENAI_API_KEY` repository secret.
@@ -151,4 +147,6 @@ A PR appears in the first matching category; add its manual label before generat
 | 11/15/2026 | Claude Code (Claude Opus 5.5) | Built the landing page (#79) and the player home page: the example library, the four how-it-works steps, dark mode and the logo, library stats, games popular with other players and recently added games. Wrote the unit tests and Behave scenarios first, and checked the pages at phone and desktop width in light and dark mode. Submitted in a pull request for teammate review. |
 | 11/15/2026 | Claude Code (Claude Opus 5.5) | Redesigned the Library page (cover grid, status and rating on each card, sort by recent, title or rating) and the Search page (result cards with cover and year, and an In library marker) to match the landing page. Wrote the unit tests first. Submitted in a pull request for teammate review. |
 | 11/15/2026 | Claude Code (Claude Opus 5.5) | Replaced RAWG with IGDB: a client that caches the Twitch token and retries once with a new one, search ranking that leaves out mods and alternate editions, cover images, the `rawg_id` to `igdb_id` migration, and updated tests, Behave fakes, CI settings and docs. Kept the database caching from #81. Wrote the client tests first with fake responses. Submitted in a pull request for teammate review. |
+| 11/15/2026 | OpenAI Codex (GPT-6 Luna) | Updated the CI deploy job for direct Heroku Git deployment after CI, added Heroku web and release commands, removed obsolete Render build configuration, and updated deployment docs. Ran the existing CI and local production-command checks. No application behavior changed. |
 | 11/15/2026 | Claude Code (Claude Opus 5.5) | Redesigned the game page around the player's save file: cover and facts, IGDB and player scores, a star picker, a review box with a live character count, removal with a confirmation, and every player's review. The status picker is display-only until story #12 connects it. Wrote the unit tests first. Submitted in a pull request for teammate review. |
+

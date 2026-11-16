@@ -20,7 +20,7 @@ Not ready for review yet? Open it as a **draft**. Teammates can see it and comme
 ## What runs on your PR
 | Check | What it does | If it fails |
 | --- | --- | --- |
-| **CI** (`ci.yaml`) | Installs the locked packages, checks `requirements.txt`, runs unit tests then Behave, requires 80% combined coverage, and checks startup without dev packages. Also runs on every push to any branch. | Click *Details* and read the log. Tests or coverage: see [Testing](testing.md). Lock or `requirements.txt` out of date: see the README's *Adding or updating packages*. |
+| **CI** (`ci.yaml`) | Installs the locked packages, runs unit tests then Behave, requires 80% combined coverage, and checks startup without dev packages. Also runs on every push to any branch. | Click *Details* and read the log. Tests or coverage: see [Testing](testing.md). Lock errors: see the README's *Adding or updating packages*. |
 | **AI code review** (`ai-review.yml`) | Posts a review comment with suggestions. Skips draft PRs. | It never blocks merging. Treat it as one reviewer's opinion: fix what's right, reply on what's wrong. |
 
 ## Getting it merged

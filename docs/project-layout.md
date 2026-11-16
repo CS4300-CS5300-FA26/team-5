@@ -2,9 +2,9 @@
 
 ```
 team-5/
+├── Procfile                   ← Heroku web and release commands
 ├── binge_and_bosses/          ← the Django project; run manage.py commands from here
 │   ├── manage.py
-│   ├── build.sh               ← what Render runs on each deploy (see deployment.md)
 │   ├── binge_and_bosses/      ← project settings and top-level URLs
 │   │   ├── settings.py
 │   │   └── urls.py
@@ -38,7 +38,6 @@ team-5/
 ├── pyproject.toml             ← the packages we depend on (edit with `uv add`)
 ├── uv.lock                    ← exact pinned versions of every package; commit it
 ├── .python-version            ← Python version (3.12)
-├── requirements.txt           ← generated from uv.lock for Render; never edit by hand
 └── README.md                  ← setup, running, adding packages, AI usage log
 ```
 
@@ -100,7 +99,7 @@ uv run python manage.py startapp reviews
 Then add it to `INSTALLED_APPS` in `settings.py`. `startapp` doesn't create a `urls.py`, so create `reviews/urls.py` with a `urlpatterns` list (copy `games/urls.py`), and `include()` it from `binge_and_bosses/urls.py`.
 
 ## Settings come from the environment
-`settings.py` reads these from `binge_and_bosses/.env` locally, or from Render's environment in production:
+`settings.py` reads these from `binge_and_bosses/.env` locally, or from Heroku's config vars in production:
 
 | Variable | Default | What it does |
 | --- | --- | --- |
