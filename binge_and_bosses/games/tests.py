@@ -1268,9 +1268,8 @@ class ReviewTests(TestCase):
                     [self.entry.pk],
                 )
                 self.assertContains(response, "No reviews yet.")
-                self.assertContains(
-                    self.client.get(reverse("library")), f"Status: {label}"
-                )
+                library = BeautifulSoup(self.client.get(reverse("library")).content, "html.parser")
+                self.assertIn(f"Status: {label}", library.select_one("main article").get_text())
 
     def test_status_change_preserves_existing_review(self):
         for edited in (False, True):
