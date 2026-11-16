@@ -9,7 +9,6 @@ from django.test import TestCase
 
 from .models import Game, Catalog
 from .catalog import get_or_import
-from .forms import ReviewForm
 
 from unittest.mock import patch,Mock
 import requests
