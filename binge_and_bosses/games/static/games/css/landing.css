@@ -1,0 +1,545 @@
+/* Landing page (games/index.html). Colors come from Bootstrap's variables so the
+   page matches the nav bar, and follows Bootstrap's dark mode if the site turns it on. */
+.landing {
+    --accent: var(--bs-primary);
+    --accent-press: #084298;              /* same pressed shadow as .auth-signup in navbar.css */
+    --ink: var(--bs-emphasis-color);
+    --muted: var(--bs-secondary-color);
+    --line: var(--bs-border-color);
+    --sunk: var(--bs-tertiary-bg);
+    --surface: var(--bs-body-bg);
+    --gold: #e0a100;
+    --status-not-started: var(--bs-border-color);
+    --status-not-started-ink: var(--bs-secondary-color);
+    --status-playing: var(--bs-primary);
+    --status-completed: var(--bs-success);
+    --status-completed-ink: var(--status-completed);   /* text and outlines; lighter in dark mode */
+    --status-on-hold: var(--bs-warning);
+    --status-on-hold-ink: var(--bs-warning-text-emphasis);   /* yellow text is unreadable on white */
+    --status-dropped: var(--bs-danger);
+    --status-dropped-ink: var(--status-dropped);
+    --font-display: "Outfit", "Segoe UI", system-ui, sans-serif;
+    --font-hud: "Chakra Petch", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+    display: grid;
+    gap: clamp(2.5rem, 6vw, 4.5rem);
+    padding-block: clamp(0.5rem, 3vw, 2rem) clamp(1.5rem, 4vw, 3rem);   /* the steps end the page, so leave room below */
+}
+
+.landing h1,
+.landing h2,
+.landing h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: balance;
+    margin: 0;
+    line-height: 1.08;
+}
+
+.landing p { margin: 0; }
+
+.landing .hud {
+    font-family: var(--font-hud);
+    font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+[data-bs-theme="dark"] .landing {
+    --accent: var(--bs-primary-text-emphasis);   /* #0d6efd is too dark for text on the dark page */
+    --gold: #f2b53e;
+    --status-completed-ink: var(--bs-success-text-emphasis);
+    --status-dropped-ink: var(--bs-danger-text-emphasis);
+}
+
+/* Hero */
+.landing-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: clamp(2rem, 5vw, 4rem);
+    align-items: center;
+}
+
+.landing-hero h1 {
+    font-size: clamp(2.25rem, 5.4vw, 3.75rem);
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+}
+
+.landing-hero h1 em {
+    font-style: normal;
+    color: var(--accent);
+}
+
+.landing-lede {
+    color: var(--muted);
+    font-size: 1.125rem;
+    max-width: 48ch;
+}
+
+.landing-cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.5rem;
+    margin-top: 1.75rem;
+}
+
+.landing-link {
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.landing-link:hover { text-decoration: underline; }
+
+/* Pressed "arcade" buttons, matching the nav bar's Signup button */
+.btn-arcade {
+    font-weight: 600;
+    box-shadow: 0 4px 0 var(--accent-press);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-arcade:hover {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 var(--accent-press);
+}
+
+.btn-arcade:active {
+    transform: translateY(4px);
+    box-shadow: none;
+}
+
+/* Example library card: the backlog as a boss health bar */
+.savefile {
+    margin: 0;
+    display: grid;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+    box-shadow: 0 6px 0 var(--sunk);
+}
+
+.savefile-top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0;
+}
+
+.savefile-top strong {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.125rem;
+    color: var(--ink);
+}
+
+.savefile-top .hud { color: var(--muted); }
+
+.bossbar-label {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: -0.5rem;
+    color: var(--muted);
+}
+
+.bossbar-label b { color: var(--status-completed-ink); }
+
+.bossbar {
+    display: flex;
+    gap: 2px;
+    height: 1rem;
+    border-radius: 0.25rem;
+    overflow: hidden;
+    background: var(--sunk);
+}
+
+.bossbar i { display: block; }
+
+.legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.375rem 1rem;
+    margin: 0;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.legend div {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.legend dt { font-weight: 400; }
+
+.legend dt::before {
+    content: "";
+    display: inline-block;
+    width: 0.6rem;
+    height: 0.6rem;
+    margin-right: 0.45rem;
+    border-radius: 2px;
+    background: var(--c);
+}
+
+.legend dd {
+    margin: 0;
+    font-weight: 700;
+}
+
+.savefile-games {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+}
+
+.savefile-games li {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: center;
+    padding-top: 0.75rem;
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--line);
+}
+
+.savefile-games li:first-child { margin-top: 0; }
+
+.savefile-games b {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Game covers. The gradient (tinted by --h) shows while an image loads, and stands in when a game has none */
+.landing .cover {
+    display: block;
+    aspect-ratio: 3 / 4;
+    max-width: 100%;
+    border-radius: 0.3rem;
+    background:
+        radial-gradient(120% 80% at 80% 0%, hsl(var(--h) 70% 62% / 0.9), transparent 60%),
+        linear-gradient(160deg, hsl(var(--h) 55% 34%), hsl(calc(var(--h) + 40) 50% 16%));
+}
+
+/* IGDB cover images, and colours by status value (the statuses from story #12) */
+.landing img.cover {
+    width: 100%;
+    object-fit: cover;
+}
+
+.status-not_started { --c: var(--status-not-started); }
+.status-playing { --c: var(--status-playing); }
+.status-completed { --c: var(--status-completed); }
+.status-on_hold { --c: var(--status-on-hold); }
+.status-dropped { --c: var(--status-dropped); }
+
+.bossbar i[class^="status-"] { background: var(--c); }
+
+.stars {
+    color: var(--gold);
+    letter-spacing: 1px;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+}
+
+.stars .off { color: var(--line); }
+
+.stars-lg { font-size: 1.125rem; }
+
+.pill {
+    font: 600 0.6875rem/1 var(--font-hud);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    padding: 0.3rem 0.5rem;
+    border: 1.5px solid var(--c);
+    border-radius: 999px;
+    color: var(--c);
+}
+
+.pill.on {
+    background: var(--c);
+    color: #fff;
+}
+
+/* White text is unreadable on the grey and the yellow */
+.pill.on.status-not_started { color: var(--ink); }
+.pill.on.status-on_hold { color: #000; }
+
+/* How it works: find, add, track, rate */
+.landing-steps ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 2rem 1.25rem;
+}
+
+/* Subgrid lines up each step's label, title, demo and text across the row */
+.landing-steps li {
+    display: grid;
+    grid-row: span 4;
+    grid-template-rows: subgrid;
+    gap: 0.625rem;
+    min-width: 0;
+}
+
+.landing-steps .hud { color: var(--accent); }
+
+.landing-steps h3 { font-size: 1.25rem; }
+
+.landing-steps p {
+    color: var(--muted);
+    font-size: 0.9375rem;
+}
+
+.demo {
+    display: grid;
+    align-content: start;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: var(--sunk);
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    pointer-events: none;
+}
+
+.demo .btn {
+    justify-self: start;
+    white-space: nowrap;
+}
+
+/* Add it: a search result with its cover, like the game details page.
+   The cover fills the box's height; it narrows (down to 3rem) before the button would overflow. */
+.demo-add {
+    grid-template-columns: minmax(3rem, 4.5rem) minmax(min-content, 1fr);
+    align-content: stretch;
+    gap: 0.75rem;
+}
+
+.demo-add .cover { aspect-ratio: auto; }
+
+.demo-add-info {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.demo-add-info .btn { margin-top: 0.375rem; }
+
+.demo-input {
+    padding: 0.35rem 0.6rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+    color: var(--ink);
+}
+
+.demo-muted { color: var(--muted); }
+
+.caret {
+    display: inline-block;
+    width: 1px;
+    height: 0.85em;
+    margin-left: 1px;
+    vertical-align: -0.1em;
+    background: var(--ink);
+    animation: landing-blink 1s steps(1) infinite;
+}
+
+@keyframes landing-blink { 50% { opacity: 0; } }
+
+.demo-result {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.demo-result span:last-child { color: var(--muted); }
+
+.pills {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.375rem;
+}
+
+.pills .pill {
+    padding-inline: 0.25rem;
+    text-align: center;
+}
+
+.demo-count {
+    color: var(--muted);
+    font-size: 0.75rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Player home page (games/home.html) */
+.home { gap: clamp(1.75rem, 4vw, 2.5rem); }
+
+.home h2 { font-size: 1.25rem; }
+
+.home-top {
+    display: grid;
+    gap: 1rem;
+}
+
+.home-top h1 {
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    letter-spacing: -0.01em;
+}
+
+.home-search {
+    display: flex;
+    gap: 0.75rem;
+    max-width: 40rem;
+}
+
+.home-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+}
+
+/* Both cards share the row height; the library footer sits on the bottom edge */
+.home-grid .savefile { align-content: start; }
+.home-library { grid-template-rows: auto auto auto 1fr; }
+.home-library-foot { align-self: end; }
+
+.home-panel {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1.25rem;
+    background: var(--sunk);
+    border-radius: 0.75rem;
+}
+
+.home-muted { color: var(--muted); }
+
+.home-library-foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.875rem;
+}
+
+.home a:not(.btn) {
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.home-popular ul,
+.home-covers {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.home-popular ul {
+    display: grid;
+    align-content: start;
+    gap: 0.5rem;
+}
+
+/* Nothing to suggest yet: fill the card instead of leaving one line at the top */
+.home-popular { grid-template-rows: auto 1fr; }
+
+.home-popular-empty {
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    text-align: center;
+    background: var(--sunk);
+    border-radius: 0.5rem;
+}
+
+.home-popular-empty p { margin: 0; }
+
+.home-popular li a {
+    display: grid;
+    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem 0.5rem 0.5rem;
+    background: var(--sunk);
+    border-radius: 0.5rem;
+    color: var(--ink);
+}
+
+.home-popular li a:hover { box-shadow: inset 0 0 0 2px var(--accent); }
+
+.home-popular b,
+.home-cover-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.home-popular li .home-muted {
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
+.home-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.75rem;
+}
+
+.home-covers {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.home-covers a {
+    display: grid;
+    gap: 0.5rem;
+    color: var(--ink);
+    font-size: 0.875rem;
+}
+
+.home-covers .cover { transition: transform 0.15s ease; }
+
+.home-covers a:hover .cover { transform: translateY(-3px); }
+
+@media (max-width: 991.98px) {
+    .landing-steps ol,
+    .home-covers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767.98px) {
+    .landing-hero,
+    .home-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 479.98px) {
+    .landing-steps ol,
+    .legend { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .caret { animation: none; }
+    .btn-arcade,
+    .home-covers .cover { transition: none; }
+}

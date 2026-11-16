@@ -1,16 +1,109 @@
 {% extends "base.html" %}
+{% block title %}Binge and Bosses | Track every game you play{% endblock %}
+{% block extra_head %}
+    {% include "games/_landing_head.html" %}
+{% endblock %}
 {% block content %}
-    <h1>Binge & Bosses</h1> 
-    <ul>
-    {% for game in games %}
-        <li>
-            <h2>{{game.game_title}}</h2>
-            <p>Description:<br>{{game.game_description}}</p>
-            <p>Rating:<br>{{game.game_rating}}</p>
-            <p>Release Date:<br>{{game.game_release}}</p>
-        </li>
-    {% empty %}
-        <li>No games yet...</li>
-    {% endfor %}
-    </ul>
+<div class="landing">
+    <section class="landing-hero">
+        <div>
+            <h1>One save file for <em>every game</em> you play.</h1>
+            <p class="landing-lede">Keep your library, your play status and your ratings in one place, and finally see how much of the backlog you've beaten.</p>
+            <div class="landing-cta">
+                <a class="btn btn-primary btn-lg btn-arcade" href="{% url 'signup' %}">Sign up</a>
+                <a class="landing-link" href="{% url 'login' %}">Log in</a>
+            </div>
+        </div>
+
+        <figure class="savefile" aria-label="Example library: 61 games, 24 completed. Completed 24, Playing 3, On hold 2, Not started 28, Dropped 4.">
+            <figcaption class="savefile-top">
+                <strong>Example library</strong>
+                <span class="hud">61 games</span>
+            </figcaption>
+            <div class="bossbar-label hud" aria-hidden="true"><span>Progress</span><span><b>24</b> of 61 completed</span></div>
+            <div class="bossbar" aria-hidden="true">
+                <i style="flex: 24; background: var(--status-completed)"></i>
+                <i style="flex: 3; background: var(--status-playing)"></i>
+                <i style="flex: 2; background: var(--status-on-hold)"></i>
+                <i style="flex: 28; background: var(--status-not-started)"></i>
+                <i style="flex: 4; background: var(--status-dropped)"></i>
+            </div>
+            <dl class="legend" aria-hidden="true">
+                <div style="--c: var(--status-completed)"><dt>Completed</dt><dd>24</dd></div>
+                <div style="--c: var(--status-playing)"><dt>Playing</dt><dd>3</dd></div>
+                <div style="--c: var(--status-on-hold)"><dt>On Hold</dt><dd>2</dd></div>
+                <div style="--c: var(--status-not-started)"><dt>Not Started</dt><dd>28</dd></div>
+                <div style="--c: var(--status-dropped)"><dt>Dropped</dt><dd>4</dd></div>
+            </dl>
+            <ul class="savefile-games" aria-hidden="true">
+                <li>
+                    <img class="cover" style="--h: 18" src="https://images.igdb.com/igdb/image/upload/t_cover_big/coaknx.jpg" alt="">
+                    <span><b>Hades II</b><span class="stars">★★★★★</span></span>
+                    <span class="pill on" style="--c: var(--status-playing)">Playing</span>
+                </li>
+                <li>
+                    <img class="cover" style="--h: 268" src="https://images.igdb.com/igdb/image/upload/t_cover_big/co9gam.jpg" alt="">
+                    <span><b>Clair Obscur: Expedition 33</b><span class="stars">★★★★<span class="off">★</span></span></span>
+                    <span class="pill on" style="--c: var(--status-completed)">Completed</span>
+                </li>
+            </ul>
+        </figure>
+    </section>
+
+    <section class="landing-steps" aria-labelledby="how-it-works">
+        <h2 id="how-it-works" class="visually-hidden">How it works</h2>
+        <ol>
+            <li>
+                <span class="hud">Step 1</span>
+                <h3>Find it</h3>
+                <div class="demo" aria-hidden="true">
+                    <span class="demo-input">hollow kni<span class="caret"></span></span>
+                    <span class="demo-result"><span>Hollow Knight</span><span>2017</span></span>
+                    <span class="demo-result"><span>Hollow Knight: Silksong</span><span>2025</span></span>
+                </div>
+                <p>Search any game by title and open its details page.</p>
+            </li>
+            <li>
+                <span class="hud">Step 2</span>
+                <h3>Add it</h3>
+                <div class="demo demo-add" aria-hidden="true">
+                    <img class="cover" style="--h: 200" src="https://images.igdb.com/igdb/image/upload/t_cover_big/cobebu.jpg" alt="">
+                    <span class="demo-add-info">
+                        <b>Hollow Knight: Silksong</b>
+                        <span class="demo-muted">2025 · Team Cherry</span>
+                        <span class="btn btn-primary btn-sm btn-arcade">Add to library</span>
+                    </span>
+                </div>
+                <p>One click puts it in your library as Not Started.</p>
+            </li>
+            <li>
+                <span class="hud">Step 3</span>
+                <h3>Track it</h3>
+                <div class="demo" aria-hidden="true">
+                    <b>Hollow Knight: Silksong</b>
+                    <span class="pills">
+                        <span class="pill" style="--c: var(--status-not-started-ink)">Not Started</span>
+                        <span class="pill on" style="--c: var(--status-playing)">Playing</span>
+                        <span class="pill" style="--c: var(--status-completed-ink)">Completed</span>
+                        <span class="pill" style="--c: var(--status-on-hold-ink)">On Hold</span>
+                        <span class="pill" style="--c: var(--status-dropped-ink)">Dropped</span>
+                    </span>
+                </div>
+                <p>Move it from Not Started to Playing, Completed, On Hold or Dropped as you go.</p>
+            </li>
+            <li>
+                <span class="hud">Step 4</span>
+                <h3>Rate it</h3>
+                <div class="demo" aria-hidden="true">
+                    <span class="stars stars-lg">★★★★<span class="off">★</span></span>
+                    <span class="demo-input demo-muted">The boss rush alone is worth it…</span>
+                    <span class="demo-count">412 / 1,000</span>
+                </div>
+                <p>Give it 1 to 5 stars and write a review other players can read.</p>
+            </li>
+        </ol>
+    </section>
+
+    <p class="search-credit">Cover art from <a href="https://www.igdb.com">IGDB</a>.</p>
+</div>
 {% endblock %}

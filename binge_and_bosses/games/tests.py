@@ -17,33 +17,226 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 
 
-# Tests for the landing page (URL "/" -> index view -> Game model -> index.html).
-# Django's TestCase runs against a temporary test database, so these tests
-# never read or write the real development or production data.
+# Tests for the landing page (URL "/" -> index view -> games/index.html).
 class LandingPageTests(TestCase):
 
-    def test_home_page_lists_saved_game(self):
-        Game.objects.create(
-            game_title="Hollow Knight",
-            game_description="Explore the ruined kingdom of Hallownest.",
-            game_rating=9.5,
-            game_release=date(2017, 2, 24),
+    def links(self, response, scope="main"):
+        page = BeautifulSoup(response.content, "html.parser").select_one(scope)
+        return {a.get_text(" ", strip=True): a["href"] for a in page.select("a[href]")}
+
+    def test_visitor_sees_what_the_app_is_for(self):
+        response = self.client.get(reverse("index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "One save file for")
+        self.assertContains(response, "Find it")
+        self.assertContains(response, "Rate it")
+        self.assertContains(response, "Example library")
+
+    def test_visitor_gets_sign_up_and_log_in_links(self):
+        links = self.links(self.client.get(reverse("index")))
+
+        self.assertEqual(links["Sign up"], reverse("signup"))
+        self.assertEqual(links["Log in"], reverse("login"))
+
+    def test_example_games_show_their_igdb_covers(self):
+        page = BeautifulSoup(self.client.get(reverse("index")).content, "html.parser")
+        covers = [img["src"] for img in page.select("main img.cover")]
+
+        self.assertEqual(covers, [
+            "https://images.igdb.com/igdb/image/upload/t_cover_big/coaknx.jpg",   # Hades II
+            "https://images.igdb.com/igdb/image/upload/t_cover_big/co9gam.jpg",   # Clair Obscur: Expedition 33
+            "https://images.igdb.com/igdb/image/upload/t_cover_big/cobebu.jpg",   # Hollow Knight: Silksong
+        ])
+        self.assertIn("IGDB", page.select_one("main").get_text())
+
+    def test_demos_use_the_play_statuses_from_story_12(self):
+        page = BeautifulSoup(self.client.get(reverse("index")).content, "html.parser")
+        pills = [pill.get_text() for pill in page.select(".landing-steps .pills .pill")]
+        legend = [dt.get_text() for dt in page.select(".landing-hero .legend dt")]
+
+        statuses = ["Not Started", "Playing", "Completed", "On Hold", "Dropped"]
+        self.assertEqual(pills, statuses)
+        self.assertEqual(sorted(legend), sorted(statuses))
+        self.assertNotIn("Finished", page.get_text())
+
+    def test_visitor_is_asked_to_sign_up_only_once_on_the_page(self):
+        page = BeautifulSoup(self.client.get(reverse("index")).content, "html.parser")
+        sign_up_links = page.select(f'main a[href="{reverse("signup")}"]')
+
+        self.assertEqual(len(sign_up_links), 1)
+
+    def test_player_gets_library_and_search_links_and_no_sign_up(self):
+        user = get_user_model().objects.create_user(
+            username="player_one", email="player@example.com", password="Gr8Backlog!42"
         )
+        self.client.force_login(user)
 
-        response = self.client.get("/")
+        response = self.client.get(reverse("index"))
+        page = BeautifulSoup(response.content, "html.parser")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Hollow Knight")
-        self.assertContains(response, "Explore the ruined kingdom of Hallownest.")
-        self.assertContains(response, "9.5")
-        self.assertContains(response, "Feb. 24, 2017")
-        self.assertNotContains(response, "No games yet...")
+        # The nav bar's Library link counts: an empty library has no library card on the page
+        self.assertIn(reverse("library"), self.links(response, "body").values())
+        self.assertIsNotNone(page.select_one(f'main form[action="{reverse("game_search")}"]'))
+        self.assertNotIn(reverse("signup"), self.links(response, "body").values())
 
-    def test_home_page_shows_empty_message_without_games(self):
-        response = self.client.get("/")
+    def test_page_loads_its_stylesheet(self):
+        response = self.client.get(reverse("index"))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No games yet...")
+        self.assertContains(response, "games/css/landing.css")
+        self.assertIsNotNone(finders.find("games/css/landing.css"))
+
+
+# Dark mode: base.html gives every page a toggle and loads the script that applies the theme.
+class PlayerHomeTests(TestCase):
+    """Logged-in players get a working home page: search, library stats, popular games, recent adds."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="player_one", email="player@example.com", password="Gr8Backlog!42"
+        )
+        self.client.force_login(self.user)
+        self.next_rawg_id = 1
+
+    def add(self, title, user=None, **entry):
+        game = Game.objects.create(
+            rawg_id=self.next_rawg_id, game_title=title, game_description="", game_rating=4.0,
+            game_image=f"https://media.example.com/{title}.jpg",
+        )
+        self.next_rawg_id += 1
+        return Catalog.objects.create(user=user or self.user, games=game, **entry)
+
+    def page(self):
+        return BeautifulSoup(self.client.get(reverse("index")).content, "html.parser").select_one("main")
+
+    def titles(self, section):
+        return [a.get_text(" ", strip=True) for a in self.page().select(f"{section} li a")]
+
+    def test_player_home_skips_the_pitch_and_the_steps(self):
+        text = self.page().get_text(" ", strip=True)
+
+        self.assertIn("Welcome back, player_one", text)
+        self.assertNotIn("One save file for", text)
+        self.assertNotIn("Find it", text)
+
+    def test_player_home_has_a_search_box(self):
+        form = self.page().select_one(f'form[action="{reverse("game_search")}"]')
+
+        self.assertEqual(form["method"], "get")
+        self.assertIsNotNone(form.select_one('input[name="q"]'))
+
+    def test_library_card_shows_counts_ratings_and_reviews(self):
+        self.add("Hades II", rating=5, review="Best one yet.")
+        self.add("Balatro", rating=4)
+        self.add("Celeste")
+
+        text = self.page().select_one(".home-library").get_text(" ", strip=True)
+
+        self.assertIn("3 games", text)
+        self.assertIn("Not Started 3", text)
+        self.assertIn("2 rated", text)
+        self.assertIn("1 review", text)
+
+    def player(self, name):
+        return get_user_model().objects.create_user(username=name, email=f"{name}@example.com")
+
+    def test_popular_lists_what_other_players_have_that_you_dont(self):
+        ana, ben, cy = self.player("ana"), self.player("ben"), self.player("cy")
+        balatro = self.add("Balatro", user=ana).games
+        hades = self.add("Hades II", user=ana).games
+        celeste = self.add("Celeste", user=ana).games
+        self.add("Elden Ring", user=ana)
+        self.add("Stardew Valley", user=ben)
+        for player in (ben, cy):
+            Catalog.objects.create(user=player, games=balatro)
+        for player in (ben, cy, self.user):   # the most popular, but you already have it
+            Catalog.objects.create(user=player, games=celeste)
+        Catalog.objects.create(user=ben, games=hades)
+
+        rows = self.page().select(".home-popular li a")
+
+        # Most players first; a tie goes to the game someone added most recently
+        self.assertEqual(
+            [a.get_text(" ", strip=True) for a in rows],
+            ["Balatro 3 players", "Hades II 2 players", "Stardew Valley 1 player"],
+        )
+        self.assertEqual(rows[0]["href"], reverse("game_details", args=[balatro.rawg_id]))
+
+    def test_popular_skips_games_without_an_id_to_link_to(self):
+        self.add("Hades II")   # the cards only show once your library has a game
+        ana = self.player("ana")
+        orphan = self.add("Saved by hand", user=ana).games   # e.g. added in the admin without an id
+        orphan.rawg_id = None
+        orphan.save()
+
+        page = self.page()
+
+        self.assertNotIn("Saved by hand", page.select_one(".home-popular").get_text())
+
+    def test_popular_says_when_there_is_nothing_to_suggest(self):
+        self.add("Hades II")
+
+        card = self.page().select_one(".home-popular")
+
+        self.assertIn("Nothing to suggest yet", card.get_text())
+        self.assertEqual(card.select_one("a")["href"], reverse("game_search"))
+
+    def test_recently_added_shows_the_six_newest_with_covers(self):
+        for n in range(1, 8):
+            self.add(f"Game {n}")
+
+        items = self.page().select(".home-recent li")
+
+        self.assertEqual([li.get_text(strip=True) for li in items], [f"Game {n}" for n in range(7, 1, -1)])
+        self.assertEqual(items[0].select_one("img.cover")["src"], "https://media.example.com/Game 7.jpg")
+        self.assertEqual(items[0].select_one("a")["href"], reverse("game_details", args=[7]))
+
+    def test_library_stats_and_recent_adds_count_only_the_players_own_games(self):
+        other = get_user_model().objects.create_user(username="someone_else", password="Gr8Backlog!42")
+        self.add("Hades II")
+        self.add("Balatro", user=other)
+
+        page = self.page()
+
+        self.assertIn("1 game", page.select_one(".home-library .hud").get_text())
+        self.assertNotIn("Balatro", page.select_one(".home-recent").get_text())
+        self.assertIn("Balatro", page.select_one(".home-popular").get_text())   # suggested, not counted
+
+    def test_empty_library_points_to_search(self):
+        page = self.page()
+
+        self.assertIn("Your library is empty", page.get_text())
+        self.assertIsNone(page.select_one(".home-library"))
+
+
+class DarkModeToggleTests(TestCase):
+
+    def test_every_page_has_a_dark_mode_toggle(self):
+        for url in (reverse("index"), reverse("login"), reverse("signup")):
+            with self.subTest(url=url):
+                page = BeautifulSoup(self.client.get(url).content, "html.parser")
+                toggle = page.select_one("nav button#theme-toggle")
+
+                self.assertIsNotNone(toggle)
+                self.assertEqual(toggle["aria-label"], "Dark mode")
+                self.assertIsNotNone(page.select_one('head script[src$="js/theme.js"]'))
+
+    def test_theme_script_exists(self):
+        self.assertIsNotNone(finders.find("js/theme.js"))
+
+
+class BrandLogoTests(TestCase):
+
+    def test_every_page_shows_the_logo_beside_the_app_name(self):
+        for url in (reverse("index"), reverse("login"), reverse("signup")):
+            with self.subTest(url=url):
+                page = BeautifulSoup(self.client.get(url).content, "html.parser")
+                brand = page.select_one("nav a.navbar-brand")
+                logo = brand.select_one(".brand-logo")
+
+                self.assertIsNotNone(logo)
+                self.assertEqual(logo["aria-hidden"], "true")
+                self.assertEqual(brand.get_text(strip=True), "Binge and Bosses")
 
 
 class SearchAPICheckandDetails(TestCase):
