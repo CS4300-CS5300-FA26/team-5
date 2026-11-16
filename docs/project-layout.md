@@ -26,7 +26,7 @@ team-5/
 │       ├── urls.py
 │       ├── templates/games/   ← index.html (visitor landing page), home.html (player home page), library.html, search.html, details.html, plus _cover/_stars partials
 │       ├── static/games/css/  ← landing.css (shared by the landing, home, library, search and game pages)
-│       ├── static/games/js/   ← details.js (review character count, confirm before removing a game)
+│       ├── static/games/js/   ← details.js (review character count)
 │       ├── migrations/        ← committed; never delete or edit by hand
 │       └── tests.py
 ├── .github/

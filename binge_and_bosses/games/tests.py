@@ -1004,12 +1004,22 @@ class DetailsPageTests(TestCase):
         self.assertEqual(form.find("textarea")["maxlength"], "1000")
         self.assertEqual(form.select_one("[data-review-count]").get_text(strip=True), "12 / 1,000")
 
-    def test_removing_asks_for_confirmation(self):
+    def test_removing_asks_for_confirmation_in_a_site_dialog(self):
         self.own()
+        page = self.page()
 
-        form = self.page().find("form", action=reverse("remove_from_library", args=[42]))
-
-        self.assertIn("rating and review", form["data-confirm"])
+        # The button only opens a Bootstrap modal; the form that removes the game is inside it
+        opener = page.find("button", string="Remove from library", attrs={"data-bs-toggle": "modal"})
+        self.assertEqual(opener["type"], "button")
+        dialog = page.select_one(opener["data-bs-target"])
+        self.assertIn("modal", dialog["class"])
+        self.assertEqual(dialog.select_one("#" + dialog["aria-labelledby"]).get_text(strip=True), "Remove Portal?")
+        self.assertIn("rating and review", dialog.get_text())
+        form = dialog.find("form", action=reverse("remove_from_library", args=[42]))
+        self.assertEqual(form.find("button", type="submit").get_text(strip=True), "Remove from library")
+        self.assertEqual(form.find("button", attrs={"data-bs-dismiss": "modal"}).get_text(strip=True), "Keep it")
+        # No browser confirm box on top of the dialog
+        self.assertIsNone(page.select_one("[data-confirm]"))
 
     def test_reviews_show_stars_and_read_out_the_rating(self):
         self.own(rating=4, review="Clever.")

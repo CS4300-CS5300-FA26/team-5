@@ -1,5 +1,4 @@
-// Game page: a live character count for the review box, and a confirmation before
-// removing a game (which also deletes its rating and review).
+// Game page: a live character count for the review box.
 document.addEventListener("DOMContentLoaded", () => {
     const review = document.querySelector(".details-review-form textarea");
     const count = document.querySelector("[data-review-count]");
@@ -9,10 +8,4 @@ document.addEventListener("DOMContentLoaded", () => {
             count.textContent = `${review.value.length.toLocaleString("en-US")} / ${max}`;
         });
     }
-
-    document.querySelectorAll("form[data-confirm]").forEach((form) => {
-        form.addEventListener("submit", (event) => {
-            if (!window.confirm(form.dataset.confirm)) event.preventDefault();
-        });
-    });
 });

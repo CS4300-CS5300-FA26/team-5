@@ -78,11 +78,9 @@
                             </div>
                         </form>
 
-                        <form class="details-remove" method="post" action="{% url 'remove_from_library' game.igdb_id %}"
-                              data-confirm="Remove {{ game.game_title }} from your library? Your rating and review will be deleted too.">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-link link-danger">Remove from library</button>
-                        </form>
+                        <div class="details-remove">
+                            <button type="button" class="btn btn-link link-danger" data-bs-toggle="modal" data-bs-target="#remove-dialog">Remove from library</button>
+                        </div>
                     {% endif %}
                 </section>
             </div>
@@ -137,6 +135,23 @@
                 </section>
             </div>
         </div>
+
+        {% if in_library %}
+            {# Opened by the "Remove from library" button; Bootstrap's JS shows and closes it #}
+            <div class="modal fade remove-dialog" id="remove-dialog" tabindex="-1" aria-labelledby="remove-dialog-title" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <form class="modal-content" method="post" action="{% url 'remove_from_library' game.igdb_id %}">
+                        {% csrf_token %}
+                        <h2 id="remove-dialog-title">Remove {{ game.game_title }}?</h2>
+                        <p class="home-muted">Your status, rating and review for it will be deleted. You can add the game again later, but they won't come back.</p>
+                        <div class="remove-dialog-actions">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Keep it</button>
+                            <button type="submit" class="btn btn-danger btn-arcade">Remove from library</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
     {% endif %}
 
     <p class="search-credit">Game data provided by <a href="https://www.igdb.com">IGDB</a>.</p>
