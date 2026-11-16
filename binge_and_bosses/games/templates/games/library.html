@@ -26,7 +26,7 @@
                 <li>
                     <article>
                         {% include "games/_cover.html" with game=entry.games %}
-                        <h2><a href="{% url 'game_details' entry.games.rawg_id %}">{{ entry.games.game_title }}</a></h2>
+                        <h2><a href="{% url 'game_details' entry.games.igdb_id %}">{{ entry.games.game_title }}</a></h2>
                         <div class="library-meta">
                             <span class="pill on status-{{ entry.status }}"><span class="visually-hidden">Status: </span>{{ entry.get_status_display }}</span>
                             {% if entry.rating %}

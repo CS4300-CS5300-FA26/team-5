@@ -7,7 +7,7 @@ From the `binge_and_bosses/` folder (the one with `manage.py`), install the lock
 
 ```bash
 uv sync --locked
-export SECRET_KEY=ci-only-not-a-real-key DEBUG=True RAWG_API_KEY=test-key
+export SECRET_KEY=ci-only-not-a-real-key DEBUG=True IGDB_CLIENT_ID=test-id IGDB_CLIENT_SECRET=test-secret
 unset DATABASE_URL
 uv run --locked python manage.py test
 ```
@@ -46,8 +46,8 @@ uv run --locked coverage report -m --fail-under=80
 
 `report -m` lists the line numbers in each file that neither suite ran. Those are what to test next. CI also checks that Django starts without dev packages, so `settings.py` only adds `behave_django` when it's installed.
 
-## Tests that use RAWG
-Tests must use fake RAWG responses and never call the real API. `games/tests.py` patches `games.rawg_client.requests.get` for API tests, `games.views.search_game` for search view tests and `games.catalog.get_game_details` for game details. Behave scenarios tagged `@fake_rawg` get fake RAWG answers from `features/environment.py`; steps change them through `context.search_game` and `context.get_game_details`. The dummy `RAWG_API_KEY=test-key` satisfies settings; it isn't a working API key.
+## Tests that use IGDB
+Tests must use fake IGDB responses and never call the real API. `games/tests.py` patches `games.igdb_client.requests.post` for client tests (both the Twitch token request and the IGDB query go through it), `games.views.search_game` for search view tests and `games.catalog.get_game_details` for game details. Behave scenarios tagged `@fake_igdb` get fake IGDB answers from `features/environment.py`; steps change them through `context.search_game` and `context.get_game_details`. The dummy `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` values satisfy settings; they aren't working credentials.
 
 ## Writing a test
 Tests live in each app's `tests.py`. Each test is a method whose name starts with `test_`. [games/tests.py](../binge_and_bosses/games/tests.py) is a short example:

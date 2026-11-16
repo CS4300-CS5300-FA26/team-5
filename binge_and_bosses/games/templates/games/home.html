@@ -46,7 +46,7 @@
                     <ul>
                         {% for game in popular %}
                             <li>
-                                <a href="{% url 'game_details' game.rawg_id %}">
+                                <a href="{% url 'game_details' game.igdb_id %}">
                                     {% include "games/_cover.html" %}
                                     <b>{{ game.game_title }}</b>
                                     <span class="home-muted">{{ game.players }} player{{ game.players|pluralize }}</span>
@@ -71,7 +71,7 @@
             <ul class="home-covers">
                 {% for entry in recent %}
                     <li>
-                        <a href="{% url 'game_details' entry.games.rawg_id %}">
+                        <a href="{% url 'game_details' entry.games.igdb_id %}">
                             {% include "games/_cover.html" with game=entry.games %}
                             <span class="home-cover-title">{{ entry.games.game_title }}</span>
                         </a>
