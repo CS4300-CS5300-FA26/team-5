@@ -1226,9 +1226,8 @@ class ReviewTests(TestCase):
             self.assertEqual(form.find("label", attrs={"for": radio["id"]}).get_text(strip=True), label)
         self.assertEqual(form.find("textarea", attrs={"name": "review"}).get_text().strip(), "Fun puzzles.")
         self.assertEqual(form.find("button").get_text(strip=True), "Save")
-        selected = form.select_one('select[name="status"] option[selected]')
-        self.assertIsNotNone(selected)
-        self.assertEqual(selected["value"], Catalog.Status.PLAYING)
+        checked = form.select('input[type="radio"][name="status"][checked]')
+        self.assertEqual([r["value"] for r in checked], [Catalog.Status.PLAYING])
 
     def test_review_form_hidden_without_library_entry_or_login(self):
         url = reverse("save_review", args=[42])

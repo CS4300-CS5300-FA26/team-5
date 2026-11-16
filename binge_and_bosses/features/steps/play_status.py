@@ -1,6 +1,6 @@
 """
     Steps for changing a game's play status (story #12).
-    RAWG is faked in environment.py for scenarios tagged @fake_rawg.
+    IGDB is faked in environment.py for scenarios tagged @fake_igdb.
 """
 from behave import given, when, then
 from bs4 import BeautifulSoup
@@ -73,9 +73,9 @@ def try_to_change_status_logged_out(context):
         username="owner", email="owner@example.com", password=PASSWORD
     )
     game = Game.objects.create(
-        rawg_id=data["id"],
+        igdb_id=data["id"],
         game_title=data["name"],
-        game_description=data["description_raw"],
+        game_description=data["summary"],
         game_rating=data["rating"],
     )
     context.entry = Catalog.objects.create(

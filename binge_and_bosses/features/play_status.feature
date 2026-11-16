@@ -1,7 +1,7 @@
 # Story 1: Changing Play Status (#12)
 # As a player, I want to change a game's play status, so that my library shows what I'm playing, finished, or dropped.
 
-@fake_rawg
+@fake_igdb
 Feature: Play status
 
   Scenario: Start playing

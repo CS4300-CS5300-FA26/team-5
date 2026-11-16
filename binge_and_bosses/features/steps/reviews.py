@@ -31,19 +31,14 @@ def submit_review(context, rating=None, review=None, status=None):
     textarea = form.find("textarea", attrs={"name": "review"})
     context.test.assertIsNotNone(textarea, "No review textarea")
     data[textarea["name"]] = textarea.get_text() if review is None else review
-    status_select = form.find("select", attrs={"name": "status"})
-    context.test.assertIsNotNone(status_select, "No play status dropdown")
-
     if status is None:
-        selected = (
-            status_select.find("option", selected=True)
-            or status_select.find("option")
-        )
-        context.test.assertIsNotNone(selected, "No play status options")
+        selected = form.select_one('input[type="radio"][name="status"]:checked')
+        context.test.assertIsNotNone(selected, "No play status picked")
     else:
-        selected = status_select.find("option", string=status)
-        context.test.assertIsNotNone(selected, f'No play status option for "{status}"')
-    data[status_select["name"]] = selected["value"]
+        label = form.find("label", string=status)
+        context.test.assertIsNotNone(label, f'No play status option for "{status}"')
+        selected = form.find("input", attrs={"type": "radio", "name": "status", "id": label["for"]})
+    data[selected["name"]] = selected["value"]
     context.response = context.test.client.post(form["action"], data, follow=True)
     context.test.assertRedirects(context.response, url)
 
