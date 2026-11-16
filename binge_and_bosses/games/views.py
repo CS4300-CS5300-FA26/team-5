@@ -1,19 +1,45 @@
 from django.contrib import messages
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Count, Max, Q
 from django.urls import reverse
 from django.views.decorators.http import require_POST
-from .models import Game, Catalog
-from .rawg_client import search_game 
+from .models import Catalog, Game
+from .rawg_client import search_game
 from .catalog import get_or_import
 from .forms import ReviewForm
 # Create your views here.
 
 
 def index(request):
-    games = Game.objects.all()
-    return render(request,'games/index.html',{'games':games})
+    if not request.user.is_authenticated:
+        return render(request, 'games/index.html')
+
+    # Logged-in players get a working home page built from their own library
+    entries = Catalog.objects.filter(user=request.user).select_related('games').order_by('-id')
+    counts = dict(entries.values_list('status').annotate(Count('id')).order_by())
+    statuses = [
+        {'value': value, 'label': label, 'count': counts.get(value, 0)}
+        for value, label in Catalog.Status.choices
+    ]
+    # Games in other players' libraries that this player doesn't have yet. Most players first;
+    # a tie goes to the game someone added most recently. A game needs an id to link to.
+    popular = (
+        Game.objects.exclude(catalog__user=request.user).exclude(rawg_id=None)
+        .annotate(players=Count('catalog'), last_added=Max('catalog__id'))
+        .filter(players__gt=0)
+        .order_by('-players', '-last_added')[:3]
+    )
+    return render(request, 'games/home.html', {
+        'statuses': statuses,
+        'total': sum(counts.values()),
+        **entries.aggregate(
+            rated=Count('id', filter=Q(rating__isnull=False)),
+            reviewed=Count('id', filter=~Q(review='')),
+        ),
+        'popular': popular,
+        'recent': entries[:6],
+    })
 
 @login_required
 def library(request):

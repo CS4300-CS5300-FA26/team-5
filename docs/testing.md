@@ -23,7 +23,7 @@ Behave is on `main` (#63). From the same folder and with the same test environme
 uv run --locked python manage.py behave --simple
 ```
 
-`--simple` uses Django's test client, with no browser or server. The scenarios in `features/` cover sign-up, login, logout, search, game details, adding to the library, ratings and reviews. They check the same "Invalid username or password." message for an unknown username and a wrong password.
+`--simple` uses Django's test client, with no browser or server. The scenarios in `features/` cover the landing page, sign-up, login, logout, search, game details, adding to the library, ratings and reviews. They check the same "Invalid username or password." message for an unknown username and a wrong password.
 
 `behave.ini` skips scenarios tagged `@wip` by default. Each has an issue comment. To include only those scenarios:
 
@@ -54,11 +54,11 @@ Tests live in each app's `tests.py`. Each test is a method whose name starts wit
 
 ```python
 class LandingPageTests(TestCase):
-    def test_home_page_shows_empty_message_without_games(self):
-        response = self.client.get("/")
+    def test_visitor_sees_what_the_app_is_for(self):
+        response = self.client.get(reverse("index"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No games yet...")
+        self.assertContains(response, "One save file for")
 ```
 
 - `TestCase` gives each test a fresh, empty database.
