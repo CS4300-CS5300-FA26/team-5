@@ -919,6 +919,135 @@ class RemoveFromLibraryViewTests(TestCase):
         self.assertTrue(Catalog.objects.filter(user=self.user, games=self.game).exists())
 
 
+class DetailsPageTests(TestCase):
+    """The game page: cover and facts from IGDB, our players' average, and the player's own save file."""
+
+    GAME = {
+        "id": 42, "name": "Portal", "summary": "A puzzle game with portals.", "released": "2007-10-10",
+        "rating": 4.5, "cover": "https://images.example.com/portal.jpg",
+        "genres": ["Puzzle", "Shooter"], "platforms": ["PC (Microsoft Windows)", "Xbox 360"],
+    }
+
+    def setUp(self):
+        patcher = patch("games.catalog.get_game_details", return_value=dict(self.GAME))
+        self.details = patcher.start()
+        self.addCleanup(patcher.stop)
+        self.user = get_user_model().objects.create_user(username="player", email="player@example.com")
+        self.game = get_or_import(42)   # saved from the fake IGDB answer, as the first visit would
+
+    def page(self, **params):
+        response = self.client.get(reverse("game_details", args=[42]), params)
+        self.assertEqual(response.status_code, 200)
+        return BeautifulSoup(response.content, "html.parser").select_one("main")
+
+    def own(self, **entry):
+        self.client.force_login(self.user)
+        return Catalog.objects.create(user=self.user, games=self.game, **entry)
+
+    def test_header_shows_year_genres_and_igdb_score(self):
+        head = self.page().select_one(".details-head")
+
+        self.assertEqual(head.h1.get_text(strip=True), "Portal")
+        self.assertIn("2007 · Puzzle, Shooter", head.get_text(" ", strip=True))
+        self.assertIn("IGDB 4.5", head.get_text(" ", strip=True))
+
+    def test_facts_list_release_date_and_platforms(self):
+        facts = self.page().select_one("dl.details-facts")
+
+        self.assertEqual(facts.find("time")["datetime"], "2007-10-10")
+        self.assertIn("Oct 10, 2007", facts.get_text())
+        self.assertIn("PC (Microsoft Windows), Xbox 360", facts.get_text())
+
+    def test_players_average_counts_only_ratings(self):
+        for name, rating in [("a", 3), ("b", 4), ("c", None)]:
+            user = get_user_model().objects.create_user(username=name, email=f"{name}@example.com")
+            Catalog.objects.create(user=user, games=self.game, rating=rating, review="Hm.")
+
+        head = self.page().select_one(".details-head").get_text(" ", strip=True)
+
+        self.assertIn("Players 3.5", head)
+        self.assertIn("2 ratings", head)
+
+    def test_no_players_average_without_ratings(self):
+        self.assertNotIn("Players", self.page().select_one(".details-head").get_text())
+
+    def test_visitor_is_asked_to_log_in_and_come_back(self):
+        save = self.page().select_one(".details-save")
+
+        link = save.find("a", string="Log in to add to your library")
+        self.assertEqual(link["href"], f"{reverse('login')}?next={reverse('game_details', args=[42])}")
+        self.assertIsNone(save.find("form"))
+
+    def test_player_without_the_game_can_add_it(self):
+        self.client.force_login(self.user)
+
+        save = self.page().select_one(".details-save")
+
+        self.assertIsNotNone(save.find("form", action=reverse("add_to_library", args=[42])))
+        self.assertIsNone(save.find("form", action=reverse("save_review", args=[42])))
+
+    def test_owner_sees_current_status_read_only(self):
+        self.own()
+
+        status = self.page().select_one(".details-save fieldset.status-picker")
+
+        self.assertTrue(status.has_attr("disabled"))
+        checked = status.select('input[name="status"][checked]')
+        self.assertEqual([i["value"] for i in checked], ["not_started"])
+        self.assertEqual(status.find("label", attrs={"for": checked[0]["id"]}).get_text(strip=True), "Not Started")
+
+    def test_review_box_counts_characters(self):
+        self.own(review="Fun puzzles.")
+
+        form = self.page().find("form", action=reverse("save_review", args=[42]))
+
+        self.assertEqual(form.find("textarea")["maxlength"], "1000")
+        self.assertEqual(form.select_one("[data-review-count]").get_text(strip=True), "12 / 1,000")
+
+    def test_removing_asks_for_confirmation_in_a_site_dialog(self):
+        self.own()
+        page = self.page()
+
+        # The button only opens a Bootstrap modal; the form that removes the game is inside it
+        opener = page.find("button", string="Remove from library", attrs={"data-bs-toggle": "modal"})
+        self.assertEqual(opener["type"], "button")
+        dialog = page.select_one(opener["data-bs-target"])
+        self.assertIn("modal", dialog["class"])
+        self.assertEqual(dialog.select_one("#" + dialog["aria-labelledby"]).get_text(strip=True), "Remove Portal?")
+        self.assertIn("rating and review", dialog.get_text())
+        form = dialog.find("form", action=reverse("remove_from_library", args=[42]))
+        self.assertEqual(form.find("button", type="submit").get_text(strip=True), "Remove from library")
+        self.assertEqual(form.find("button", attrs={"data-bs-dismiss": "modal"}).get_text(strip=True), "Keep it")
+        # No browser confirm box on top of the dialog
+        self.assertIsNone(page.select_one("[data-confirm]"))
+
+    def test_reviews_show_stars_and_read_out_the_rating(self):
+        self.own(rating=4, review="Clever.")
+
+        review = self.page().select_one(".details-reviews article")
+
+        self.assertEqual(review.select_one(".stars")["aria-hidden"], "true")
+        self.assertIn("Rating: 4/5", review.get_text())
+
+    def test_back_link_returns_to_the_search(self):
+        link = self.page(q="portal & co").find("a", string=lambda t: t and "Back to results" in t)
+
+        self.assertEqual(link["href"], "/search/?q=portal%20%26%20co")
+
+    def test_no_back_link_without_a_search(self):
+        self.assertIsNone(self.page().find("a", string=lambda t: t and "Back to results" in t))
+
+    def test_error_is_an_alert_with_a_way_back_to_search(self):
+        self.game.delete()
+        self.details.return_value = None
+
+        page = self.page()
+
+        self.assertIn("Could not load game details. Try again.", page.select_one('[role="alert"]').get_text())
+        self.assertIsNotNone(page.find("a", href=reverse("game_search")))
+        self.assertIsNone(page.select_one(".details-save"))
+
+
 class ReviewTests(TestCase):
 
     def setUp(self):
