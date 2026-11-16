@@ -24,8 +24,9 @@ team-5/
 │       ├── views.py           ← home, library, IGDB search and details views
 │       ├── igdb_client.py     ← search_game and get_game_details call IGDB
 │       ├── urls.py
-│       ├── templates/games/   ← index.html (visitor landing page), home.html (player home page), library.html, search.html, details.html
-│       ├── static/games/css/  ← landing.css (shared by the landing, home, library and search pages)
+│       ├── templates/games/   ← index.html (visitor landing page), home.html (player home page), library.html, search.html, details.html, plus _cover/_stars partials
+│       ├── static/games/css/  ← landing.css (shared by the landing, home, library, search and game pages)
+│       ├── static/games/js/   ← details.js (review character count)
 │       ├── migrations/        ← committed; never delete or edit by hand
 │       └── tests.py
 ├── .github/
@@ -58,7 +59,7 @@ Search and details fetch IGDB data through `games/igdb_client.py`, which gets an
 | --- | --- | --- |
 | `/` | `index` | Visitors get the landing page: what the app does, an example library, Sign up and Log in. Players get their home page: a search box, library stats, games popular with other players that they don't have yet, and recently added games. Makes no IGDB calls. |
 | `/search/?q=title` | `game_search` | Search IGDB by title (main games, remakes, remasters, ports and expansions; no mods or alternate editions); shows up to five results with their release year, and marks games already in your library. If IGDB fails, shows this visitor's last results for the same search (kept in the session). No login required. |
-| `/<int:game_id>/` | `game_details` | Details for an IGDB game ID. If IGDB fails, goes back to the search results with an error when opened from a search, otherwise shows the error on this page. No login required. |
+| `/<int:game_id>/` | `game_details` | Details for an IGDB game ID: cover, facts, the IGDB score and our players' average, everyone's reviews, and the player's own status, rating and review. If IGDB fails, goes back to the search results with an error when opened from a search, otherwise shows the error on this page. No login required. |
 | `/library/` | `library` | The user's saved games, statuses and ratings. `?sort=recent` (default), `title` or `rating` (unrated last). Requires login. |
 | `/<int:game_id>/add/` | `add_to_library` | Add an IGDB game to the user's library. POST and login required. |
 | `/<int:game_id>/remove/` | `remove_from_library` | Remove a game from the user's library. POST and login required. |

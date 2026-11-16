@@ -124,3 +124,38 @@ def see_all_reviews(context):
         context.test.assertEqual(article.h3.get_text(strip=True), username)
         context.test.assertIn(f"Rating: {rating}/5", article.get_text())
         context.test.assertIn(review, article.get_text())
+
+
+def add_player(context, username, rating=None):
+    user = get_user_model().objects.create_user(username=username, email=f"{username}@example.com")
+    Catalog.objects.create(user=user, games=context.entry.games, rating=rating)
+
+
+@given("players rated the game {first:d}, {second:d} and {third:d} stars")
+def players_rated(context, first, second, third):
+    game_in_my_library(context)   # my own entry has no rating
+    for n, rating in enumerate((first, second, third)):
+        add_player(context, f"rater_{n}", rating)
+
+
+@given("another player has the game but did not rate it")
+def player_without_rating(context):
+    add_player(context, "no_rating")
+
+
+def players_score(context):
+    page = BeautifulSoup(context.response.content, "html.parser")
+    return next((s for s in page.select(".details-scores .score") if "Players" in s.get_text()), None)
+
+
+@then('the players\' score reads "{text}"')
+def players_score_reads(context, text):
+    score = players_score(context)
+    context.test.assertIsNotNone(score, "No players' score on the game page")
+    context.test.assertEqual(score.get_text(" ", strip=True), f"Players {text}")
+
+
+@then("there is no players' score")
+def no_players_score(context):
+    context.test.assertIsNone(players_score(context))
+
