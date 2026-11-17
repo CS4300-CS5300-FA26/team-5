@@ -154,3 +154,4 @@ A PR appears in the first matching category; add its manual label before generat
 
 | 11/15/2026 | Gemini 4 Carbon| Created the unit tests for the play status feature and the behave feature file and steps.|
 
+| 11/16/2026 | OpenAI Codex | Implemented Story 10 friend requests (#15): relationship constraints, permission-checked actions, Friends page, unit tests and five Behave scenarios. Started with failing tests before implementation. Friend activity remains separate (#18). |
