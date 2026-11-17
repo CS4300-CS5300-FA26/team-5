@@ -14,6 +14,7 @@ from importlib.util import find_spec
 from pathlib import Path
 from decouple import config
 from decouple import Csv 
+import sys
 import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -132,9 +133,10 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": "redis://<your-redis-host>:6379",
         "TIMEOUT": 300,
-        "KEY_PREFIX": "myapp",
+        "KEY_PREFIX": "bingeandbosses",
     }
 }
+
 
 
 # Internationalization

@@ -23,25 +23,39 @@ def search_game(game_name):
     """The 5 best-known games matching the title. IGDB ranks matches by text alone, which can put a
     fan game or an obscure namesake first, so we fetch 20 and sort them by how many ratings they have."""
     title = game_name.replace("\\", "\\\\").replace('"', '\\"')
-    games = _query(f'search "{title}"; fields {FIELDS},total_rating_count; {RELEASES_ONLY}; limit 20;')
-    if games is None:
-        return None
-    games.sort(key=lambda game: game.get("total_rating_count", 0), reverse=True)
-    return [_game(game) for game in games[:5]]
+    cache_key = f"SearchGame_{game_name}"
 
+    games_search = cache.get(cache_key)
+
+    if games_search is None:
+        games = _query(f'search "{title}"; fields {FIELDS},total_rating_count; {RELEASES_ONLY}; limit 20;')
+        if games is None:
+            return None
+        games.sort(key=lambda game: game.get("total_rating_count", 0), reverse=True)
+        game_search_result = [_game(game) for game in games[:5]]
+        cache.set(cache_key,game_search_result,timeout=3600)
+        return game_search_result
+
+    return games_search
+
+    
 
 def get_game_details(game_id):
     """One game by its IGDB id, or None if there's no such game."""
-    cache_key = f"GameDetails_{game_id}"
+    cache_key = f"GameDetails_{int(game_id)}"
 
+    # Get info from cache
     specific_game_detail = cache.get(cache_key)
+
+    # If none then generate set a new cache and return it
     if specific_game_detail is None:
         games = _query(f"fields {FIELDS}; where id = {int(game_id)};")
         specific_game_detail = _game(games[0]) if games else None
         cache.set(cache_key,specific_game_detail,timeout=3600)
         return specific_game_detail
-    else:
-        return specific_game_detail
+
+    # If not just return specific_game_detail
+    return specific_game_detail
         
 
 
