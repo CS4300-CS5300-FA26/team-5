@@ -11,6 +11,8 @@ from django.urls import reverse
 PAGES = {
     "sign-up": "signup",
     "login": "login",
+    "home": "index",
+    "library": "library",
 }
 
 PASSWORD = "Gr8Backlog!42"

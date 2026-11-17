@@ -1,31 +1,46 @@
 {% extends "base.html" %}
+{% block title %}{{ user.username }}'s Library | Binge and Bosses{% endblock %}
+{% block extra_head %}
+    {% include "games/_landing_head.html" %}
+{% endblock %}
 {% block content %}
-<head><title>{{ user.username }}'s Library</title></head>
-  <h1>{{ user.username }}'s Library</h1>
+<div class="landing home library">
+    <section class="library-top">
+        <div>
+            <h1>{{ user.username }}'s Library</h1>
+            <span class="hud">{{ library_entries|length }} game{{ library_entries|length|pluralize }}</span>
+        </div>
+        <a class="btn btn-primary btn-arcade" href="{% url 'game_search' %}">Find a game</a>
+    </section>
 
-  {% for library_entry in library_entries %}
-    <article>
-    {% if library_entry.games.game_image %}
-      <img src="{{ library_entry.games.game_image }}" alt="{{ library_entry.games.game_title }}" width="150">
-    {% else %}
-      <p>No cover available</p>
-    {% endif %}
-    <h2>
-      <a href="{% url 'game_details' library_entry.games.rawg_id %}">{{ library_entry.games.game_title }}</a>
-    </h2>
-    <p>Status: {{ library_entry.get_status_display }}</p>
-    {% if library_entry.rating %}
-      <p>Rating: {{ library_entry.rating }}/5</p>
-    {% else %}
-      <p>Not rated</p>
-    {% endif %}
-    </article>
-  {% empty %}
-    <p>Your games will show up here soon.</p>
-  {% endfor %}
+    {% if library_entries %}
+        <nav class="library-sort" aria-label="Sort your library">
+            <span class="hud">Sort</span>
+            {% for value, label in sorts.items %}
+                <a href="?sort={{ value }}"{% if value == sort %} aria-current="true"{% endif %}>{{ label }}</a>
+            {% endfor %}
+        </nav>
 
-  <form method="post" action="{% url 'logout' %}">
-    {% csrf_token %}
-    <button type="submit">Log out</button>
-  </form>
+        <ul class="library-grid">
+            {% for entry in library_entries %}
+                <li>
+                    <article>
+                        {% include "games/_cover.html" with game=entry.games %}
+                        <h2><a href="{% url 'game_details' entry.games.igdb_id %}">{{ entry.games.game_title }}</a></h2>
+                        <div class="library-meta">
+                            <span class="pill on status-{{ entry.status }}"><span class="visually-hidden">Status: </span>{{ entry.get_status_display }}</span>
+                            {% if entry.rating %}
+                                {% include "games/_stars.html" with rating=entry.rating %}
+                            {% else %}
+                                <span class="home-muted">Not rated</span>
+                            {% endif %}
+                        </div>
+                    </article>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="home-panel home-muted">Your library is empty. <a href="{% url 'game_search' %}">Search for a game</a> to add your first one.</p>
+    {% endif %}
+</div>
 {% endblock %}

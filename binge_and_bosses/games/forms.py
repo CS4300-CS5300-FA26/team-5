@@ -6,7 +6,7 @@ from .models import Catalog
 class ReviewForm(forms.ModelForm):
     class Meta:
         model = Catalog
-        fields = ["rating", "review"]
+        fields = ["rating", "review", "status"]
         widgets = {
             # The blank choice lets a player remove a rating and keep their review
             "rating": forms.RadioSelect(choices=[("", "Not rated")] + [
@@ -14,4 +14,5 @@ class ReviewForm(forms.ModelForm):
                 for value in range(1, 6)
             ]),
             "review": forms.Textarea(attrs={"rows": 4, "class": "form-control"}),
+            "status": forms.Select(choices=Catalog.Status.choices),
         }
