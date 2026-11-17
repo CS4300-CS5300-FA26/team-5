@@ -47,17 +47,16 @@
                         </form>
                         <p class="home-muted">It starts as Not Started. Then you can rate and review it.</p>
                     {% else %}
-                        {# Story #12: wrap this fieldset in a form that posts to the change-status view, and remove "disabled". #}
-                        <fieldset class="status-picker" disabled>
-                            <legend class="hud">Status</legend>
-                            {% for value, label in statuses %}
-                                <input type="radio" name="status" id="status-{{ value }}" value="{{ value }}"{% if value == entry.status %} checked{% endif %}>
-                                <label class="pill status-{{ value }}" for="status-{{ value }}">{{ label }}</label>
-                            {% endfor %}
-                        </fieldset>
-
                         <form class="details-review-form" method="post" action="{% url 'save_review' game.igdb_id %}">
                             {% csrf_token %}
+                            <fieldset class="status-picker">
+                                <legend class="hud">Status</legend>
+                                {% for value, label in statuses %}
+                                    <input type="radio" name="status" id="status-{{ value }}" value="{{ value }}"{% if value == entry.status %} checked{% endif %}>
+                                    <label class="pill status-{{ value }}" for="status-{{ value }}">{{ label }}</label>
+                                {% endfor %}
+                            </fieldset>
+
                             <fieldset class="star-picker">
                                 <legend class="hud">Your rating</legend>
                                 {% for radio in review_form.rating %}

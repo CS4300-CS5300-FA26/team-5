@@ -13,7 +13,7 @@ def game_in_my_library(context):
     context.entry = Catalog.objects.get(user=context.user, games__igdb_id=context.fake_game["id"])
 
 
-def submit_review(context, rating=None, review=None):
+def submit_review(context, rating=None, review=None, status=None):
     url = reverse("game_details", args=[context.fake_game["id"]])
     page = BeautifulSoup(context.test.client.get(url).content, "html.parser")
     form = page.find("form", action=reverse("save_review", args=[context.fake_game["id"]]))
@@ -31,6 +31,14 @@ def submit_review(context, rating=None, review=None):
     textarea = form.find("textarea", attrs={"name": "review"})
     context.test.assertIsNotNone(textarea, "No review textarea")
     data[textarea["name"]] = textarea.get_text() if review is None else review
+    if status is None:
+        selected = form.select_one('input[type="radio"][name="status"]:checked')
+        context.test.assertIsNotNone(selected, "No play status picked")
+    else:
+        label = form.find("label", string=status)
+        context.test.assertIsNotNone(label, f'No play status option for "{status}"')
+        selected = form.find("input", attrs={"type": "radio", "name": "status", "id": label["for"]})
+    data[selected["name"]] = selected["value"]
     context.response = context.test.client.post(form["action"], data, follow=True)
     context.test.assertRedirects(context.response, url)
 

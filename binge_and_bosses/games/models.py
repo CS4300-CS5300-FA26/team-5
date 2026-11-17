@@ -21,6 +21,10 @@ class Catalog(models.Model):
 
     class Status(models.TextChoices):
         NOT_STARTED = 'not_started', 'Not Started'
+        PLAYING = 'playing', 'Playing'
+        COMPLETED = 'completed', 'Completed'
+        ON_HOLD = 'on_hold', 'On Hold'
+        DROPPED = 'dropped', 'Dropped'
 
     class Meta:
         constraints = [

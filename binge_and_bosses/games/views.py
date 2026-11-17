@@ -101,6 +101,8 @@ def save_review(request, game_id):
         messages.error(request, "Pick a rating from 1 to 5.")
     if "review" in form.errors:
         messages.error(request, "Keep your review to 1,000 characters or fewer.")
+    if "status" in form.errors:
+        messages.error(request, "Pick a valid play status.")
     return redirect("game_details", game_id=game_id)
 
 
