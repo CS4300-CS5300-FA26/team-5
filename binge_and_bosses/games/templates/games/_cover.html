@@ -1,0 +1,6 @@
+{# A game's cover: its IGDB cover, or a gradient tinted by the game's id when it has none #}
+{% if game.game_image %}
+    <img class="cover" src="{{ game.game_image }}" alt="" loading="lazy">
+{% else %}
+    <span class="cover" style="--h: {% widthratio game.id 1 47 %}"></span>
+{% endif %}

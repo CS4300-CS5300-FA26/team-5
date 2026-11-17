@@ -1,4 +1,4 @@
-"""Rating and review steps. RAWG is faked by the @fake_rawg hook."""
+"""Rating and review steps. IGDB is faked by the @fake_igdb hook."""
 from behave import given, when, then
 from bs4 import BeautifulSoup
 from django.contrib.auth import get_user_model
@@ -10,10 +10,10 @@ from games.models import Catalog
 @given("a game in my library")
 def game_in_my_library(context):
     context.execute_steps("Given the game is already in my library")
-    context.entry = Catalog.objects.get(user=context.user, games__rawg_id=context.fake_game["id"])
+    context.entry = Catalog.objects.get(user=context.user, games__igdb_id=context.fake_game["id"])
 
 
-def submit_review(context, rating=None, review=None):
+def submit_review(context, rating=None, review=None, status=None):
     url = reverse("game_details", args=[context.fake_game["id"]])
     page = BeautifulSoup(context.test.client.get(url).content, "html.parser")
     form = page.find("form", action=reverse("save_review", args=[context.fake_game["id"]]))
@@ -31,6 +31,14 @@ def submit_review(context, rating=None, review=None):
     textarea = form.find("textarea", attrs={"name": "review"})
     context.test.assertIsNotNone(textarea, "No review textarea")
     data[textarea["name"]] = textarea.get_text() if review is None else review
+    if status is None:
+        selected = form.select_one('input[type="radio"][name="status"]:checked')
+        context.test.assertIsNotNone(selected, "No play status picked")
+    else:
+        label = form.find("label", string=status)
+        context.test.assertIsNotNone(label, f'No play status option for "{status}"')
+        selected = form.find("input", attrs={"type": "radio", "name": "status", "id": label["for"]})
+    data[selected["name"]] = selected["value"]
     context.response = context.test.client.post(form["action"], data, follow=True)
     context.test.assertRedirects(context.response, url)
 
@@ -124,3 +132,38 @@ def see_all_reviews(context):
         context.test.assertEqual(article.h3.get_text(strip=True), username)
         context.test.assertIn(f"Rating: {rating}/5", article.get_text())
         context.test.assertIn(review, article.get_text())
+
+
+def add_player(context, username, rating=None):
+    user = get_user_model().objects.create_user(username=username, email=f"{username}@example.com")
+    Catalog.objects.create(user=user, games=context.entry.games, rating=rating)
+
+
+@given("players rated the game {first:d}, {second:d} and {third:d} stars")
+def players_rated(context, first, second, third):
+    game_in_my_library(context)   # my own entry has no rating
+    for n, rating in enumerate((first, second, third)):
+        add_player(context, f"rater_{n}", rating)
+
+
+@given("another player has the game but did not rate it")
+def player_without_rating(context):
+    add_player(context, "no_rating")
+
+
+def players_score(context):
+    page = BeautifulSoup(context.response.content, "html.parser")
+    return next((s for s in page.select(".details-scores .score") if "Players" in s.get_text()), None)
+
+
+@then('the players\' score reads "{text}"')
+def players_score_reads(context, text):
+    score = players_score(context)
+    context.test.assertIsNotNone(score, "No players' score on the game page")
+    context.test.assertEqual(score.get_text(" ", strip=True), f"Players {text}")
+
+
+@then("there is no players' score")
+def no_players_score(context):
+    context.test.assertIsNone(players_score(context))
+

@@ -1,6 +1,6 @@
 """
     Steps for adding games to the library.
-    RAWG is faked in environment.py for scenarios tagged @fake_rawg.
+    IGDB is faked in environment.py for scenarios tagged @fake_igdb.
 """
 from behave import given, when, then
 from bs4 import BeautifulSoup
@@ -20,8 +20,8 @@ def form_for(response, url_name, args):
     page = BeautifulSoup(response.content, "html.parser")
     return page.find("form", action=reverse(url_name, args=args))
 
-def add_form(response, rawg_id):
-    return form_for(response, "add_to_library", [rawg_id])
+def add_form(response, igdb_id):
+    return form_for(response, "add_to_library", [igdb_id])
 
 
 def is_logged_in(context):
@@ -40,9 +40,9 @@ def game_already_in_library(context):
     context.execute_steps("Given I am logged in")
     data = context.fake_game
     game = Game.objects.create(
-        rawg_id=data["id"],
+        igdb_id=data["id"],
         game_title=data["name"],
-        game_description=data["description_raw"],
+        game_description=data["summary"],
         game_rating=data["rating"],
     )
     Catalog.objects.create(user=context.user, games=game)
@@ -73,12 +73,13 @@ def game_in_library_with_status(context, status):
         context.response, reverse("game_details", args=[game_id(context)]),
         fetch_redirect_response=False,
     )
-    entry = Catalog.objects.get(user=context.user, games__rawg_id=game_id(context))
+    entry = Catalog.objects.get(user=context.user, games__igdb_id=game_id(context))
     context.test.assertEqual(entry.get_status_display(), status)
 
-    library = context.test.client.get(reverse("library"))
-    context.test.assertContains(library, context.fake_game["name"])
-    context.test.assertContains(library, f"Status: {status}")
+    library = BeautifulSoup(context.test.client.get(reverse("library")).content, "html.parser")
+    card = library.select_one("main article")
+    context.test.assertIn(context.fake_game["name"], card.get_text())
+    context.test.assertIn(f"Status: {status}", card.get_text())
 
 
 @then('the button reads "{label}" and cannot add a duplicate')
@@ -95,7 +96,7 @@ def in_library_no_duplicate(context, label):
     # Even a direct second add must not create a second entry
     context.test.client.post(reverse("add_to_library", args=[game_id(context)]))
     context.test.assertEqual(
-        Catalog.objects.filter(user=context.user, games__rawg_id=game_id(context)).count(), 1
+        Catalog.objects.filter(user=context.user, games__igdb_id=game_id(context)).count(), 1
     )
 
 
@@ -107,3 +108,18 @@ def asked_to_log_in(context):
     )
     context.test.assertContains(context.game_page, "Log in to add to your library")
     context.test.assertFalse(Catalog.objects.exists())
+
+
+@given("I added these games to my library, in this order:")
+def library_from_table(context):
+    for igdb_id, row in enumerate(context.table, start=1):
+        game = Game.objects.create(igdb_id=igdb_id, game_title=row["title"], game_description="", game_rating=4.0)
+        Catalog.objects.create(user=context.user, games=game, rating=int(row["rating"]) if row["rating"] else None)
+
+
+@then('my library lists "{titles}"')
+def library_lists(context, titles):
+    context.test.assertEqual(context.response.status_code, 200)
+    page = BeautifulSoup(context.response.content, "html.parser")
+    shown = [h2.get_text(strip=True) for h2 in page.select("main .library-grid h2")]
+    context.test.assertEqual(shown, titles.split(", "))

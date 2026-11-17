@@ -6,8 +6,8 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 #Game Model
 class Game(models.Model):
-    # Store the rawg_id for a game 
-    rawg_id = models.IntegerField(unique=True, null=True, blank=True)
+    # The game's IGDB id
+    igdb_id = models.IntegerField(unique=True, null=True, blank=True)
     # Store all other attributes we get from it
     game_title = models.CharField(max_length=200)
     game_description = models.TextField()
@@ -21,6 +21,10 @@ class Catalog(models.Model):
 
     class Status(models.TextChoices):
         NOT_STARTED = 'not_started', 'Not Started'
+        PLAYING = 'playing', 'Playing'
+        COMPLETED = 'completed', 'Completed'
+        ON_HOLD = 'on_hold', 'On Hold'
+        DROPPED = 'dropped', 'Dropped'
 
     class Meta:
         constraints = [

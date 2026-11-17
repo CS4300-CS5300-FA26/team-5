@@ -25,14 +25,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
-#Get RAWG_API_KEY from env file and save base url for RAWP API
-RAWG_API_KEY = config('RAWG_API_KEY')
-RAWG_BASE_URL = "https://api.rawg.io/api"
+# IGDB game data: the Client ID and Secret of a Twitch developer app (dev.twitch.tv/console/apps)
+IGDB_CLIENT_ID = config('IGDB_CLIENT_ID')
+IGDB_CLIENT_SECRET = config('IGDB_CLIENT_SECRET')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # debug set to false for production 
 # allowed hosts set to localhost
-# CSRF trusted origins for production on Render 
+# Set production hosts and trusted origins in the Heroku config vars.
 
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
@@ -52,7 +52,7 @@ INSTALLED_APPS = [
     'profiles'
 ]
 
-# behave-django is a dev dependency, so Render doesn't install it.
+# behave-django is a dev dependency, so Heroku doesn't install it.
 # Add it only when it's installed, so production still starts.
 if find_spec("behave_django"):
     INSTALLED_APPS.append("behave_django")

@@ -1,0 +1,85 @@
+"""
+    Game data from IGDB (igdb.com). Twitch issues the access token: we cache it until shortly
+    before it expires, and get a new one if IGDB rejects it. Both functions return games in our
+    own shape (see _game), or None when IGDB or Twitch can't be reached.
+"""
+from datetime import datetime, timezone
+
+import requests
+from django.conf import settings
+from django.core.cache import cache
+
+TOKEN_URL = "https://id.twitch.tv/oauth2/token"
+API_URL = "https://api.igdb.com/v4/games"
+COVER_URL = "https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg"
+TOKEN_CACHE_KEY = "igdb_access_token"
+FIELDS = "name,summary,first_release_date,total_rating,cover.image_id,genres.name,platforms.name"
+# Main games, standalone expansions, remakes, remasters, expanded games and ports.
+# Leaves out mods, DLC, bundles and alternate editions (version_parent), which crowd out the real game.
+RELEASES_ONLY = "where game_type = (0,4,8,9,10,11) & version_parent = null"
+
+
+def search_game(game_name):
+    """The 5 best-known games matching the title. IGDB ranks matches by text alone, which can put a
+    fan game or an obscure namesake first, so we fetch 20 and sort them by how many ratings they have."""
+    title = game_name.replace("\\", "\\\\").replace('"', '\\"')
+    games = _query(f'search "{title}"; fields {FIELDS},total_rating_count; {RELEASES_ONLY}; limit 20;')
+    if games is None:
+        return None
+    games.sort(key=lambda game: game.get("total_rating_count", 0), reverse=True)
+    return [_game(game) for game in games[:5]]
+
+
+def get_game_details(game_id):
+    """One game by its IGDB id, or None if there's no such game."""
+    games = _query(f"fields {FIELDS}; where id = {int(game_id)};")
+    return _game(games[0]) if games else None
+
+
+def _query(body):
+    try:
+        response = _post(body, _token())
+        if response.status_code == 401:   # the token was revoked or expired early
+            response = _post(body, _token(refresh=True))
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException:
+        return None
+
+
+def _post(body, token):
+    return requests.post(API_URL, data=body, timeout=10, headers={
+        "Client-ID": settings.IGDB_CLIENT_ID,
+        "Authorization": f"Bearer {token}",
+    })
+
+
+def _token(refresh=False):
+    token = None if refresh else cache.get(TOKEN_CACHE_KEY)
+    if token is None:
+        response = requests.post(TOKEN_URL, timeout=10, params={
+            "client_id": settings.IGDB_CLIENT_ID,
+            "client_secret": settings.IGDB_CLIENT_SECRET,
+            "grant_type": "client_credentials",
+        })
+        response.raise_for_status()
+        data = response.json()
+        token = data["access_token"]
+        cache.set(TOKEN_CACHE_KEY, token, data["expires_in"] - 60)
+    return token
+
+
+def _game(data):
+    released = data.get("first_release_date")
+    rating = data.get("total_rating")
+    cover = data.get("cover")
+    return {
+        "id": data["id"],
+        "name": data.get("name", ""),
+        "summary": data.get("summary", ""),
+        "released": datetime.fromtimestamp(released, timezone.utc).date().isoformat() if released else None,
+        "rating": round(rating / 20, 2) if rating is not None else None,   # IGDB rates 0-100; we use 0-5
+        "cover": COVER_URL.format(cover["image_id"]) if cover else "",
+        "genres": [genre["name"] for genre in data.get("genres", [])],
+        "platforms": [platform["name"] for platform in data.get("platforms", [])],
+    }

@@ -92,3 +92,73 @@
     color: var(--bs-body-color);
     font-weight: 600;
 }
+/* Dark mode toggle: shows the moon in light mode and the sun in dark mode */
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px;
+    border-radius: 8px;
+}
+
+.theme-toggle .icon-sun,
+[data-bs-theme="dark"] .theme-toggle .icon-moon {
+    display: none;
+}
+
+[data-bs-theme="dark"] .theme-toggle .icon-sun {
+    display: block;
+}
+
+/* Dark mode: Bootstrap's primary blue is too dark for text, so outlines and link hovers use its lighter tint.
+   A light grey ledge under the Login button reads as a pressed-in edge, so the ledge goes dark blue. */
+[data-bs-theme="dark"] .auth-login-logout {
+    --bs-btn-color: var(--bs-primary-text-emphasis);
+    --bs-btn-border-color: var(--bs-primary-text-emphasis);
+    box-shadow: 0 4px 0 var(--bs-primary-border-subtle);
+}
+
+[data-bs-theme="dark"] .auth-login-logout:hover {
+    box-shadow: 0 2px 0 var(--bs-primary-border-subtle);
+}
+
+[data-bs-theme="dark"] .auth-login-logout:active {
+    box-shadow: none;
+}
+
+[data-bs-theme="dark"] .auth-login-logout.active {
+    color: var(--bs-primary-text-emphasis);
+    border-color: var(--bs-primary-text-emphasis);
+    box-shadow: 0 2px 0 var(--bs-primary-border-subtle);
+}
+
+[data-bs-theme="dark"] .navbar-nav .nav-link:hover {
+    color: var(--bs-primary-text-emphasis);
+}
+
+/* Logo: three health-bar segments, the last one used up */
+.navbar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.brand-logo {
+    display: inline-flex;
+    gap: 2px;
+}
+
+.brand-logo i {
+    display: block;
+    width: 5px;
+    height: 16px;
+    border-radius: 1px;
+    background: var(--bs-primary);
+}
+
+.brand-logo i:last-child {
+    opacity: 0.35;
+}
+
+[data-bs-theme="dark"] .brand-logo i {
+    background: var(--bs-primary-text-emphasis);
+}

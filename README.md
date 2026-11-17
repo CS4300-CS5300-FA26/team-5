@@ -33,13 +33,14 @@ This installs the Python version in `.python-version` (3.12) if you don't have i
 ### Step 2. Create .env file
 within `binge_and_bosses/` create a file called `.env` in the same directory as `manage.py`
 
-### Step 3. Add secret key and RAWG API key
-Next, generate a secret key and place it within the `.env` file, with your RAWG API key, in the format like:
+### Step 3. Add secret key and IGDB credentials
+Next, generate a secret key and place it within the `.env` file, with your IGDB credentials, in the format like:
 ```.env
 SECRET_KEY=<SECRET_KEY_HERE>
-RAWG_API_KEY=<RAWG_API_KEY_HERE>
-``` 
-Django won't start without both. Get a free RAWG key at [rawg.io/apidocs](https://rawg.io/apidocs). For running tests only, `RAWG_API_KEY=test-key` is enough, but searches on the running site need a real key.
+IGDB_CLIENT_ID=<CLIENT_ID_HERE>
+IGDB_CLIENT_SECRET=<CLIENT_SECRET_HERE>
+```
+Django won't start without all three. IGDB uses Twitch accounts: turn on two-factor login on your Twitch account, register an app at [dev.twitch.tv/console/apps](https://dev.twitch.tv/console/apps) (OAuth Redirect URL `http://localhost`, client type Confidential), and copy its Client ID and a new Client Secret. See [IGDB's getting started guide](https://api-docs.igdb.com/#getting-started). For running tests only, `IGDB_CLIENT_ID=test-id` and `IGDB_CLIENT_SECRET=test-secret` are enough, but searches on the running site need real credentials.
 
 You can generate a secret key by running
 ```
@@ -85,12 +86,8 @@ uv run coverage report -m
 
 ## Adding or updating packages
 - Add a package: `uv add <package>`. For tools only needed in development or CI (like `coverage`), use `uv add --dev <package>`.
-- Then regenerate `requirements.txt`, which Render installs from:
-  ```bash
-  uv export --locked --no-dev --no-emit-project -o requirements.txt
-  ```
-- Commit `pyproject.toml`, `uv.lock`, and `requirements.txt` together. CI fails if `uv.lock` or `requirements.txt` is out of date.
-- Don't `pip install` into the project or edit `requirements.txt` by hand.
+- Commit `pyproject.toml` and `uv.lock` together. Heroku's Python buildpack installs production dependencies from `uv.lock`; CI checks that the lock file matches `pyproject.toml`.
+- Use `uv run` for project commands so they use the locked environment.
 
 ## AI code review
 Every pull request gets an automatic review comment from OpenAI's `gpt-6-luna` model (`.github/workflows/ai-review.yml`). It posts a new comment-only review for each push and collapses its earlier reviews as outdated, so the latest review sits right after the latest commit. The review is advisory: a teammate still has to review and approve before merging. To change what the bot looks for, edit `.github/ai-review-guide.md`. The workflow reads the API key from the `OPENAI_API_KEY` repository secret.
@@ -148,3 +145,12 @@ A PR appears in the first matching category; add its manual label before generat
 | 11/12/2026 | Claude Sonnet 5.5 | Creating test cases, creating CSS and HTML |
 | 11/12/2026 |Claude Opus 5.5| Helped identify and change tests and models that needed to change with game detail's view using catalog.py get_or_import|
 | 11/15/2026 | Claude Sonnet 5.5 | Help creating change avatar architecture, general troubleshooting, and creating tests along with CSS and HTML |
+| 11/15/2026 | Claude Code (Claude Opus 5.5) | Built the landing page (#79) and the player home page: the example library, the four how-it-works steps, dark mode and the logo, library stats, games popular with other players and recently added games. Wrote the unit tests and Behave scenarios first, and checked the pages at phone and desktop width in light and dark mode. Submitted in a pull request for teammate review. |
+| 11/15/2026 | Claude Code (Claude Opus 5.5) | Redesigned the Library page (cover grid, status and rating on each card, sort by recent, title or rating) and the Search page (result cards with cover and year, and an In library marker) to match the landing page. Wrote the unit tests first. Submitted in a pull request for teammate review. |
+| 11/15/2026 | Claude Code (Claude Opus 5.5) | Replaced RAWG with IGDB: a client that caches the Twitch token and retries once with a new one, search ranking that leaves out mods and alternate editions, cover images, the `rawg_id` to `igdb_id` migration, and updated tests, Behave fakes, CI settings and docs. Kept the database caching from #81. Wrote the client tests first with fake responses. Submitted in a pull request for teammate review. |
+| 11/15/2026 | OpenAI Codex (GPT-6 Luna) | Updated the CI deploy job for direct Heroku Git deployment after CI, added Heroku web and release commands, removed obsolete Render build configuration, and updated deployment docs. Ran the existing CI and local production-command checks. No application behavior changed. |
+| 11/15/2026 | Claude Code (Claude Opus 5.5) | Redesigned the game page around the player's save file: cover and facts, IGDB and player scores, a star picker, a review box with a live character count, removal with a confirmation, and every player's review. The status picker is display-only until story #12 connects it. Wrote the unit tests first. Submitted in a pull request for teammate review. |
+| 11/15/2026 | Claude Opus 5.5| Fixed and adjusted code that was connected to or need to account for the changes to the Catalog model for Story #12. Also assisted in this features branch managment and rebasing. |
+
+| 11/15/2026 | Gemini 4 Carbon| Created the unit tests for the play status feature and the behave feature file and steps.|
+

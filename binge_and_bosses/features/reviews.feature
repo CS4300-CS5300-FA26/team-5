@@ -1,7 +1,7 @@
 # Story 9: Reviews (#14)
 # As a player, I want to write and edit reviews and read other players' reviews, so that I remember why I liked a game and can decide what to play.
 
-@fake_rawg
+@fake_igdb
 Feature: Reviews
 
   Scenario: Save a review

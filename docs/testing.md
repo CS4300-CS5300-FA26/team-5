@@ -7,7 +7,7 @@ From the `binge_and_bosses/` folder (the one with `manage.py`), install the lock
 
 ```bash
 uv sync --locked
-export SECRET_KEY=ci-only-not-a-real-key DEBUG=True RAWG_API_KEY=test-key
+export SECRET_KEY=ci-only-not-a-real-key DEBUG=True IGDB_CLIENT_ID=test-id IGDB_CLIENT_SECRET=test-secret
 unset DATABASE_URL
 uv run --locked python manage.py test
 ```
@@ -23,7 +23,7 @@ Behave is on `main` (#63). From the same folder and with the same test environme
 uv run --locked python manage.py behave --simple
 ```
 
-`--simple` uses Django's test client, with no browser or server. The scenarios in `features/` cover sign-up, login, logout, search, game details, adding to the library, ratings and reviews. They check the same "Invalid username or password." message for an unknown username and a wrong password.
+`--simple` uses Django's test client, with no browser or server. The scenarios in `features/` cover the landing page, sign-up, login, logout, search, game details, adding to the library, play status, ratings and reviews. They check the same "Invalid username or password." message for an unknown username and a wrong password.
 
 `behave.ini` skips scenarios tagged `@wip` by default. Each has an issue comment. To include only those scenarios:
 
@@ -46,19 +46,19 @@ uv run --locked coverage report -m --fail-under=80
 
 `report -m` lists the line numbers in each file that neither suite ran. Those are what to test next. CI also checks that Django starts without dev packages, so `settings.py` only adds `behave_django` when it's installed.
 
-## Tests that use RAWG
-Tests must use fake RAWG responses and never call the real API. `games/tests.py` patches `games.rawg_client.requests.get` for API tests, `games.views.search_game` for search view tests and `games.catalog.get_game_details` for game details. Behave scenarios tagged `@fake_rawg` get fake RAWG answers from `features/environment.py`; steps change them through `context.search_game` and `context.get_game_details`. The dummy `RAWG_API_KEY=test-key` satisfies settings; it isn't a working API key.
+## Tests that use IGDB
+Tests must use fake IGDB responses and never call the real API. `games/tests.py` patches `games.igdb_client.requests.post` for client tests (both the Twitch token request and the IGDB query go through it), `games.views.search_game` for search view tests and `games.catalog.get_game_details` for game details. Behave scenarios tagged `@fake_igdb` get fake IGDB answers from `features/environment.py`; steps change them through `context.search_game` and `context.get_game_details`. The dummy `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` values satisfy settings; they aren't working credentials.
 
 ## Writing a test
 Tests live in each app's `tests.py`. Each test is a method whose name starts with `test_`. [games/tests.py](../binge_and_bosses/games/tests.py) is a short example:
 
 ```python
 class LandingPageTests(TestCase):
-    def test_home_page_shows_empty_message_without_games(self):
-        response = self.client.get("/")
+    def test_visitor_sees_what_the_app_is_for(self):
+        response = self.client.get(reverse("index"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No games yet...")
+        self.assertContains(response, "One save file for")
 ```
 
 - `TestCase` gives each test a fresh, empty database.

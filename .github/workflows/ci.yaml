@@ -8,7 +8,8 @@ jobs:
     env:
       SECRET_KEY: ci-only-not-a-real-key
       DEBUG: "True"
-      RAWG_API_KEY: test-key
+      IGDB_CLIENT_ID: test-id
+      IGDB_CLIENT_SECRET: test-secret
     steps:
       - uses: actions/checkout@v5
 
@@ -20,15 +21,6 @@ jobs:
       # --locked fails if uv.lock is out of date with pyproject.toml.
       - name: Install packages
         run: uv sync --locked
-
-      # Render installs from requirements.txt, so it must match uv.lock.
-      - name: Check requirements.txt matches uv.lock
-        run: |
-          uv export --locked --no-dev --no-emit-project -o requirements.txt
-          git diff --exit-code requirements.txt || {
-            echo "::error file=requirements.txt::requirements.txt is out of date. Run: uv export --locked --no-dev --no-emit-project -o requirements.txt"
-            exit 1
-          }
 
       - name: Run tests with coverage
         working-directory: binge_and_bosses
@@ -44,7 +36,7 @@ jobs:
         working-directory: binge_and_bosses
         run: uv run --locked coverage report -m --fail-under=80
 
-      # Render installs only the non-dev packages (requirements.txt). Check that
+      # Production installs only the non-dev packages. Check that
       # the app still starts that way, e.g. that settings.py doesn't need behave-django.
       # A separate environment keeps the dev packages in .venv for any later steps.
       - name: Check the app starts without dev packages
@@ -52,26 +44,54 @@ jobs:
         env:
           UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/no-dev-venv
         run: uv run --locked --no-dev python manage.py check
-  # Deploy to render on pull requests being accepted into main, not pushing; waits for CI checks to pass before
+  # Deploy only after CI passes on a push to main.
   deploy:
-    name: Deploy to Render
+    name: Deploy to Heroku
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    environment:
+      name: heroku-production
+      url: https://binge-and-bosses-team5-4e736711771e.herokuapp.com
+    concurrency:
+      group: heroku-production
+      cancel-in-progress: false
     steps:
-      - name: Trigger deployment on Render
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Push the tested commit to Heroku
         env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+          HEROKU_APP: binge-and-bosses-team5
         run: |
-          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
-            echo "::error::Set the RENDER_DEPLOY_HOOK_URL repository secret to the Render service's deploy hook URL."
+          set -euo pipefail
+          if [ -z "$HEROKU_API_KEY" ]; then
+            echo "::error::Set HEROKU_API_KEY in the heroku-production environment."
             exit 1
           fi
-          # Deploy the commit that passed this workflow's tests.
-          curl --fail --silent --show-error \
-            --connect-timeout 10 --max-time 60 \
-            --request POST --get --data-urlencode "ref=${GITHUB_SHA}" \
-            --output /dev/null \
-            --url "$RENDER_DEPLOY_HOOK_URL"
-          echo "Render accepted the deploy request for ${GITHUB_SHA}. Check Render for build and deployment status."
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          latest_main="$(git ls-remote origin refs/heads/main | cut -f1)"
+          if [ "$latest_main" != "$GITHUB_SHA" ]; then
+            echo "::notice::Skipping stale deployment; main is now at ${latest_main}."
+            exit 0
+          fi
+
+          askpass="$(mktemp "$RUNNER_TEMP/heroku-askpass.XXXXXX")"
+          trap 'rm -f "$askpass"' EXIT
+          cat > "$askpass" <<'EOF'
+          #!/bin/sh
+          case "$1" in
+            *sername*) printf '%s\n' heroku ;;
+            *) printf '%s\n' "$HEROKU_API_KEY" ;;
+          esac
+          EOF
+          chmod 700 "$askpass"
+
+          GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 git -c credential.helper= push \
+            "https://git.heroku.com/${HEROKU_APP}.git" HEAD:main

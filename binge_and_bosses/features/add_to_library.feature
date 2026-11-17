@@ -1,7 +1,7 @@
 # Story 7: Add to Library
 # As a player, I want to add a game to my library, so that I can track it alongside everything else I play.
 
-@fake_rawg
+@fake_igdb
 Feature: Add to library
 
   Scenario: Add a new game
