@@ -49,7 +49,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'games',
-    'profiles'
+    'profiles',
+    'friends'
 ]
 
 # behave-django is a dev dependency, so Heroku doesn't install it.
