@@ -144,9 +144,7 @@ A PR appears in the first matching category; add its manual label before generat
 | 11/05/2026 | Claude Code (Claude Opus 5.5) | Cleaned up Sprint 2 issues, milestones and project board cards after the release, and removed the "Proposed:" markers from `AGENTS.md` and the PR template after the team agreed on them (#31). Submitted in a pull request for teammate review. |
 | 11/12/2026 | Claude Sonnet 5.5 | Creating test cases, creating CSS and HTML |
 | 11/12/2026 |Claude Opus 5.5| Helped identify and change tests and models that needed to change with game detail's view using catalog.py get_or_import|
-<<<<<<< HEAD
 | 11/15/2026 | Claude Sonnet 5.5 | Help creating change avatar architecture, general troubleshooting, and creating tests along with CSS and HTML |
-=======
 | 11/15/2026 | Claude Code (Claude Opus 5.5) | Built the landing page (#79) and the player home page: the example library, the four how-it-works steps, dark mode and the logo, library stats, games popular with other players and recently added games. Wrote the unit tests and Behave scenarios first, and checked the pages at phone and desktop width in light and dark mode. Submitted in a pull request for teammate review. |
 | 11/15/2026 | Claude Code (Claude Opus 5.5) | Redesigned the Library page (cover grid, status and rating on each card, sort by recent, title or rating) and the Search page (result cards with cover and year, and an In library marker) to match the landing page. Wrote the unit tests first. Submitted in a pull request for teammate review. |
 | 11/15/2026 | Claude Code (Claude Opus 5.5) | Replaced RAWG with IGDB: a client that caches the Twitch token and retries once with a new one, search ranking that leaves out mods and alternate editions, cover images, the `rawg_id` to `igdb_id` migration, and updated tests, Behave fakes, CI settings and docs. Kept the database caching from #81. Wrote the client tests first with fake responses. Submitted in a pull request for teammate review. |
@@ -156,4 +154,3 @@ A PR appears in the first matching category; add its manual label before generat
 
 | 11/15/2026 | Gemini 4 Carbon| Created the unit tests for the play status feature and the behave feature file and steps.|
 
->>>>>>> f2f18c897c54b9f454f1d3cc4f7648fcb31859ec
