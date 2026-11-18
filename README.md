@@ -89,7 +89,7 @@ Ruff checks the code with its PyLint (`PL`) and Flake8 (`E`, `W`, `F`, `C90`) ru
 ```bash
 uv run ruff check .
 ```
-CI fails on any finding. Findings show up on the PR's changed lines, and the full report is in the `lint` job's summary (and its `ruff-report` artifact). Lines can be up to 119 characters, which is Django's own limit. Ruff skips migrations because Django writes them. If a rule is wrong for a line, add `# noqa: <code>` with a comment that says why.
+CI fails on any finding, and on any file that isn't formatted. Run `uv run ruff format .` before you commit to fix the formatting. Findings show up on the PR's changed lines, and the full report is in the `lint` job's summary (and its `ruff-report` artifact). Lines can be up to 119 characters, which is Django's own limit. Ruff skips migrations because Django writes them. If a rule is wrong for a line, add `# noqa: <code>` with a comment that says why.
 
 ## Dependency scans
 Dependabot (`.github/dependabot.yml`) opens one grouped PR a month for Python package updates and one for GitHub Actions updates. Its vulnerability report is the repository's **Security** tab, under **Dependabot**. With security updates turned on in the repository settings, Dependabot also opens a PR for each alert right away, so it doesn't wait for the monthly run.
@@ -167,3 +167,5 @@ A PR appears in the first matching category; add its manual label before generat
 | 11/16/2026 | OpenAI Codex | Implemented Story 10 friend requests (#15): relationship constraints, permission-checked actions, Friends page, unit tests and five Behave scenarios. Started with failing tests before implementation. Friend activity remains separate (#18). |
 
 | 11/17/2026 | Claude Code (Claude Opus 5.5) | Set up Ruff with its PyLint and Flake8 rules (#36) and Dependabot updates (#38). Fixed the 68 existing findings, added the `lint` CI job with its report, and documented both. Ran the unit tests, Behave and coverage locally. Submitted in a pull request for teammate review. |
+
+| 11/17/2026 | Claude Code (Claude Opus 5.5) | Ran `ruff format` once over the codebase (#36) as a formatting-only commit, listed it in `.git-blame-ignore-revs`, and added a `ruff format --check` step to the `lint` CI job. Ran the unit tests, Behave and coverage locally. Submitted in a pull request for teammate review. |
