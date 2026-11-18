@@ -1,14 +1,19 @@
 """
     Game data from IGDB (igdb.com). Twitch issues the access token: we cache it until shortly
     before it expires, and get a new one if IGDB rejects it. Both functions return games in our
-    own shape (see _game), or None when IGDB or Twitch can't be reached.
+    own shape (see _game), or None when IGDB or Twitch can't be reached. If Redis is down, they
+    skip the cache and call IGDB directly.
 """
+import logging
 from datetime import datetime, timezone
 from http import HTTPStatus
 
 import requests
 from django.conf import settings
 from django.core.cache import cache
+from redis.exceptions import RedisError
+
+logger = logging.getLogger(__name__)
 
 TOKEN_URL = "https://id.twitch.tv/oauth2/token"
 API_URL = "https://api.igdb.com/v4/games"
@@ -26,7 +31,7 @@ def search_game(game_name):
     title = game_name.replace("\\", "\\\\").replace('"', '\\"')
     cache_key = f"SearchGame_{game_name}"
 
-    games_search = cache.get(cache_key)
+    games_search = _cache_get(cache_key)
 
     if games_search is None:
         games = _query(f'search "{title}"; fields {FIELDS},total_rating_count; {RELEASES_ONLY}; limit 20;')
@@ -34,30 +39,30 @@ def search_game(game_name):
             return None
         games.sort(key=lambda game: game.get("total_rating_count", 0), reverse=True)
         game_search_result = [_game(game) for game in games[:5]]
-        cache.set(cache_key,game_search_result,timeout=3600)
+        _cache_set(cache_key, game_search_result, 3600)
         return game_search_result
 
     return games_search
 
-    
+
 
 def get_game_details(game_id):
     """One game by its IGDB id, or None if there's no such game."""
     cache_key = f"GameDetails_{int(game_id)}"
 
     # Get info from cache
-    specific_game_detail = cache.get(cache_key)
+    specific_game_detail = _cache_get(cache_key)
 
     # If none then generate set a new cache and return it
     if specific_game_detail is None:
         games = _query(f"fields {FIELDS}; where id = {int(game_id)};")
         specific_game_detail = _game(games[0]) if games else None
-        cache.set(cache_key,specific_game_detail,timeout=3600)
+        _cache_set(cache_key, specific_game_detail, 3600)
         return specific_game_detail
 
     # If not just return specific_game_detail
     return specific_game_detail
-        
+
 
 
 def _query(body):
@@ -79,7 +84,7 @@ def _post(body, token):
 
 
 def _token(refresh=False):
-    token = None if refresh else cache.get(TOKEN_CACHE_KEY)
+    token = None if refresh else _cache_get(TOKEN_CACHE_KEY)
     if token is None:
         response = requests.post(TOKEN_URL, timeout=10, params={
             "client_id": settings.IGDB_CLIENT_ID,
@@ -89,8 +94,24 @@ def _token(refresh=False):
         response.raise_for_status()
         data = response.json()
         token = data["access_token"]
-        cache.set(TOKEN_CACHE_KEY, token, data["expires_in"] - 60)
+        _cache_set(TOKEN_CACHE_KEY, token, data["expires_in"] - 60)
     return token
+
+
+def _cache_get(key):
+    """The cached value, or None if it isn't cached or Redis can't be reached."""
+    try:
+        return cache.get(key)
+    except RedisError:
+        logger.warning("Redis read failed for %s; calling IGDB without the cache", key, exc_info=True)
+        return None
+
+
+def _cache_set(key, value, timeout):
+    try:
+        cache.set(key, value, timeout)
+    except RedisError:
+        logger.warning("Redis write failed for %s; the result isn't cached", key, exc_info=True)
 
 
 def _game(data):
