@@ -50,6 +50,8 @@ uv run --locked coverage report -m --fail-under=80
 
 IGDB client unit tests override the cache with Django's local-memory backend, so tests do not require Docker or clear the running app's Redis cache. Use the Redis and Django connection checks in the README to verify the real container separately.
 
+`games/test_cache_settings.py` loads settings with fake environment values, without reading `.env` or contacting Redis. It covers required production URLs, the local debug fallback, TLS verification by default, the explicit Heroku self-signed certificate option, and keeping TLS options off non-TLS connections.
+
 ## Tests that use IGDB
 Tests must use fake IGDB responses and never call the real API. `games/tests.py` patches `games.igdb_client.requests.post` for client tests (both the Twitch token request and the IGDB query go through it), `games.views.search_game` for search view tests and `games.catalog.get_game_details` for game details. Behave scenarios tagged `@fake_igdb` get fake IGDB answers from `features/environment.py`; steps change them through `context.search_game` and `context.get_game_details`. The dummy `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` values satisfy settings; they aren't working credentials.
 

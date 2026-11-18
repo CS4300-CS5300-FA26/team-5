@@ -19,6 +19,7 @@ The Heroku app needs these config vars:
 - `ALLOWED_HOSTS` containing `binge-and-bosses-team5-4e736711771e.herokuapp.com`
 - `CSRF_TRUSTED_ORIGINS` containing `https://binge-and-bosses-team5-4e736711771e.herokuapp.com`
 - `REDIS_URL` set to a Redis service reachable from Heroku, using the provider's full connection URL (including TLS and authentication when required). The local Compose container only serves local development.
+- `REDIS_SSL_VERIFY=False` for Heroku Key-Value Store only: it uses self-signed certificates. TLS encryption remains enabled through `rediss://`, but this setting disables server certificate verification. Other providers default to certificate verification; do not disable it when trusted certificates are available.
 - `DATABASE_URL` set to the Neon PostgreSQL connection string with SSL enabled
 
 Keep credentials in Heroku config vars, never in the repository or local test `.env` files. The first release migration creates the schema in the empty Neon database. No Render data migration is needed.
@@ -26,3 +27,31 @@ Keep credentials in Heroku config vars, never in the repository or local test `.
 ## Cutover checklist
 
 Deployment and the production smoke test remain pending. After the CI deploy succeeds, verify the Heroku release and check the site, sign-up, login, and static files at the production URL before treating cutover as complete.
+
+## Production Redis setup and smoke check
+
+Before merging the Redis branch, provision Heroku Key-Value Store on `binge-and-bosses-team5`. Confirm the add-on has finished provisioning and that its managed `REDIS_URL` starts with `rediss://`. Keep the connection string in Heroku, never in Git or shared logs. In the app's Settings > Config Vars, set `REDIS_SSL_VERIFY=False` for Heroku KVS, following [Heroku's built-in Django backend instructions](https://devcenter.heroku.com/articles/connecting-heroku-redis#using-the-built-in-redis-backend-support). Do not change the managed URL or copy the production credentials into local `.env`.
+
+With `DEBUG=False`, an absent or blank `REDIS_URL` now stops startup with a configuration error, including during builds. Provision/configure Redis before deploying. Local development with `DEBUG=True` retains the localhost fallback and does not receive TLS-only options. The Redis service in `compose.yaml` is local only; Heroku deploys the Python app through the existing Procfile.
+
+After the PR is approved, merged, and deployed by CI, open a one-off Django shell (requires the Heroku CLI and access to the app):
+
+```bash
+heroku run --app binge-and-bosses-team5 python binge_and_bosses/manage.py shell
+```
+
+Run the following without printing credentials or cached access tokens:
+
+```python
+from uuid import uuid4
+from django.core.cache import cache
+key = f"deployment_check:{uuid4().hex}"
+try:
+    cache.set(key, "connected", timeout=30)
+    assert cache.get(key) == "connected"
+    print("Production Redis write/read passed")
+finally:
+    cache.delete(key)
+```
+
+Then check login, library, game search, and game details on the production URL. Record the deployed commit and outcomes before calling the deployment smoke test complete. A successful CI run uses fake upstream responses and isolated caches; it does not establish a live production Redis connection. Redis outages can still fail game requests; cache-outage fallback is separate work.

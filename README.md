@@ -58,6 +58,7 @@ docker compose exec redis redis-cli ping
 The second command should print `PONG`. Add this to `binge_and_bosses/.env`:
 
 ```dotenv
+DEBUG=True
 REDIS_URL=redis://127.0.0.1:6379/0
 ```
 
@@ -176,3 +177,4 @@ A PR appears in the first matching category; add its manual label before generat
 | 11/15/2026 | Claude Opus 5.5| Fixed and adjusted code that was connected to or need to account for the changes to the Catalog model for Story #12. Also assisted in this features branch managment and rebasing. |
 | 11/15/2026 | Gemini 4 Carbon| Created the unit tests for the play status feature and the behave feature file and steps.|
 | 11/17/2026 | OpenAI Codex | Added a local Redis Compose service, environment-based Django cache connection, cache reuse tests and setup instructions. Isolated IGDB unit-test caches and updated the token-refresh test to bypass cached search results. |
+| 11/17/2026 | OpenAI Codex | Added required production REDIS_URL configuration, explicit TLS certificate verification settings for Heroku KVS, isolated configuration regression tests written and seen failing first, and production setup/smoke-check instructions. |

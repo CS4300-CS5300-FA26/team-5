@@ -16,6 +16,7 @@ from decouple import config
 from decouple import Csv 
 import sys
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -127,14 +128,27 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Cache setup for Django and redis
+# Local Docker Redis is the default only when DEBUG is enabled.
+REDIS_URL = config("REDIS_URL", default="").strip()
+if not REDIS_URL:
+    if not DEBUG:
+        raise ImproperlyConfigured("REDIS_URL is required when DEBUG=False.")
+    REDIS_URL = "redis://127.0.0.1:6379/0"
+
+REDIS_OPTIONS = {"socket_connect_timeout": 2, "socket_timeout": 2}
+if REDIS_URL.startswith("rediss://"):
+    # Heroku KVS uses self-signed certificates. Opt out explicitly for that service.
+    REDIS_OPTIONS["ssl_cert_reqs"] = (
+        "required" if config("REDIS_SSL_VERIFY", default=True, cast=bool) else None
+    )
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": config("REDIS_URL", default="redis://127.0.0.1:6379/0"),
+        "LOCATION": REDIS_URL,
         "TIMEOUT": 300,
         "KEY_PREFIX": "bingeandbosses",
-        "OPTIONS": {"socket_connect_timeout": 2, "socket_timeout": 2},
+        "OPTIONS": REDIS_OPTIONS,
     }
 }
 
