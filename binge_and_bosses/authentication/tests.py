@@ -48,7 +48,7 @@ class SignupTests(TestCase):
         """
             Test that once the user signs up, the user is logged in as the newly created user
         """
-        response = self.client.post(self.url, self.valid_registration_details)
+        self.client.post(self.url, self.valid_registration_details)
         user = get_user_model().objects.get(username="test_user")
         self.assertEqual(int(self.client.session["_auth_user_id"]), user.pk)
 
@@ -89,10 +89,12 @@ class SignupTests(TestCase):
         """
             Ensure that the email of a new user is unique to that user
         """
-        get_user_model().objects.create_user(username="test_email", email="test_user@example.com", password="luke_I_am_your_Password")
+        get_user_model().objects.create_user(
+            username="test_email", email="test_user@example.com", password="luke_I_am_your_Password"
+        )
         response = self.client.post(self.url, self.valid_registration_details)
         self.assertEqual(response.status_code, 200)
-        
+
         # Reject the duplicate without revealing which detail was already in use
         self.assertContains(response, self.duplicate_message, count=1)
         self.assertEqual(response.context["form"].errors, {"__all__": [self.duplicate_message]})
@@ -273,7 +275,8 @@ class LogoutTest(TestCase):
 
     def test_library_redirects_anon_user(self):
         """
-            Test that we cannot simply access library page as an unauthenticated user and it redirects to the login page
+            Test that we cannot simply access library page as an unauthenticated user
+            and it redirects to the login page
         """
         response = self.client.get(reverse("library"))
         self.assertRedirects(response, f"{reverse('login')}?next={reverse('library')}", fetch_redirect_response=False)

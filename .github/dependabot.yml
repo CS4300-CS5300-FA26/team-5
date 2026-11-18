@@ -1,0 +1,21 @@
+# Dependabot version updates (#38). Security updates for alerts are a
+# repository setting; they open their own PRs as soon as an alert appears.
+version: 2
+updates:
+  # Python packages in pyproject.toml and uv.lock.
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      python-packages:
+        patterns: ["*"]
+
+  # Actions used in .github/workflows/.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      github-actions:
+        patterns: ["*"]

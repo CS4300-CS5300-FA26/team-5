@@ -12,9 +12,9 @@ from .models import Profile
 @login_required
 def change_username(request):
     if request.method == "POST":
-        # NOTE: instance=request.user ensures that only the user can edit themself and no one else. 
+        # NOTE: instance=request.user ensures that only the user can edit themself and no one else.
         form = UsernameChangeForm(request.POST, instance=request.user)
-        
+
         if form.is_valid():
             form.save()
             messages.success(request, "Your username has been updated!")
@@ -56,9 +56,9 @@ def change_avatar(request):
             # Delete the old file first
             if old_name and "avatar" in request.FILES:
                 profile.avatar.storage.delete(old_name)
-            
+
             form.save()
-            
+
             messages.success(request, "Avatar updated.")
 
             # Redirect to avoid duplicate submissions
@@ -67,4 +67,3 @@ def change_avatar(request):
         form = AvatarForm(instance=profile)
 
     return render(request, "profiles/change_avatar.html", {"form": form, "profile": profile})
-    
