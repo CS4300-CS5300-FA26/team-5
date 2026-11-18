@@ -20,6 +20,8 @@ The Heroku app needs these config vars:
 - `CSRF_TRUSTED_ORIGINS` containing `https://bingeandbosses.com`, `https://www.bingeandbosses.com` and `https://binge-and-bosses-team5-4e736711771e.herokuapp.com`
 - `DATABASE_URL` set to the Neon PostgreSQL connection string with SSL enabled
 
+On Heroku the site is HTTPS only. Heroku sets `DYNO` on every dyno, so when it's set, `settings.py` redirects `http://` to `https://` and marks the session and CSRF cookies secure. Local runs don't set `DYNO`, so they stay on plain HTTP. HSTS is still off.
+
 Keep credentials in Heroku config vars, never in the repository or local test `.env` files. The first release migration creates the schema in the empty Neon database. No Render data migration is needed.
 
 ## Cutover checklist

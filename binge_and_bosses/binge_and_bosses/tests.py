@@ -1,3 +1,9 @@
+import json
+import os
+import subprocess
+import sys
+
+from django.conf import settings
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -116,3 +122,37 @@ class NavBarAuthenticated(TestCase):
         self.assertContains(response, reverse("profiles:change_username"))
         self.assertContains(response, "Change Username")
         self.assertContains(response, "Change Password")
+
+class HttpsSettingsTests(TestCase):
+    """Heroku sets DYNO on every dyno; there the site is HTTPS only. Locally it stays plain HTTP."""
+
+    def load_settings(self, **env):
+        # Import settings in a fresh process, since they're read once at startup.
+        code = (
+            "import json; from django.conf import settings as s; print(json.dumps([s.SECURE_PROXY_SSL_HEADER,"
+            " s.SECURE_SSL_REDIRECT, s.SESSION_COOKIE_SECURE, s.CSRF_COOKIE_SECURE]))"
+        )
+        clean_env = {key: value for key, value in os.environ.items() if key != "DYNO"}
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=settings.BASE_DIR,
+            env={**clean_env, "DJANGO_SETTINGS_MODULE": "binge_and_bosses.settings", **env},
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return json.loads(result.stdout)
+
+    def test_heroku_redirects_to_https_and_uses_secure_cookies(self):
+        proxy_header, redirect, session_secure, csrf_secure = self.load_settings(DYNO="web.1")
+        self.assertEqual(proxy_header, ["HTTP_X_FORWARDED_PROTO", "https"])
+        self.assertTrue(redirect)
+        self.assertTrue(session_secure)
+        self.assertTrue(csrf_secure)
+
+    def test_local_runs_stay_on_http(self):
+        proxy_header, redirect, session_secure, csrf_secure = self.load_settings()
+        self.assertIsNone(proxy_header)
+        self.assertFalse(redirect)
+        self.assertFalse(session_secure)
+        self.assertFalse(csrf_secure)
