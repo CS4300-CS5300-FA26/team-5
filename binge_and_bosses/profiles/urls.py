@@ -8,4 +8,3 @@ urlpatterns = [
     path("settings/password/", views.ChangePasswordView.as_view(), name="change_password"),
     path("settings/change_avatar/", views.change_avatar, name="change_avatar"),
 ]
-

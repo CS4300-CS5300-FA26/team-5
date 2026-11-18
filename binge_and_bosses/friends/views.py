@@ -11,9 +11,11 @@ from .models import Friendship
 
 
 def friends_page(request, form=None):
-    relationships = Friendship.objects.filter(
-        Q(sender=request.user) | Q(recipient=request.user)
-    ).select_related("sender__profile", "recipient__profile").order_by("pk")
+    relationships = (
+        Friendship.objects.filter(Q(sender=request.user) | Q(recipient=request.user))
+        .select_related("sender__profile", "recipient__profile")
+        .order_by("pk")
+    )
     accepted, incoming, outgoing = [], [], []
     for relationship in relationships:
         is_sender = relationship.sender_id == request.user.pk
@@ -24,11 +26,17 @@ def friends_page(request, form=None):
             incoming.append(relationship)
         else:
             outgoing.append(relationship)
-    return render(request, "friends/index.html", {
-        "form": form if form is not None else FriendRequestForm(),
-        "relationships": accepted, "friends": [row.other for row in accepted],
-        "incoming": incoming, "outgoing": outgoing,
-    })
+    return render(
+        request,
+        "friends/index.html",
+        {
+            "form": form if form is not None else FriendRequestForm(),
+            "relationships": accepted,
+            "friends": [row.other for row in accepted],
+            "incoming": incoming,
+            "outgoing": outgoing,
+        },
+    )
 
 
 @login_required
@@ -100,7 +108,8 @@ def remove(request, pk):
     with transaction.atomic():
         relationship = get_object_or_404(
             Friendship.objects.select_for_update().filter(Q(sender=request.user) | Q(recipient=request.user)),
-            pk=pk, accepted=True,
+            pk=pk,
+            accepted=True,
         )
         relationship.delete()
     messages.success(request, "Friend removed.")

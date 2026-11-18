@@ -1,10 +1,12 @@
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from .models import User
 
+
 class StyledForm:
     """
-        Adds bootstrap's form-control to each field for <input> styles
+    Adds bootstrap's form-control to each field for <input> styles
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -12,11 +14,13 @@ class StyledForm:
         for field in self.fields.values():
             field.widget.attrs["class"] = "form-control"
 
+
 class SignupForm(StyledForm, UserCreationForm):
     """
-        Registration Form for users. By default, the UserCreationForm handles important
-        security stuff such as password checking and running Django's validators
+    Registration Form for users. By default, the UserCreationForm handles important
+    security stuff such as password checking and running Django's validators
     """
+
     class Meta(UserCreationForm.Meta):
         model = User
 
@@ -36,16 +40,17 @@ class SignupForm(StyledForm, UserCreationForm):
                         self.add_error(field, error)
         if duplicate:
             # Use one form-level error so its location cannot reveal the taken field.
-            self.add_error(None, (
-                "Unable to create an account with those details. "
-                "Try logging in or resetting your password."
-            ))
+            self.add_error(
+                None, ("Unable to create an account with those details. Try logging in or resetting your password.")
+            )
+
 
 class LoginForm(StyledForm, AuthenticationForm):
     """
-        Login form for users. The same error is shown for a wrong password and an
-        unregistered username, so it doesn't reveal which usernames are registered
+    Login form for users. The same error is shown for a wrong password and an
+    unregistered username, so it doesn't reveal which usernames are registered
     """
+
     error_messages = {
         **AuthenticationForm.error_messages,
         "invalid_login": "Invalid username or password.",

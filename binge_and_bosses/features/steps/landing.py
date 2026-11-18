@@ -1,7 +1,8 @@
 """
-    Steps for the landing page. Link checks look inside <main>, because the nav bar
-    in base.html has its own links.
+Steps for the landing page. Link checks look inside <main>, because the nav bar
+in base.html has its own links.
 """
+
 from urllib.parse import urljoin
 
 from behave import given, then, when

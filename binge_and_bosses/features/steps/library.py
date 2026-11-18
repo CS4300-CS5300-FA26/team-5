@@ -1,7 +1,8 @@
 """
-    Steps for adding games to the library.
-    IGDB is faked in environment.py for scenarios tagged @fake_igdb.
+Steps for adding games to the library.
+IGDB is faked in environment.py for scenarios tagged @fake_igdb.
 """
+
 from behave import given, when, then
 from bs4 import BeautifulSoup
 from django.urls import reverse
@@ -16,9 +17,11 @@ def game_id(context):
 def game_page(context):
     return context.test.client.get(reverse("game_details", args=[game_id(context)]))
 
+
 def form_for(response, url_name, args):
     page = BeautifulSoup(response.content, "html.parser")
     return page.find("form", action=reverse(url_name, args=args))
+
 
 def add_form(response, igdb_id):
     return form_for(response, "add_to_library", [igdb_id])
@@ -48,7 +51,6 @@ def game_already_in_library(context):
     Catalog.objects.create(user=context.user, games=game)
 
 
-
 @when('I click "Add to library"')
 def click_add_to_library(context):
     context.game_page = game_page(context)
@@ -70,7 +72,8 @@ def open_game_page(context):
 @then('the game appears in my library as "{status}"')
 def game_in_library_with_status(context, status):
     context.test.assertRedirects(
-        context.response, reverse("game_details", args=[game_id(context)]),
+        context.response,
+        reverse("game_details", args=[game_id(context)]),
         fetch_redirect_response=False,
     )
     entry = Catalog.objects.get(user=context.user, games__igdb_id=game_id(context))
@@ -95,17 +98,13 @@ def in_library_no_duplicate(context, label):
     )
     # Even a direct second add must not create a second entry
     context.test.client.post(reverse("add_to_library", args=[game_id(context)]))
-    context.test.assertEqual(
-        Catalog.objects.filter(user=context.user, games__igdb_id=game_id(context)).count(), 1
-    )
+    context.test.assertEqual(Catalog.objects.filter(user=context.user, games__igdb_id=game_id(context)).count(), 1)
 
 
 @then("I am asked to log in and nothing is added")
 def asked_to_log_in(context):
     add_url = reverse("add_to_library", args=[game_id(context)])
-    context.test.assertRedirects(
-        context.response, f"{reverse('login')}?next={add_url}", fetch_redirect_response=False
-    )
+    context.test.assertRedirects(context.response, f"{reverse('login')}?next={add_url}", fetch_redirect_response=False)
     context.test.assertContains(context.game_page, "Log in to add to your library")
     context.test.assertFalse(Catalog.objects.exists())
 

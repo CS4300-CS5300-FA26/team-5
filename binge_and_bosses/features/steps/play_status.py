@@ -1,7 +1,8 @@
 """
-    Steps for changing a game's play status (story #12).
-    IGDB is faked in environment.py for scenarios tagged @fake_igdb.
+Steps for changing a game's play status (story #12).
+IGDB is faked in environment.py for scenarios tagged @fake_igdb.
 """
+
 from behave import given, when, then
 from bs4 import BeautifulSoup
 from django.contrib.auth import get_user_model
@@ -69,9 +70,7 @@ def rating_and_review_kept(context):
 @when("I try to change a status")
 def try_to_change_status_logged_out(context):
     data = context.fake_game
-    owner = get_user_model().objects.create_user(
-        username="owner", email="owner@example.com", password=PASSWORD
-    )
+    owner = get_user_model().objects.create_user(username="owner", email="owner@example.com", password=PASSWORD)
     game = Game.objects.create(
         igdb_id=data["id"],
         game_title=data["name"],

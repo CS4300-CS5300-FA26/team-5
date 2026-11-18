@@ -1,8 +1,9 @@
 """
-    Behave hooks. Scenarios tagged @fake_igdb get fake IGDB answers, so they never call the real API.
-    Steps read the fake games from context.fake_games (context.fake_game is the first one), and can
-    change the answers through the mocks context.search_game and context.get_game_details.
+Behave hooks. Scenarios tagged @fake_igdb get fake IGDB answers, so they never call the real API.
+Steps read the fake games from context.fake_games (context.fake_game is the first one), and can
+change the answers through the mocks context.search_game and context.get_game_details.
 """
+
 import copy
 from unittest.mock import Mock, patch
 

@@ -2,10 +2,11 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login
 from .forms import SignupForm
 
+
 # Create your views here.
 def signup(request):
     # Source: https://www.pythontutorial.net/django-tutorial/django-registration/
-    if request.method == 'GET':
+    if request.method == "GET":
         form = SignupForm()
     else:
         form = SignupForm(request.POST)

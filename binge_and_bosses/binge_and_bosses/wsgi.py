@@ -11,6 +11,6 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'binge_and_bosses.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "binge_and_bosses.settings")
 
 application = get_wsgi_application()

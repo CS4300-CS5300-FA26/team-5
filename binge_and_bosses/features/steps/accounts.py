@@ -1,6 +1,7 @@
 """
-    Steps for signing up, logging in and logging out (stories #7 and #8).
+Steps for signing up, logging in and logging out (stories #7 and #8).
 """
+
 from behave import given, when, then
 from bs4 import BeautifulSoup
 from django.contrib.auth import get_user_model
@@ -10,19 +11,25 @@ from common import PASSWORD
 
 
 def sign_up(context, username, email, password):
-    return context.test.client.post(reverse("signup"), {
-        "username": username,
-        "email": email,
-        "password1": password,
-        "password2": password,
-    })
+    return context.test.client.post(
+        reverse("signup"),
+        {
+            "username": username,
+            "email": email,
+            "password1": password,
+            "password2": password,
+        },
+    )
 
 
 def log_in(context, username, password):
-    return context.test.client.post(reverse("login"), {
-        "username": username,
-        "password": password,
-    })
+    return context.test.client.post(
+        reverse("login"),
+        {
+            "username": username,
+            "password": password,
+        },
+    )
 
 
 def is_logged_in(context):
@@ -31,16 +38,16 @@ def is_logged_in(context):
 
 def displayed_errors(response):
     """
-        Every error the form shows, by field ("__all__" for errors not tied to a field).
-        Comparing these between two responses checks that nothing else differs,
-        not just that both contain the same phrase.
+    Every error the form shows, by field ("__all__" for errors not tied to a field).
+    Comparing these between two responses checks that nothing else differs,
+    not just that both contain the same phrase.
     """
     errors = response.context["form"].errors.get_json_data()
-    return {field: [error["message"] for error in field_errors]
-            for field, field_errors in errors.items()}
+    return {field: [error["message"] for error in field_errors] for field, field_errors in errors.items()}
 
 
 # Sign-up (#7)
+
 
 @when("I submit a valid email and password")
 def submit_valid_signup(context):
@@ -108,12 +115,11 @@ def error_next_to_field(context, field):
 def signup_message_does_not_reveal_email(context):
     # A taken username with a new email must show exactly the same errors as a taken email
     taken_username = sign_up(context, context.user.username, "brand-new@example.com", PASSWORD)
-    context.test.assertEqual(
-        displayed_errors(taken_username), displayed_errors(context.response)
-    )
+    context.test.assertEqual(displayed_errors(taken_username), displayed_errors(context.response))
 
 
 # Log in and log out (#8)
+
 
 @given("I have a registered account")
 def registered_account(context):
@@ -129,12 +135,8 @@ def enter_correct_credentials(context):
 
 @then("I land on my library")
 def land_on_library(context):
-    context.test.assertRedirects(
-        context.response, reverse("library"), fetch_redirect_response=False
-    )
-    context.test.assertEqual(
-        int(context.test.client.session["_auth_user_id"]), context.user.pk
-    )
+    context.test.assertRedirects(context.response, reverse("library"), fetch_redirect_response=False)
+    context.test.assertEqual(int(context.test.client.session["_auth_user_id"]), context.user.pk)
 
 
 @when('I click "Logout"')
@@ -155,9 +157,7 @@ def click_logout(context):
 
 @then("I am returned to the login page")
 def returned_to_login(context):
-    context.test.assertRedirects(
-        context.response, reverse("login"), fetch_redirect_response=False
-    )
+    context.test.assertRedirects(context.response, reverse("login"), fetch_redirect_response=False)
     context.test.assertFalse(is_logged_in(context))
 
 
@@ -172,6 +172,4 @@ def enter_wrong_credentials(context):
 @then("the message does not reveal whether the username is registered")
 def login_message_does_not_reveal_username(context):
     # A wrong password for a real account must show exactly the same errors as an unknown username
-    context.test.assertEqual(
-        displayed_errors(context.wrong_password_response), displayed_errors(context.response)
-    )
+    context.test.assertEqual(displayed_errors(context.wrong_password_response), displayed_errors(context.response))

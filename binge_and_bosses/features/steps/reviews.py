@@ -1,4 +1,5 @@
 """Rating and review steps. IGDB is faked by the @fake_igdb hook."""
+
 from behave import given, when, then
 from bs4 import BeautifulSoup
 from django.contrib.auth import get_user_model
@@ -142,7 +143,7 @@ def add_player(context, username, rating=None):
 
 @given("players rated the game {first:d}, {second:d} and {third:d} stars")
 def players_rated(context, first, second, third):
-    game_in_my_library(context)   # my own entry has no rating
+    game_in_my_library(context)  # my own entry has no rating
     for n, rating in enumerate((first, second, third)):
         add_player(context, f"rater_{n}", rating)
 
@@ -167,4 +168,3 @@ def players_score_reads(context, text):
 @then("there is no players' score")
 def no_players_score(context):
     context.test.assertIsNone(players_score(context))
-

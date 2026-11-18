@@ -71,9 +71,7 @@ def load_guide(base):
     """Read the reviewer guide from the base branch, so a PR cannot rewrite the
     instructions used to review itself. Falls back to the PR's copy only when the
     base has no guide yet (the PR that first adds it)."""
-    result = subprocess.run(
-        ["git", "show", f"{base}:{GUIDE_GIT_PATH}"], capture_output=True, text=True, check=False
-    )
+    result = subprocess.run(["git", "show", f"{base}:{GUIDE_GIT_PATH}"], capture_output=True, text=True, check=False)
     if result.returncode == 0:
         return result.stdout
     return GUIDE_PATH.read_text()
@@ -112,10 +110,12 @@ def get_changed_files(base, head):
         text = "\n".join(f"{path} (+{added} -{deleted})" for added, deleted, path in rows)
     else:
         in_diff_cmd = ["git", "diff", "--no-renames", "--name-only", f"{base}...{head}", "--", "."]
-        in_diff = set(subprocess.run(in_diff_cmd + EXCLUDED_PATHS, capture_output=True, text=True,
-                                     check=True).stdout.splitlines())
-        named = [(added, deleted, path) for added, deleted, path in rows
-                 if path not in in_diff or is_risky(path)]
+        in_diff = set(
+            subprocess.run(
+                in_diff_cmd + EXCLUDED_PATHS, capture_output=True, text=True, check=True
+            ).stdout.splitlines()
+        )
+        named = [(added, deleted, path) for added, deleted, path in rows if path not in in_diff or is_risky(path)]
         named.sort(key=lambda row: not is_risky(row[2]))  # risky files first, before the cap
         groups = {}
         for added, deleted, path in rows:
@@ -169,8 +169,7 @@ def directory_shares(sizes, total, per_dir):
     return shares
 
 
-def limit_diff_shares(diff, per_file=MAX_FILE_DIFF_CHARS, per_dir=MAX_DIR_DIFF_CHARS,
-                      total=MAX_DIFF_CHARS):
+def limit_diff_shares(diff, per_file=MAX_FILE_DIFF_CHARS, per_dir=MAX_DIR_DIFF_CHARS, total=MAX_DIFF_CHARS):
     """Cap each file's and each directory's share of the diff, so the whole thing fits
     the total budget in git's file order, noting what was left out."""
     files = []
@@ -214,8 +213,17 @@ def truncate_diff(diff, limit=MAX_DIFF_CHARS):
 
 
 # Each optional argument is one optional section of the prompt; they are keyword-only.
-def build_input(title, body, diff, truncated, *, commits="", previous_review=None,  # noqa: PLR0913
-                discussion="", changed_files=""):
+def build_input(  # noqa: PLR0913
+    title,
+    body,
+    diff,
+    truncated,
+    *,
+    commits="",
+    previous_review=None,
+    discussion="",
+    changed_files="",
+):
     parts = [
         # Stated here as well as in the guide, so it holds even when the base
         # branch's guide predates a section below.
@@ -232,9 +240,7 @@ def build_input(title, body, diff, truncated, *, commits="", previous_review=Non
     if discussion:
         parts.append(f"Discussion on the pull request by teammates, oldest first:\n{discussion}")
     if changed_files:
-        parts.append(
-            "Changed files, including generated ones left out of the diff:\n" + changed_files
-        )
+        parts.append("Changed files, including generated ones left out of the diff:\n" + changed_files)
     if truncated:
         parts.append(
             f"NOTE: the diff exceeded {MAX_DIFF_CHARS} characters and was cut off. "
@@ -323,8 +329,7 @@ def call_openai(api_key, instructions, user_input):
     text = extract_text(response)
     if not text:
         raise RuntimeError(
-            f"No review text returned (status={response.get('status')}, "
-            f"details={response.get('incomplete_details')})"
+            f"No review text returned (status={response.get('status')}, details={response.get('incomplete_details')})"
         )
     return text
 
@@ -438,8 +443,14 @@ def main():
         except urllib.error.URLError as err:
             print(f"::warning::Reviewing without earlier discussion: {err}")
     user_input = build_input(
-        env.get("PR_TITLE", ""), env.get("PR_BODY", ""), diff, truncated, commits=commits,
-        previous_review=previous, discussion=discussion, changed_files=changed_files,
+        env.get("PR_TITLE", ""),
+        env.get("PR_BODY", ""),
+        diff,
+        truncated,
+        commits=commits,
+        previous_review=previous,
+        discussion=discussion,
+        changed_files=changed_files,
     )
 
     if "--dry-run" in sys.argv:

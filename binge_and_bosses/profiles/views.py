@@ -8,6 +8,7 @@ from django.urls import reverse_lazy
 from .forms import AvatarForm
 from .models import Profile
 
+
 # Create your views here.
 @login_required
 def change_username(request):
@@ -20,15 +21,17 @@ def change_username(request):
             messages.success(request, "Your username has been updated!")
             return redirect("profiles:change_username")
     else:
-        form = UsernameChangeForm(instance = request.user)
+        form = UsernameChangeForm(instance=request.user)
 
-    return render(request, "profiles/change_username.html", {"form":form})
+    return render(request, "profiles/change_username.html", {"form": form})
+
 
 class ChangePasswordView(SuccessMessageMixin, PasswordChangeView):
     form_class = StyledPasswordChangeForm
     template_name = "profiles/change_password.html"
     success_url = reverse_lazy("profiles:change_password")
     success_message = "Your password has been updated!"
+
 
 @login_required
 def change_avatar(request):
