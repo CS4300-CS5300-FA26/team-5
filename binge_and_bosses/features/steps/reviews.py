@@ -128,7 +128,8 @@ def other_reviews(context):
 def see_all_reviews(context):
     articles = BeautifulSoup(context.response.content, "html.parser").find_all("article")
     context.test.assertEqual(len(articles), 2)
-    for article, username, rating, review in zip(articles, ["reader_a", "reader_b"], [3, 5], ["Good game.", "Loved it."]):
+    expected = zip(articles, ["reader_a", "reader_b"], [3, 5], ["Good game.", "Loved it."])
+    for article, username, rating, review in expected:
         context.test.assertEqual(article.h3.get_text(strip=True), username)
         context.test.assertIn(f"Rating: {rating}/5", article.get_text())
         context.test.assertIn(review, article.get_text())

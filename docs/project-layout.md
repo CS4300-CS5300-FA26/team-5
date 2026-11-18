@@ -110,3 +110,29 @@ Then add it to `INSTALLED_APPS` in `settings.py`. `startapp` doesn't create a `u
 | `ALLOWED_HOSTS` | `localhost,127.0.0.1` | Hostnames the site answers to. |
 | `CSRF_TRUSTED_ORIGINS` | empty | Origins allowed to submit forms (needed for the production URL). |
 | `DATABASE_URL` | empty → local SQLite | A Postgres connection URL. Leave it unset locally and in tests. |
+
+## Friends (Story 10 / #15)
+
+The `friends/` app owns `Friendship`: a sender, recipient, and accepted flag.
+A pending record becomes a mutual friendship when the recipient accepts it.
+Database constraints reject self-requests and duplicate pairs in either direction.
+Declining or removing deletes the record; either player can send a new request afterward.
+A request in the opposite direction stays pending until the recipient explicitly accepts.
+Usernames are matched exactly, consistent with account login, and surrounding whitespace is stripped.
+
+| URL | Name | Behavior |
+| --- | --- | --- |
+| `/friends/` | `friends:index` | Login required; accepted friends, incoming requests, sent requests, and username form. |
+| `/friends/send/` | `friends:send` | Send a request to a username. |
+| `/friends/<pk>/accept/` | `friends:accept` | Only the recipient can accept a pending request. |
+| `/friends/<pk>/decline/` | `friends:decline` | Only the recipient can decline a pending request. |
+| `/friends/<pk>/remove/` | `friends:remove` | Either participant can remove an accepted friendship. |
+
+All actions require login, POST, and CSRF protection. Other users' requests are not
+exposed in the inbox. Missing or no-longer-actionable requests return 404.
+The page reuses `base.html` and profile avatars, with an initial fallback for users
+without an avatar or profile. No new dependencies are required.
+
+Friend activity is separate (#18). Its queries must select currently accepted
+relationships in either direction; removing a friendship must stop that user's
+activity appearing. This change does not implement or claim to test that feed.

@@ -46,7 +46,8 @@ class ChangeUsernameTests(TestCase):
 
     def test_anonymous_get_redirected(self):
         """
-            Test that if an authenticated user tries to access the change username page, they become redirected to 'login'
+            Test that if an authenticated user tries to access the change username page,
+            they become redirected to 'login'
         """
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 302)
@@ -209,7 +210,8 @@ class ChangePasswordTests(TestCase):
 
     def test_successful_password_change(self):
         """
-            Test that a user can successfully change their password when both new passwords match and old password is correct
+            Test that a user can successfully change their password when both new passwords match
+            and old password is correct
         """
         self.login()
         response = self.client.post(self.url, {

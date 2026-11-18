@@ -21,6 +21,7 @@ Not ready for review yet? Open it as a **draft**. Teammates can see it and comme
 | Check | What it does | If it fails |
 | --- | --- | --- |
 | **CI** (`ci.yaml`) | Installs the locked packages, runs unit tests then Behave, requires 80% combined coverage, and checks startup without dev packages. Also runs on every push to any branch. | Click *Details* and read the log. Tests or coverage: see [Testing](testing.md). Lock errors: see the README's *Adding or updating packages*. |
+| **Lint** (`lint` job in `ci.yaml`) | Runs `ruff check` with the PyLint and Flake8 rules in `pyproject.toml`. Findings show on the changed lines; the full report is in the job summary and the `ruff-report` artifact. | Run `uv run ruff check .` locally and fix each finding. See the README's *Linting*. |
 | **AI code review** (`ai-review.yml`) | Posts a review comment with suggestions. Skips draft PRs. | It never blocks merging. Treat it as one reviewer's opinion: fix what's right, reply on what's wrong. |
 
 ## Getting it merged

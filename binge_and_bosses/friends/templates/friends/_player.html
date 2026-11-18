@@ -1,0 +1,8 @@
+<span class="d-inline-flex align-items-center gap-2 text-break">
+    {% if player.profile.avatar %}
+        <img src="{{ player.profile.avatar.url }}" class="avatar avatar-sm" alt="">
+    {% else %}
+        <span class="avatar avatar-sm avatar-placeholder" aria-hidden="true">{{ player.username|slice:":1"|upper }}</span>
+    {% endif %}
+    {{ player.username }}
+</span>

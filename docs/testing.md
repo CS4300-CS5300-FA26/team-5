@@ -46,6 +46,12 @@ uv run --locked coverage report -m --fail-under=80
 
 `report -m` lists the line numbers in each file that neither suite ran. Those are what to test next. CI also checks that Django starts without dev packages, so `settings.py` only adds `behave_django` when it's installed.
 
+## Cache isolation
+
+IGDB client unit tests override the cache with Django's local-memory backend, so tests do not require Docker or clear the running app's Redis cache. Use the Redis and Django connection checks in the README to verify the real container separately.
+
+`games/test_cache_settings.py` loads settings with fake environment values, without reading `.env` or contacting Redis. It covers required production URLs, the local debug fallback, TLS verification by default, the explicit Heroku self-signed certificate option, and keeping TLS options off non-TLS connections.
+
 ## Tests that use IGDB
 Tests must use fake IGDB responses and never call the real API. `games/tests.py` patches `games.igdb_client.requests.post` for client tests (both the Twitch token request and the IGDB query go through it), `games.views.search_game` for search view tests and `games.catalog.get_game_details` for game details. Behave scenarios tagged `@fake_igdb` get fake IGDB answers from `features/environment.py`; steps change them through `context.search_game` and `context.get_game_details`. The dummy `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` values satisfy settings; they aren't working credentials.
 
@@ -75,3 +81,25 @@ The course asks us to write tests first:
 Watching it fail first proves the test can catch a bug.
 
 Linting isn't part of CI yet (#36, Sprint 3).
+
+## Friend requests
+
+The Story 10 tests live in `friends/tests.py` and `features/friend_requests.feature`.
+The initial test run failed with `ModuleNotFoundError: friends.models` before the
+model and views were implemented. The focused implementation run passed all 10
+unit tests and all five new Behave scenarios.
+
+```bash
+uv run --locked python manage.py test friends
+uv run --locked python manage.py behave --simple --name 'Send a request|Unknown username|^Accept$|^Decline$|Remove a friend'
+```
+
+The tests cover the mutual friends list, incoming-request privacy, invalid users,
+self/duplicate/reverse requests, recipient-only acceptance and decline, removal by
+either friend, stale IDs, login/POST/CSRF enforcement, and database constraints.
+Activity visibility after removal must also be tested when #18 adds the activity feed.
+
+Full validation after implementation passed: 186 unit tests, all 42 Behave
+scenarios, 99% combined coverage (80% required), `makemigrations --check --dry-run`,
+and `manage.py check` both normally and in a separate `uv --no-dev` environment.
+These runs used temporary test databases; the local development database was not migrated.

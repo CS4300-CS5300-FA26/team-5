@@ -16,6 +16,8 @@ Binge & Bosses is a backlog management and social interaction platform geared fo
 - Get game recommendations
 - Track the time spent in-game
 
+The live site is at [bingeandbosses.com](https://bingeandbosses.com).
+
 For project layout, pull requests, testing and deployment, see [Team docs](docs/README.md).
 
 ## How to run Binge & Bosses
@@ -47,7 +49,32 @@ You can generate a secret key by running
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 ```
 
-### Step 4. Run the server
+### Step 4. Start Redis with Docker
+Install [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/) and start it with Linux containers enabled. From the repository root (the folder containing `compose.yaml`):
+
+```bash
+docker compose up -d --wait redis
+docker compose exec redis redis-cli ping
+```
+
+The second command should print `PONG`. Add this to `binge_and_bosses/.env`:
+
+```dotenv
+DEBUG=True
+REDIS_URL=redis://127.0.0.1:6379/0
+```
+
+Django runs on your host and connects to the container through localhost port 6379. Redis is bound to localhost only. Cached searches, game details and tokens are disposable; this container does not persist them after recreation. No custom Dockerfile is needed because Compose uses the official Redis image.
+
+After startup, verify the Django connection from the directory containing `manage.py`:
+
+```bash
+uv run python manage.py shell -c "from django.core.cache import cache; cache.set('connection_check', 'connected', timeout=30); print(cache.get('connection_check')); cache.delete('connection_check')"
+```
+
+Expected output: `connected`. To stop Redis, run `docker compose stop redis` from the repository root; run `docker compose up -d --wait redis` to start it again. If Django is later containerized on the same Compose network, use `redis://redis:6379/0` inside that container.
+
+### Step 5. Run the server
 ```bash
 cd binge_and_bosses
 uv run python manage.py runserver
@@ -83,6 +110,16 @@ uv run coverage run manage.py test
 uv run coverage run --append manage.py behave --simple
 uv run coverage report -m
 ```
+
+## Linting
+Ruff checks the code with its PyLint (`PL`) and Flake8 (`E`, `W`, `F`, `C90`) rules. The rules live in `pyproject.toml` under `[tool.ruff]`. Run it from the repository root:
+```bash
+uv run ruff check .
+```
+CI fails on any finding. Findings show up on the PR's changed lines, and the full report is in the `lint` job's summary (and its `ruff-report` artifact). Lines can be up to 119 characters, which is Django's own limit. Ruff skips migrations because Django writes them. If a rule is wrong for a line, add `# noqa: <code>` with a comment that says why.
+
+## Dependency scans
+Dependabot (`.github/dependabot.yml`) opens one grouped PR a month for Python package updates and one for GitHub Actions updates. Its vulnerability report is the repository's **Security** tab, under **Dependabot**. With security updates turned on in the repository settings, Dependabot also opens a PR for each alert right away, so it doesn't wait for the monthly run.
 
 ## Adding or updating packages
 - Add a package: `uv add <package>`. For tools only needed in development or CI (like `coverage`), use `uv add --dev <package>`.
@@ -151,6 +188,12 @@ A PR appears in the first matching category; add its manual label before generat
 | 11/15/2026 | OpenAI Codex (GPT-6 Luna) | Updated the CI deploy job for direct Heroku Git deployment after CI, added Heroku web and release commands, removed obsolete Render build configuration, and updated deployment docs. Ran the existing CI and local production-command checks. No application behavior changed. |
 | 11/15/2026 | Claude Code (Claude Opus 5.5) | Redesigned the game page around the player's save file: cover and facts, IGDB and player scores, a star picker, a review box with a live character count, removal with a confirmation, and every player's review. The status picker is display-only until story #12 connects it. Wrote the unit tests first. Submitted in a pull request for teammate review. |
 | 11/15/2026 | Claude Opus 5.5| Fixed and adjusted code that was connected to or need to account for the changes to the Catalog model for Story #12. Also assisted in this features branch managment and rebasing. |
-
 | 11/15/2026 | Gemini 4 Carbon| Created the unit tests for the play status feature and the behave feature file and steps.|
-
+| 11/16/2026 | OpenAI Codex | Implemented Story 10 friend requests (#15): relationship constraints, permission-checked actions, Friends page, unit tests and five Behave scenarios. Started with failing tests before implementation. Friend activity remains separate (#18). |
+| 11/17/2026 | OpenAI Codex | Added a local Redis Compose service, environment-based Django cache connection, cache reuse tests and setup instructions. Isolated IGDB unit-test caches and updated the token-refresh test to bypass cached search results. |
+| 11/17/2026 | OpenAI Codex | Added required production REDIS_URL configuration, explicit TLS certificate verification settings for Heroku KVS, isolated configuration regression tests written and seen failing first, and production setup/smoke-check instructions. |
+| 11/17/2026 | Claude Code (Claude Opus 5.5) | Found the open Dependabot finding (soupsieve 3.0.3, GHSA-mmhr-3c5m-f64f) with pip-audit, upgraded soupsieve to 4.1.1 in `uv.lock`, and ran the unit tests, Behave and coverage. Submitted in a pull request for teammate review. |
+| 11/17/2026 | Claude Code (Claude Opus 5.5) | Wrote the production smoke test for #35 (`.github/scripts/smoke-test-production.sh`), the deploy job step that runs it, and the deployment docs. Ran it against the live site, plus a commit that was never deployed and a bad URL to check that it fails. Submitted in a pull request for teammate review. |
+| 11/17/2026 | Claude Code (Claude Opus 5.5) | Set up Ruff with its PyLint and Flake8 rules (#36) and Dependabot updates (#38). Fixed the 68 existing findings, added the `lint` CI job with its report, and documented both. Ran the unit tests, Behave and coverage locally. Submitted in a pull request for teammate review. |
+| 11/17/2026 | Claude Code (Claude Opus 5.5) | Checked that bingeandbosses.com and www serve the app over HTTPS (#39), pointed the README, deployment docs and deploy job at it, and made Heroku redirect HTTP to HTTPS with secure cookies. Wrote the settings tests first and saw them fail. Ran the unit tests, Behave and coverage locally. Submitted in a pull request for teammate review. |
+| 11/17/2026 | Claude Code (Claude Opus 5.5) | Removed the two whitespace-only lines that failed `lint` on `main` after #90, and restored the 11/15 Gemini and 11/16 Codex log rows that #90's merge mixed together. Ran `ruff check`. Submitted in a pull request for teammate review. |

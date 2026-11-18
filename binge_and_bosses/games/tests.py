@@ -1,11 +1,11 @@
-from datetime import date
+from http import HTTPStatus
 
 from bs4 import BeautifulSoup
 from django.contrib import messages
 from django.contrib.staticfiles import finders
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from .models import Game, Catalog
 from .catalog import get_or_import
@@ -243,6 +243,10 @@ class BrandLogoTests(TestCase):
                 self.assertEqual(brand.get_text(strip=True), "Binge and Bosses")
 
 
+@override_settings(CACHES={"default": {
+    "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    "LOCATION": "igdb-client-tests",
+}})
 class IgdbClientTests(TestCase):
     """games/igdb_client.py: gets a Twitch token, queries IGDB and returns games in our own shape."""
 
@@ -275,10 +279,10 @@ class IgdbClientTests(TestCase):
         else:
             response.status_code = self.api_status
             response.json.return_value = self.games
-            if self.api_status == 401:
+            if self.api_status == HTTPStatus.UNAUTHORIZED:
                 self.api_status = 200   # the next try, with a new token, works
         response.raise_for_status.side_effect = (
-            None if response.status_code < 400 else requests.HTTPError(str(response.status_code))
+            None if response.status_code < HTTPStatus.BAD_REQUEST else requests.HTTPError(str(response.status_code))
         )
         return response
 
@@ -339,8 +343,23 @@ class IgdbClientTests(TestCase):
         self.assertEqual(self.tokens_issued, 1)
         self.assertEqual(len(self.api_calls()), 2)
 
+    def test_search_result_is_reused_without_another_api_call(self):
+        first = igdb_client.search_game("hollow knight")
+        self.post.reset_mock()
+
+        self.assertEqual(igdb_client.search_game("hollow knight"), first)
+        self.post.assert_not_called()
+
+    def test_game_details_are_reused_without_another_api_call(self):
+        first = igdb_client.get_game_details(14593)
+        self.post.reset_mock()
+
+        self.assertEqual(igdb_client.get_game_details(14593), first)
+        self.post.assert_not_called()
+
     def test_rejected_token_is_replaced_once(self):
         igdb_client.search_game("hollow knight")
+        cache.delete("SearchGame_hollow knight")
         self.api_status = 401
 
         games = igdb_client.search_game("hollow knight")
@@ -603,11 +622,14 @@ class SearchPageTests(TestCase):
         self.assertIn("IGDB", page.get_text())
 
 
-# Tests that the library page displays correctly and that logged out users are redirected to the login page when visiting.
+# Tests that the library page displays correctly and that logged out users
+# are redirected to the login page when visiting.
 class LibraryPageTests(TestCase):
 
     def setUp(self):
-        self.user = get_user_model().objects.create_user(username="user_b", email="user_b@example.com", password="TesTINGp#ass0r0d")
+        self.user = get_user_model().objects.create_user(
+            username="user_b", email="user_b@example.com", password="TesTINGp#ass0r0d"
+        )
         self.next_igdb_id = 1
 
     def add(self, title, user=None, **entry):
@@ -856,7 +878,7 @@ class AddToLibraryViewTests(TestCase):
         self.assertRedirects(response, f"{reverse('login')}?next={url}")
         self.assertEqual(Catalog.objects.count(), 0)
 
-        
+
     def test_catalog_rejects_duplicate_user_and_game(self):
         game = Game.objects.create(
             igdb_id=10, game_title="Portal", game_description="A puzzle game.", game_rating=4.7,
@@ -1181,7 +1203,10 @@ class ReviewTests(TestCase):
         self.entry.delete()
         self.assertEqual(self.save_review(1, "Overwrite.").status_code, 404)
         entry.refresh_from_db()
-        self.assertEqual((entry.rating, entry.review, entry.review_edited, entry.status), (2, "Their review.", False, Catalog.Status.NOT_STARTED))
+        self.assertEqual(
+            (entry.rating, entry.review, entry.review_edited, entry.status),
+            (2, "Their review.", False, Catalog.Status.NOT_STARTED),
+        )
 
     def test_game_page_lists_all_reviews_in_username_order_for_everyone(self):
         self.entry.rating, self.entry.review = 4, "<b>Fun.</b>"
@@ -1249,8 +1274,9 @@ class ReviewTests(TestCase):
         self.assertFalse(Catalog.objects.filter(pk=self.entry.pk).exists())
         self.assertContains(self.client.get(reverse("game_details", args=[42])), "No reviews yet.")
 
-    # This section of tests tests the status field of the Catalog model, which tracks whether a user has started, is playing, or has completed a game.
-    
+    # This section of tests tests the status field of the Catalog model, which tracks
+    # whether a user has started, is playing, or has completed a game.
+
     def test_status_only_save_does_not_create_review(self):
         self.entry.status = Catalog.Status.DROPPED
         self.entry.save()
