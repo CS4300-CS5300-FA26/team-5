@@ -3,6 +3,7 @@
     before it expires, and get a new one if IGDB rejects it. Both functions return games in our
     own shape (see _game), or None when IGDB or Twitch can't be reached.
 """
+import hashlib
 from datetime import datetime, timezone
 from http import HTTPStatus
 
@@ -24,7 +25,7 @@ def search_game(game_name):
     """The 5 best-known games matching the title. IGDB ranks matches by text alone, which can put a
     fan game or an obscure namesake first, so we fetch 20 and sort them by how many ratings they have."""
     title = game_name.replace("\\", "\\\\").replace('"', '\\"')
-    cache_key = f"SearchGame_{game_name}"
+    cache_key = search_cache_key(game_name)
 
     games_search = cache.get(cache_key)
 
@@ -39,7 +40,14 @@ def search_game(game_name):
 
     return games_search
 
-    
+
+
+def search_cache_key(game_name):
+    """IGDB matches titles regardless of case, so "Hollow Knight" and "hollow knight " share one entry.
+    The hash keeps the key short and free of spaces, whatever the user typed."""
+    normalized = game_name.strip().lower()
+    return f"SearchGame_{hashlib.sha256(normalized.encode()).hexdigest()}"
+
 
 def get_game_details(game_id):
     """One game by its IGDB id, or None if there's no such game."""
@@ -57,7 +65,7 @@ def get_game_details(game_id):
 
     # If not just return specific_game_detail
     return specific_game_detail
-        
+
 
 
 def _query(body):

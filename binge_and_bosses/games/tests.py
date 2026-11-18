@@ -1,3 +1,4 @@
+import warnings
 from http import HTTPStatus
 
 from bs4 import BeautifulSoup
@@ -14,6 +15,7 @@ from unittest.mock import patch,Mock
 import requests
 from django.conf import settings
 from django.core.cache import cache
+from django.core.cache.backends.base import CacheKeyWarning
 
 from . import igdb_client
 from django.urls import reverse
@@ -357,9 +359,21 @@ class IgdbClientTests(TestCase):
         self.assertEqual(igdb_client.get_game_details(14593), first)
         self.post.assert_not_called()
 
+    def test_searches_that_differ_in_case_share_one_cache_entry(self):
+        igdb_client.search_game("Hollow Knight")
+        igdb_client.search_game("  hollow knight ")
+
+        self.assertEqual(len(self.api_calls()), 1)
+
+    def test_search_cache_key_is_safe_for_any_search(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", CacheKeyWarning)
+            cache.make_and_validate_key(igdb_client.search_cache_key("hollow knight"))
+            cache.make_and_validate_key(igdb_client.search_cache_key("x" * 300))
+
     def test_rejected_token_is_replaced_once(self):
         igdb_client.search_game("hollow knight")
-        cache.delete("SearchGame_hollow knight")
+        cache.delete(igdb_client.search_cache_key("hollow knight"))
         self.api_status = 401
 
         games = igdb_client.search_game("hollow knight")
