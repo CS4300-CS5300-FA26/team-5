@@ -158,5 +158,5 @@ A PR appears in the first matching category; add its manual label before generat
 
 | 11/16/2026 | OpenAI Codex | Implemented Story 10 friend requests (#15): relationship constraints, permission-checked actions, Friends page, unit tests and five Behave scenarios. Started with failing tests before implementation. Friend activity remains separate (#18). |
 | 11/17/2026 | Claude Code (Claude Opus 5.5) | Found the open Dependabot finding (soupsieve 3.0.3, GHSA-mmhr-3c5m-f64f) with pip-audit, upgraded soupsieve to 4.1.1 in `uv.lock`, and ran the unit tests, Behave and coverage. Submitted in a pull request for teammate review. |
-
+| 11/17/2026 | Claude Code (Claude Opus 5.5) | Wrote the production smoke test for #35 (`.github/scripts/smoke-test-production.sh`), the deploy job step that runs it, and the deployment docs. Ran it against the live site, plus a commit that was never deployed and a bad URL to check that it fails. Submitted in a pull request for teammate review. |
 | 11/17/2026 | Claude Code (Claude Opus 5.5) | Checked that bingeandbosses.com and www serve the app over HTTPS (#39), pointed the README, deployment docs and deploy job at it, and made Heroku redirect HTTP to HTTPS with secure cookies. Wrote the settings tests first and saw them fail. Ran the unit tests, Behave and coverage locally. Submitted in a pull request for teammate review. |

@@ -24,6 +24,8 @@ On Heroku the site is HTTPS only. Heroku sets `DYNO` on every dyno, so when it's
 
 Keep credentials in Heroku config vars, never in the repository or local test `.env` files. The first release migration creates the schema in the empty Neon database. No Render data migration is needed.
 
-## Cutover checklist
+## Production smoke test
 
-Deployment and the production smoke test remain pending. After the CI deploy succeeds, verify the Heroku release and check the site, sign-up, login, and static files at the production URL before treating cutover as complete.
+After the push, the deploy job runs `.github/scripts/smoke-test-production.sh`. `git push` returns while the release command (migrations) is still running, and the old release keeps serving until it finishes. So the script first waits for the Heroku API to show the pushed commit as the current release. It fails if that release fails or isn't live within 10 minutes. Then it checks that the home page, login, sign-up and the home page's stylesheet return 200, and that the pages show the expected text. It retries for up to 2 minutes while the dynos restart. Any failed check fails the deploy job with an error annotation. If the push step skips a stale deployment, the smoke test is skipped too.
+
+To run it locally, set `HEROKU_API_KEY`, `HEROKU_APP`, `APP_URL` (no trailing slash) and `EXPECTED_SHA` (the deployed commit), then run the script.
