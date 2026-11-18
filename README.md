@@ -165,5 +165,6 @@ A PR appears in the first matching category; add its manual label before generat
 | 11/15/2026 | Gemini 4 Carbon| Created the unit tests for the play status feature and the behave feature file and steps.|
 
 | 11/16/2026 | OpenAI Codex | Implemented Story 10 friend requests (#15): relationship constraints, permission-checked actions, Friends page, unit tests and five Behave scenarios. Started with failing tests before implementation. Friend activity remains separate (#18). |
+| 11/17/2026 | Claude Code (Claude Opus 5.5) | Found the open Dependabot finding (soupsieve 3.0.3, GHSA-mmhr-3c5m-f64f) with pip-audit, upgraded soupsieve to 4.1.1 in `uv.lock`, and ran the unit tests, Behave and coverage. Submitted in a pull request for teammate review. |
 
 | 11/17/2026 | Claude Code (Claude Opus 5.5) | Set up Ruff with its PyLint and Flake8 rules (#36) and Dependabot updates (#38). Fixed the 68 existing findings, added the `lint` CI job with its report, and documented both. Ran the unit tests, Behave and coverage locally. Submitted in a pull request for teammate review. |
