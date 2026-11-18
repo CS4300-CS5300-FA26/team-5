@@ -90,7 +90,7 @@ jobs:
       contents: read
     environment:
       name: heroku-production
-      url: https://binge-and-bosses-team5-4e736711771e.herokuapp.com
+      url: https://bingeandbosses.com
     concurrency:
       group: heroku-production
       cancel-in-progress: false

@@ -38,6 +38,14 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
 
+# Heroku sets DYNO on every dyno. There the site is HTTPS only: Heroku's router
+# ends TLS and says so in X-Forwarded-Proto. Local runs stay on plain HTTP.
+if config('DYNO', default=''):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
 # Application definition
 
 INSTALLED_APPS = [
