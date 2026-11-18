@@ -389,6 +389,21 @@ class IgdbClientTests(TestCase):
 
         self.assertIsNone(igdb_client.get_game_details(999999999))
 
+    def test_unknown_id_is_cached_so_the_next_request_skips_igdb(self):
+        self.games = []
+        igdb_client.get_game_details(999999999)
+        self.post.reset_mock()
+
+        self.assertIsNone(igdb_client.get_game_details(999999999))
+        self.post.assert_not_called()
+
+    def test_details_are_not_cached_when_igdb_fails(self):
+        self.api_status = 500
+        self.assertIsNone(igdb_client.get_game_details(14593))
+        self.api_status = 200
+
+        self.assertEqual(igdb_client.get_game_details(14593)["name"], "Hollow Knight")
+
 
 class GameSearchandDetailsViewTests(TestCase):
 

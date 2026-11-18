@@ -14,6 +14,7 @@ TOKEN_URL = "https://id.twitch.tv/oauth2/token"
 API_URL = "https://api.igdb.com/v4/games"
 COVER_URL = "https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg"
 TOKEN_CACHE_KEY = "igdb_access_token"
+NOT_CACHED = object()   # tells a cache miss apart from a cached None
 FIELDS = "name,summary,first_release_date,total_rating,cover.image_id,genres.name,platforms.name"
 # Main games, standalone expansions, remakes, remasters, expanded games and ports.
 # Leaves out mods, DLC, bundles and alternate editions (version_parent), which crowd out the real game.
@@ -39,25 +40,20 @@ def search_game(game_name):
 
     return games_search
 
-    
+
 
 def get_game_details(game_id):
-    """One game by its IGDB id, or None if there's no such game."""
+    """One game by its IGDB id, or None if there's no such game or IGDB can't be reached.
+    A game IGDB doesn't know is cached as None too, so a bad id calls IGDB once an hour at most."""
     cache_key = f"GameDetails_{int(game_id)}"
-
-    # Get info from cache
-    specific_game_detail = cache.get(cache_key)
-
-    # If none then generate set a new cache and return it
-    if specific_game_detail is None:
+    game = cache.get(cache_key, NOT_CACHED)
+    if game is NOT_CACHED:
         games = _query(f"fields {FIELDS}; where id = {int(game_id)};")
-        specific_game_detail = _game(games[0]) if games else None
-        cache.set(cache_key,specific_game_detail,timeout=3600)
-        return specific_game_detail
-
-    # If not just return specific_game_detail
-    return specific_game_detail
-        
+        if games is None:   # IGDB failed: don't cache that as "no such game"
+            return None
+        game = _game(games[0]) if games else None
+        cache.set(cache_key, game, timeout=3600)
+    return game
 
 
 def _query(body):
