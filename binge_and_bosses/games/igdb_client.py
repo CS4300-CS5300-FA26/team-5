@@ -4,6 +4,7 @@
     own shape (see _game), or None when IGDB or Twitch can't be reached.
 """
 from datetime import datetime, timezone
+from http import HTTPStatus
 
 import requests
 from django.conf import settings
@@ -62,7 +63,7 @@ def get_game_details(game_id):
 def _query(body):
     try:
         response = _post(body, _token())
-        if response.status_code == 401:   # the token was revoked or expired early
+        if response.status_code == HTTPStatus.UNAUTHORIZED:   # the token was revoked or expired early
             response = _post(body, _token(refresh=True))
         response.raise_for_status()
         return response.json()

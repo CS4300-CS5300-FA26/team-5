@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Friends | Binge and Bosses{% endblock %}
+{% block content %}
+<header class="mb-4">
+    <h1>Friends</h1>
+    <p class="text-body-secondary">Find your players. Send a request to connect.</p>
+</header>
+{% for message in messages %}
+    <div class="alert alert-info" role="status">{{ message }}</div>
+{% endfor %}
+<section class="card mb-4" aria-labelledby="add-friend-heading">
+    <div class="card-body">
+        <h2 id="add-friend-heading" class="h5">Add a friend</h2>
+        <form method="post" action="{% url 'friends:send' %}" class="row g-3 align-items-end">
+            {% csrf_token %}
+            <div class="col-sm-8 col-lg-6">
+                {{ form.username.label_tag }}
+                {{ form.username }}
+                {{ form.username.errors }}
+            </div>
+            <div class="col-sm-auto"><button class="btn btn-primary" type="submit">Send request</button></div>
+        </form>
+    </div>
+</section>
+<div class="row g-4">
+    <section class="col-lg-7" aria-labelledby="friends-heading">
+        <h2 id="friends-heading" class="h4">Your friends <span class="text-body-secondary">({{ friends|length }})</span></h2>
+        <ul class="list-group">
+            {% for relationship in relationships %}
+                <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    {% include "friends/_player.html" with player=relationship.other %}
+                    <form method="post" action="{% url 'friends:remove' relationship.pk %}">
+                        {% csrf_token %}<button class="btn btn-outline-danger btn-sm" aria-label="Remove {{ relationship.other.username }}" type="submit">Remove friend</button>
+                    </form>
+                </li>
+            {% empty %}
+                <li class="list-group-item text-body-secondary">No friends yet. Add a player by username to get started.</li>
+            {% endfor %}
+        </ul>
+    </section>
+    <div class="col-lg-5">
+        <section class="mb-4" aria-labelledby="incoming-heading">
+            <h2 id="incoming-heading" class="h4">Incoming requests</h2>
+            <ul class="list-group">
+                {% for relationship in incoming %}
+                    <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3">
+                        {% include "friends/_player.html" with player=relationship.other %}
+                        <div class="d-flex gap-2">
+                            <form method="post" action="{% url 'friends:accept' relationship.pk %}">
+                                {% csrf_token %}<button class="btn btn-primary btn-sm" aria-label="Accept {{ relationship.other.username }}" type="submit">Accept</button>
+                            </form>
+                            <form method="post" action="{% url 'friends:decline' relationship.pk %}">
+                                {% csrf_token %}<button class="btn btn-outline-secondary btn-sm" aria-label="Decline {{ relationship.other.username }}" type="submit">Decline</button>
+                            </form>
+                        </div>
+                    </li>
+                {% empty %}<li class="list-group-item text-body-secondary">No pending incoming requests.</li>{% endfor %}
+            </ul>
+        </section>
+        <section aria-labelledby="outgoing-heading">
+            <h2 id="outgoing-heading" class="h4">Sent requests</h2>
+            <ul class="list-group">
+                {% for relationship in outgoing %}
+                    <li class="list-group-item d-flex align-items-center justify-content-between gap-3">
+                        {% include "friends/_player.html" with player=relationship.other %}
+                        <span class="badge text-bg-secondary">Pending</span>
+                    </li>
+                {% empty %}<li class="list-group-item text-body-secondary">No pending sent requests.</li>{% endfor %}
+            </ul>
+        </section>
+    </div>
+</div>
+{% endblock %}

@@ -9,6 +9,7 @@ dependencies = [
     "django>=6.1.2",
     "djangorestframework>=3.18.3",
     "gunicorn>=26.2.0",
+    "pillow>=13.0.0",
     "psycopg2-binary>=2.9.13",
     "python-decouple>=3.8",
     "redis>=8.1.0",
@@ -21,4 +22,25 @@ dev = [
     "beautifulsoup4>=4.15.0",
     "behave-django>=2.0.0",
     "coverage>=7.16.2",
+    "ruff>=0.17.5",
 ]
+
+# Ruff runs the PyLint and Flake8 rule sets (approved in place of standalone
+# PyLint/Flake8, #36). Run `uv run ruff check` from the repository root.
+[tool.ruff]
+# Django's own style limit. Pylint's default is 100 and Flake8's is 79.
+line-length = 119
+# Django generates migrations; we never edit them by hand.
+extend-exclude = ["**/migrations/"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors (Flake8)
+    "W",    # pycodestyle warnings (Flake8)
+    "F",    # Pyflakes (Flake8)
+    "C90",  # mccabe complexity (Flake8)
+    "PL",   # Pylint: PLC convention, PLE error, PLR refactor, PLW warning
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10

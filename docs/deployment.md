@@ -1,6 +1,6 @@
 # Deployment
 
-Production target: [binge-and-bosses-team5](https://binge-and-bosses-team5-4e736711771e.herokuapp.com/), with PostgreSQL on Neon. The Heroku app and Neon project exist; the Neon database is empty and cutover is pending. The old Render database is disposable, so no data transfer is planned.
+Production target: [bingeandbosses.com](https://bingeandbosses.com) (also `www.bingeandbosses.com`), served by the Heroku app [binge-and-bosses-team5](https://binge-and-bosses-team5-4e736711771e.herokuapp.com/), with PostgreSQL on Neon. The Heroku app and Neon project exist; the Neon database is empty and cutover is pending. The old Render database is disposable, so no data transfer is planned.
 
 ## CI deployment
 
@@ -16,17 +16,21 @@ The Heroku app needs these config vars:
 
 - `SECRET_KEY`, `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` (all required at startup; CI's dummy values can't make real IGDB requests)
 - `DEBUG=False`
-- `ALLOWED_HOSTS` containing `binge-and-bosses-team5-4e736711771e.herokuapp.com`
-- `CSRF_TRUSTED_ORIGINS` containing `https://binge-and-bosses-team5-4e736711771e.herokuapp.com`
+- `ALLOWED_HOSTS` containing `bingeandbosses.com`, `www.bingeandbosses.com` and `binge-and-bosses-team5-4e736711771e.herokuapp.com`
+- `CSRF_TRUSTED_ORIGINS` containing `https://bingeandbosses.com`, `https://www.bingeandbosses.com` and `https://binge-and-bosses-team5-4e736711771e.herokuapp.com`
 - `REDIS_URL` set to a Redis service reachable from Heroku, using the provider's full connection URL (including TLS and authentication when required). The local Compose container only serves local development.
 - `REDIS_SSL_VERIFY=False` for Heroku Key-Value Store only: it uses self-signed certificates. TLS encryption remains enabled through `rediss://`, but this setting disables server certificate verification. Other providers default to certificate verification; do not disable it when trusted certificates are available.
 - `DATABASE_URL` set to the Neon PostgreSQL connection string with SSL enabled
 
+On Heroku the site is HTTPS only. Heroku sets `DYNO` on every dyno, so when it's set, `settings.py` redirects `http://` to `https://` and marks the session and CSRF cookies secure. Local runs don't set `DYNO`, so they stay on plain HTTP. HSTS is still off.
+
 Keep credentials in Heroku config vars, never in the repository or local test `.env` files. The first release migration creates the schema in the empty Neon database. No Render data migration is needed.
 
-## Cutover checklist
+## Production smoke test
 
-Deployment and the production smoke test remain pending. After the CI deploy succeeds, verify the Heroku release and check the site, sign-up, login, and static files at the production URL before treating cutover as complete.
+After the push, the deploy job runs `.github/scripts/smoke-test-production.sh`. `git push` returns while the release command (migrations) is still running, and the old release keeps serving until it finishes. So the script first waits for the Heroku API to show the pushed commit as the current release. It fails if that release fails or isn't live within 10 minutes. Then it checks that the home page, login, sign-up and the home page's stylesheet return 200, and that the pages show the expected text. It retries for up to 2 minutes while the dynos restart. Any failed check fails the deploy job with an error annotation. If the push step skips a stale deployment, the smoke test is skipped too.
+
+To run it locally, set `HEROKU_API_KEY`, `HEROKU_APP`, `APP_URL` (no trailing slash) and `EXPECTED_SHA` (the deployed commit), then run the script.
 
 ## Production Redis setup and smoke check
 
@@ -55,3 +59,6 @@ finally:
 ```
 
 Then check login, library, game search, and game details on the production URL. Record the deployed commit and outcomes before calling the deployment smoke test complete. A successful CI run uses fake upstream responses and isolated caches; it does not establish a live production Redis connection. Redis outages can still fail game requests; cache-outage fallback is separate work.
+
+
+

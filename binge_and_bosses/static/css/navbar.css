@@ -73,6 +73,26 @@
     color: #0d6efd;
 }
 
+.avatar {
+    border-radius: 50%;
+    object-fit: cover;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+}
+
+/* Fallback circle with initial*/
+.avatar-placeholder {
+    background: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+    font-weight: 600;
+}
+
 /* Dark mode toggle: shows the moon in light mode and the sun in dark mode */
 .theme-toggle {
     display: inline-flex;

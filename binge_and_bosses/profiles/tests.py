@@ -1,8 +1,15 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-
+import shutil
+import tempfile
+from io import BytesIO
+from pathlib import Path
+from unittest.mock import patch
+from django.core.files.uploadedfile import SimpleUploadedFile
+from PIL import Image
+from .models import Profile
 # Create your tests here.
 
 User = get_user_model()
@@ -10,6 +17,20 @@ PASSWORD = "1FindY0urL@ckoFP@$$w0RDSD1$turbing"
 NEW_PASSWORD = "Sw33t-Dee-Is-a-B1rd!"
 CHANGE_USERNAME_TEMPLATE = "profiles/change_username.html"
 DIFFERENT_USERNAME = "dennis_reynolds"
+CHANGE_AVATAR_TEMPLATE = "profiles/change_avatar.html"
+
+TEST_STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}
+}
+
+def make_image(filename="avatar.png", image_format="PNG"):
+    """
+        Function that makes an image in memory
+    """
+    buffer = BytesIO()
+    Image.new("RGB", (10, 10), "red").save(buffer, image_format)
+    return SimpleUploadedFile(filename, buffer.getvalue())
 
 class ChangeUsernameTests(TestCase):
     def setUp(self):
@@ -25,7 +46,8 @@ class ChangeUsernameTests(TestCase):
 
     def test_anonymous_get_redirected(self):
         """
-            Test that if an authenticated user tries to access the change username page, they become redirected to 'login'
+            Test that if an authenticated user tries to access the change username page,
+            they become redirected to 'login'
         """
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 302)
@@ -92,7 +114,7 @@ class ChangeUsernameTests(TestCase):
 
     def test_duplicate_username_is_case_insensitive(self):
         """
-            Test that even if you make a character uppercase it still doesnt change the name if another user 
+            Test that even if you make a character uppercase it still doesnt change the name if another user
             with that name exists
         """
         self.login()
@@ -134,7 +156,7 @@ class ChangeUsernameTests(TestCase):
 
     def test_too_long_username_rejected(self):
         """
-            Test that you bounds are enforced. 
+            Test that you bounds are enforced.
         """
         self.login()
         response = self.client.post(self.url, {"username": "d" * 151})
@@ -188,7 +210,8 @@ class ChangePasswordTests(TestCase):
 
     def test_successful_password_change(self):
         """
-            Test that a user can successfully change their password when both new passwords match and old password is correct
+            Test that a user can successfully change their password when both new passwords match
+            and old password is correct
         """
         self.login()
         response = self.client.post(self.url, {
@@ -277,3 +300,182 @@ class ChangePasswordTests(TestCase):
         response = self.post_password_change(old="", new="")
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context["form"].errors)
+
+class ChangeAvatarTests(TestCase):
+    def setUp(self):
+        self.media_root = tempfile.mkdtemp()
+        override = override_settings(MEDIA_ROOT=self.media_root, STORAGES=TEST_STORAGES)
+        override.enable()
+
+        self.addCleanup(override.disable)
+        self.addCleanup(shutil.rmtree, self.media_root, True)
+
+        self.user = User.objects.create_user(username="dee", email="dee@paddyspub.com", password=PASSWORD)
+        self.other_user = User.objects.create_user(username="frank", email="frank@paddyspub.com", password=PASSWORD)
+        self.url = reverse("profiles:change_avatar")
+
+    def login(self, user):
+        """
+            Helper function to login a user
+        """
+        self.client.login(username=user, password=PASSWORD)
+
+    def upload(self, image=None, **kargs):
+        """
+            Post an image to the change avatar page, creates PNG if none is supplied
+        """
+        return self.client.post(self.url, {"avatar": image or make_image()}, **kargs)
+
+    def test_profile_is_created_automatically(self):
+        """
+            Test that when creating a new user, their profile is automatically generated
+        """
+        self.assertTrue(Profile.objects.filter(user=self.user).exists())
+
+    def test_anonymous_get_redirected(self):
+        """
+            Test that if an unauthenticated user tries to access the change avatar page, they are redirected to login
+        """
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(settings.LOGIN_URL, response["Location"])
+
+    def test_anonymous_post_changes_nothing(self):
+        """
+            Test that if an unauthenticated user sends a POST request to upload an avatar, nothing is saved
+        """
+        response = self.upload()
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Profile.objects.get(user=self.user).avatar)
+
+    def test_page_loads_for_authenticated_user(self):
+        """
+            Test that an authenticated user can load the change avatar page using the correct template
+        """
+        self.login("dee")
+        response = self.upload(follow=True)
+        self.assertRedirects(response, self.url)
+        self.assertContains(response, "Avatar updated.")
+
+        profile = Profile.objects.get(user=self.user)
+        self.assertEqual(profile.avatar.name, f"avatars/user_{self.user.id}.png")
+        self.assertTrue(Path(profile.avatar.path).exists())
+
+    def test_non_image_rejected(self):
+        """
+            Test that if a file which is not a valid image is rejected
+        """
+        self.login("dee")
+
+        fake = SimpleUploadedFile("not_an_image.png", b"this is not an image")
+        response = self.upload(fake)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].errors["avatar"])
+        self.assertFalse(Profile.objects.get(user=self.user).avatar)
+
+    def test_image_over_limit_is_rejected(self):
+        """
+            Test that an image larger than the size limit is rejected
+        """
+        self.login("dee")
+
+        # lower the size limit rather than creating a big image
+        with patch("profiles.forms.MAX_AVATAR_MB", 0.000000001):
+            response = self.upload()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Image must be smaller than")
+        self.assertFalse(Profile.objects.get(user=self.user).avatar)
+
+    def test_empty_upload_changes_nothing(self):
+        """
+            Test that submitting the form with no file does not alter the profile
+        """
+        self.login("dee")
+        self.upload()
+
+        response = self.client.post(self.url, {})
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Profile.objects.get(user=self.user).avatar)
+
+    def test_replacing_avatar_deletes_old_file(self):
+        """
+            Test that replacing an avatar with a different file type does not leave an orphaned old file
+        """
+        self.login("dee")
+
+        self.upload(make_image("first.png", "PNG"))
+        old_path = Path(Profile.objects.get(user=self.user).avatar.path)
+        self.assertTrue(old_path.exists())
+
+        self.upload(make_image("second.jpg", "JPEG"))
+        profile = Profile.objects.get(user=self.user)
+
+        self.assertEqual(profile.avatar.name, f"avatars/user_{self.user.id}.jpg")
+        self.assertFalse(old_path.exists())
+
+    def test_remove_avatar(self):
+        """
+            Test that removing an avatar clears the field and deletes the file from FS
+        """
+        self.login("dee")
+        self.upload()
+        path = Path(Profile.objects.get(user=self.user).avatar.path)
+
+        response = self.client.post(self.url, {"remove": "1"}, follow=True)
+        self.assertRedirects(response, self.url)
+        self.assertContains(response, "Avatar removed.")
+        self.assertFalse(Profile.objects.get(user=self.user).avatar)
+        self.assertFalse(path.exists())
+
+    def test_remove_with_no_avatar_does_not_crash(self):
+        """
+            Test that removing an avatar when the user does not have one does not crash the application
+        """
+        self.login("dee")
+        response = self.client.post(self.url, {"remove": "1"})
+        self.assertEqual(response.status_code, 302)
+
+    def test_avatar_stays_after_username_change(self):
+        """
+            Test that the avatar is still associated with the profile even if a user changes their username
+        """
+        self.login("dee")
+        self.upload()
+
+        self.client.post(reverse("profiles:change_username"), {"username": DIFFERENT_USERNAME})
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.profile.avatar)
+
+    def test_navbar_shows_custom_avatar(self):
+        """
+            Test that the navbar shows the uploaded image rather than the placeholder
+        """
+        self.login("dee")
+        self.upload()
+
+        response = self.client.get(self.url)
+        profile = Profile.objects.get(user=self.user)
+        self.assertContains(response, 'class="avatar avatar-sm"')
+        self.assertContains(response, profile.avatar.url)
+        self.assertNotContains(response, "avatar-sm avatar-placeholder")
+
+    def test_settings_dropdown_has_change_avatar_link(self):
+        """
+            Test that the settings dropdown in the navbar links to the change avatar page
+        """
+        self.login("dee")
+        response = self.client.get(self.url)
+        self.assertContains(response, "Change Avatar")
+        self.assertContains(response, f'href="{self.url}"')
+
+    def test_user_cannot_change_other_user_avatar(self):
+        """
+            Test that uploading an avatar only changes the logged in user's profile and not another users
+        """
+        self.login("dee")
+        self.client.post(self.url, {"avatar": make_image(), "user": self.other_user.pk})
+        self.assertTrue(Profile.objects.get(user=self.user).avatar)
+        self.assertFalse(Profile.objects.get(user=self.other_user).avatar)

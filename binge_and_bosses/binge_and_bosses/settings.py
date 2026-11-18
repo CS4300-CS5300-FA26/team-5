@@ -13,8 +13,8 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 from importlib.util import find_spec
 from pathlib import Path
 from decouple import config
-from decouple import Csv 
-import sys
+from decouple import Csv
+
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
@@ -32,13 +32,21 @@ IGDB_CLIENT_ID = config('IGDB_CLIENT_ID')
 IGDB_CLIENT_SECRET = config('IGDB_CLIENT_SECRET')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# debug set to false for production 
+# debug set to false for production
 # allowed hosts set to localhost
 # Set production hosts and trusted origins in the Heroku config vars.
 
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
+
+# Heroku sets DYNO on every dyno. There the site is HTTPS only: Heroku's router
+# ends TLS and says so in X-Forwarded-Proto. Local runs stay on plain HTTP.
+if config('DYNO', default=''):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 # Application definition
 
@@ -51,7 +59,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'games',
-    'profiles'
+    'profiles',
+    'friends'
 ]
 
 # behave-django is a dev dependency, so Heroku doesn't install it.
@@ -105,7 +114,7 @@ DATABASES = {
     }
 }
 
-# config for enviroment variables 
+# config for enviroment variables
 DATABASE_URL = config('DATABASE_URL', default='')
 if DATABASE_URL:
     DATABASES['default'] = dj_database_url.parse(DATABASE_URL)
@@ -184,3 +193,6 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"

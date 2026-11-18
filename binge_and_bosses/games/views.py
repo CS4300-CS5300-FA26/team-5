@@ -106,7 +106,7 @@ def save_review(request, game_id):
     return redirect("game_details", game_id=game_id)
 
 
-#return search results from IGDB based on user input, return error on empty 
+#return search results from IGDB based on user input, return error on empty
 def game_search(request):
     query = request.GET.get("q", "").strip()
     games = search_game(query) if query else []

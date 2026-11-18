@@ -81,3 +81,25 @@ The course asks us to write tests first:
 Watching it fail first proves the test can catch a bug.
 
 Linting isn't part of CI yet (#36, Sprint 3).
+
+## Friend requests
+
+The Story 10 tests live in `friends/tests.py` and `features/friend_requests.feature`.
+The initial test run failed with `ModuleNotFoundError: friends.models` before the
+model and views were implemented. The focused implementation run passed all 10
+unit tests and all five new Behave scenarios.
+
+```bash
+uv run --locked python manage.py test friends
+uv run --locked python manage.py behave --simple --name 'Send a request|Unknown username|^Accept$|^Decline$|Remove a friend'
+```
+
+The tests cover the mutual friends list, incoming-request privacy, invalid users,
+self/duplicate/reverse requests, recipient-only acceptance and decline, removal by
+either friend, stale IDs, login/POST/CSRF enforcement, and database constraints.
+Activity visibility after removal must also be tested when #18 adds the activity feed.
+
+Full validation after implementation passed: 186 unit tests, all 42 Behave
+scenarios, 99% combined coverage (80% required), `makemigrations --check --dry-run`,
+and `manage.py check` both normally and in a separate `uv --no-dev` environment.
+These runs used temporary test databases; the local development database was not migrated.

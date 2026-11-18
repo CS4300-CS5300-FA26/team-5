@@ -57,6 +57,10 @@
                             </a>
                         </li>
 
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.namespace == 'friends' %}active{% endif %}" href="{% url 'friends:index' %}">Friends</a>
+                        </li>
+
                         {# Dropdown tab for Settings #}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'change_username' %}active{% endif %}"
@@ -75,6 +79,13 @@
                                     <a class="dropdown-item {% if request.resolver_match.url_name == 'change_password' %}active{% endif %}"
                                     href="{% url 'profiles:change_password' %}">
                                         Change Password
+                                    </a>
+                                </li>
+
+                                <li>
+                                    <a class="dropdown-item {% if request.resolver_match.url_name == 'change_avatar' %}active{% endif %}"
+                                    href="{% url 'profiles:change_avatar' %}">
+                                        Change Avatar
                                     </a>
                                 </li>
                             </ul>
@@ -96,6 +107,19 @@
                                     Logout
                                 </button>
                             </form>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="{% url 'profiles:change_avatar' %}" class="d-flex align-items-center" aria-label="Your avatar">
+                                {% if user.profile.avatar %}
+                                    <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" class="avatar avatar-sm">
+                                {% else %}
+                                    {# The Fallback: circle with the first initial of the user's username #}
+                                    <span class="avatar avatar-sm avatar-placeholder">
+                                        {{ user.username|slice:":1"|upper }}
+                                    </span>
+                                {% endif %}
+                            </a>
                         </li>
                     </ul>
                 {% else %}
