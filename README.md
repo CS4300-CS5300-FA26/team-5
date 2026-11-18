@@ -16,6 +16,8 @@ Binge & Bosses is a backlog management and social interaction platform geared fo
 - Get game recommendations
 - Track the time spent in-game
 
+The live site is at [bingeandbosses.com](https://bingeandbosses.com).
+
 For project layout, pull requests, testing and deployment, see [Team docs](docs/README.md).
 
 ## How to run Binge & Bosses
