@@ -91,6 +91,9 @@ uv run ruff check .
 ```
 CI fails on any finding. Findings show up on the PR's changed lines, and the full report is in the `lint` job's summary (and its `ruff-report` artifact). Lines can be up to 119 characters, which is Django's own limit. Ruff skips migrations because Django writes them. If a rule is wrong for a line, add `# noqa: <code>` with a comment that says why.
 
+## Dependency scans
+Dependabot (`.github/dependabot.yml`) opens one grouped PR a month for Python package updates and one for GitHub Actions updates. Its vulnerability report is the repository's **Security** tab, under **Dependabot**. With security updates turned on in the repository settings, Dependabot also opens a PR for each alert right away, so it doesn't wait for the monthly run.
+
 ## Adding or updating packages
 - Add a package: `uv add <package>`. For tools only needed in development or CI (like `coverage`), use `uv add --dev <package>`.
 - Commit `pyproject.toml` and `uv.lock` together. Heroku's Python buildpack installs production dependencies from `uv.lock`; CI checks that the lock file matches `pyproject.toml`.
@@ -162,3 +165,5 @@ A PR appears in the first matching category; add its manual label before generat
 | 11/15/2026 | Gemini 4 Carbon| Created the unit tests for the play status feature and the behave feature file and steps.|
 
 | 11/16/2026 | OpenAI Codex | Implemented Story 10 friend requests (#15): relationship constraints, permission-checked actions, Friends page, unit tests and five Behave scenarios. Started with failing tests before implementation. Friend activity remains separate (#18). |
+
+| 11/17/2026 | Claude Code (Claude Opus 5.5) | Set up Ruff with its PyLint and Flake8 rules (#36) and Dependabot updates (#38). Fixed the 68 existing findings, added the `lint` CI job with its report, and documented both. Ran the unit tests, Behave and coverage locally. Submitted in a pull request for teammate review. |
