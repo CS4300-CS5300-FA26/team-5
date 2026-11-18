@@ -18,6 +18,7 @@ The Heroku app needs these config vars:
 - `DEBUG=False`
 - `ALLOWED_HOSTS` containing `binge-and-bosses-team5-4e736711771e.herokuapp.com`
 - `CSRF_TRUSTED_ORIGINS` containing `https://binge-and-bosses-team5-4e736711771e.herokuapp.com`
+- `REDIS_URL` set to a Redis service reachable from Heroku, using the provider's full connection URL (including TLS and authentication when required). The local Compose container only serves local development.
 - `DATABASE_URL` set to the Neon PostgreSQL connection string with SSL enabled
 
 Keep credentials in Heroku config vars, never in the repository or local test `.env` files. The first release migration creates the schema in the empty Neon database. No Render data migration is needed.

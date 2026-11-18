@@ -131,9 +131,10 @@ AUTH_PASSWORD_VALIDATORS = [
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": "redis://<your-redis-host>:6379",
+        "LOCATION": config("REDIS_URL", default="redis://127.0.0.1:6379/0"),
         "TIMEOUT": 300,
         "KEY_PREFIX": "bingeandbosses",
+        "OPTIONS": {"socket_connect_timeout": 2, "socket_timeout": 2},
     }
 }
 

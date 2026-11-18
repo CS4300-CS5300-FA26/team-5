@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.contrib.staticfiles import finders
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from .models import Game, Catalog
 from .catalog import get_or_import
@@ -243,6 +243,10 @@ class BrandLogoTests(TestCase):
                 self.assertEqual(brand.get_text(strip=True), "Binge and Bosses")
 
 
+@override_settings(CACHES={"default": {
+    "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    "LOCATION": "igdb-client-tests",
+}})
 class IgdbClientTests(TestCase):
     """games/igdb_client.py: gets a Twitch token, queries IGDB and returns games in our own shape."""
 
@@ -339,8 +343,23 @@ class IgdbClientTests(TestCase):
         self.assertEqual(self.tokens_issued, 1)
         self.assertEqual(len(self.api_calls()), 2)
 
+    def test_search_result_is_reused_without_another_api_call(self):
+        first = igdb_client.search_game("hollow knight")
+        self.post.reset_mock()
+
+        self.assertEqual(igdb_client.search_game("hollow knight"), first)
+        self.post.assert_not_called()
+
+    def test_game_details_are_reused_without_another_api_call(self):
+        first = igdb_client.get_game_details(14593)
+        self.post.reset_mock()
+
+        self.assertEqual(igdb_client.get_game_details(14593), first)
+        self.post.assert_not_called()
+
     def test_rejected_token_is_replaced_once(self):
         igdb_client.search_game("hollow knight")
+        cache.delete("SearchGame_hollow knight")
         self.api_status = 401
 
         games = igdb_client.search_game("hollow knight")
