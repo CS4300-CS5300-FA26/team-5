@@ -84,6 +84,13 @@ uv run coverage run --append manage.py behave --simple
 uv run coverage report -m
 ```
 
+## Linting
+Ruff checks the code with its PyLint (`PL`) and Flake8 (`E`, `W`, `F`, `C90`) rules. The rules live in `pyproject.toml` under `[tool.ruff]`. Run it from the repository root:
+```bash
+uv run ruff check .
+```
+CI fails on any finding. Findings show up on the PR's changed lines, and the full report is in the `lint` job's summary (and its `ruff-report` artifact). Lines can be up to 119 characters, which is Django's own limit. Ruff skips migrations because Django writes them. If a rule is wrong for a line, add `# noqa: <code>` with a comment that says why.
+
 ## Adding or updating packages
 - Add a package: `uv add <package>`. For tools only needed in development or CI (like `coverage`), use `uv add --dev <package>`.
 - Commit `pyproject.toml` and `uv.lock` together. Heroku's Python buildpack installs production dependencies from `uv.lock`; CI checks that the lock file matches `pyproject.toml`.

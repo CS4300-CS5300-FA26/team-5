@@ -11,11 +11,11 @@ class StyledForm:
         # Add bootstrap class to each widget
         for field in self.fields.values():
             field.widget.attrs["class"] = "form-control"
-        
+
 class SignupForm(StyledForm, UserCreationForm):
     """
         Registration Form for users. By default, the UserCreationForm handles important
-        security stuff such as password checking and running Django's validators 
+        security stuff such as password checking and running Django's validators
     """
     class Meta(UserCreationForm.Meta):
         model = User

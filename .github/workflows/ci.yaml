@@ -44,10 +44,45 @@ jobs:
         env:
           UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/no-dev-venv
         run: uv run --locked --no-dev python manage.py check
+
+  # Ruff runs the PyLint (PL) and Flake8 (E, W, F, C90) rules set in pyproject.toml.
+  # Findings appear as annotations on the PR's changed files, and the full
+  # report is in the job summary and the ruff-report artifact.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0 (no major-version tag exists)
+        with:
+          version: "0.13.0"
+
+      - name: Install packages
+        run: uv sync --locked
+
+      - name: Write the Ruff report
+        run: |
+          {
+            echo "## Ruff report"
+            echo '```'
+            uv run --locked ruff check --statistics --exit-zero .
+            uv run --locked ruff check --output-format concise --exit-zero .
+            echo '```'
+          } | tee ruff-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ruff-report
+          path: ruff-report.md
+
+      # Fails the build on any finding.
+      - name: Ruff check
+        run: uv run --locked ruff check --output-format github .
+
   # Deploy only after CI passes on a push to main.
   deploy:
     name: Deploy to Heroku
-    needs: test
+    needs: [test, lint]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 15

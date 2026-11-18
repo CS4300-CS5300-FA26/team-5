@@ -15,13 +15,13 @@ class NavBarUnauthenticated(TestCase):
         """
         response = self.client.get("/")
         self.assertContains(response, 'class="navbar-brand"')
-        self.assertContains(response, 'href="/"') 
+        self.assertContains(response, 'href="/"')
         self.assertContains(response, "Binge and Bosses")
 
     def test_login_link_exists(self):
         """
-            Test that on the navbar at the index, there exists 
-            the 'login' link that will redirect to '/accounts/login' 
+            Test that on the navbar at the index, there exists
+            the 'login' link that will redirect to '/accounts/login'
         """
         response = self.client.get("/")
         self.assertContains(response, reverse("login"))

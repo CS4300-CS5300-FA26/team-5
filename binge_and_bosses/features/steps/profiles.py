@@ -8,7 +8,6 @@ from io import BytesIO
 from pathlib import Path
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
-from django.urls import reverse
 from PIL import Image
 from profiles.models import Profile
 
@@ -36,12 +35,15 @@ def logged_in(context, username):
 
 @when('I change my username to "{new_username}"')
 def change_username(context, new_username):
-    context.response = context.test.client.post(reverse("profiles:change_username"), {"username": new_username}, follow=True)
+    context.response = context.test.client.post(
+        reverse("profiles:change_username"), {"username": new_username}, follow=True
+    )
 
 @given("uploads are stored in a temporary media folder")
 def step_temp_media(context):
     """
-        Function to specify location of media root and storage so that the scenarios do not write into a real media folder
+        Function to specify location of media root and storage so that the scenarios
+        do not write into a real media folder
     """
     media_root = tempfile.mkdtemp()
     override = override_settings(
@@ -72,7 +74,9 @@ def step_open_page(context):
 
 @when('I upload a valid image named "{filename}"')
 def step_upload_valid(context, filename):
-    context.response = context.test.client.post(reverse("profiles:change_avatar"), {"avatar": make_image(filename)}, follow=True)
+    context.response = context.test.client.post(
+        reverse("profiles:change_avatar"), {"avatar": make_image(filename)}, follow=True
+    )
 
 @when('I upload a fake image named "{filename}"')
 def step_upload_fake(context, filename):

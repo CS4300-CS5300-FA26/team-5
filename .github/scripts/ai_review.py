@@ -64,6 +64,7 @@ REVIEW_MARKER = "<!-- ai-review-bot -->"
 BOT_LOGIN = "github-actions[bot]"
 GUIDE_PATH = Path(__file__).resolve().parent.parent / "ai-review-guide.md"
 GUIDE_GIT_PATH = ".github/ai-review-guide.md"
+PER_PAGE = 100  # GitHub's largest page size
 
 
 def load_guide(base):
@@ -71,7 +72,7 @@ def load_guide(base):
     instructions used to review itself. Falls back to the PR's copy only when the
     base has no guide yet (the PR that first adds it)."""
     result = subprocess.run(
-        ["git", "show", f"{base}:{GUIDE_GIT_PATH}"], capture_output=True, text=True
+        ["git", "show", f"{base}:{GUIDE_GIT_PATH}"], capture_output=True, text=True, check=False
     )
     if result.returncode == 0:
         return result.stdout
@@ -143,9 +144,9 @@ def split_diff_by_file(diff):
     """Split a git diff into (path, text) chunks, one per file. A renamed file is
     filed under its new path, where it ends up."""
     chunks = []
-    for chunk in diff.split("\ndiff --git "):
-        if chunk.strip():
-            chunk = chunk if chunk.startswith("diff --git ") else "diff --git " + chunk
+    for part in diff.split("\ndiff --git "):
+        if part.strip():
+            chunk = part if part.startswith("diff --git ") else "diff --git " + part
             path = chunk.split("\n", 1)[0].rsplit(" b/", 1)[1]
             chunks.append((path, chunk.rstrip("\n") + "\n"))
     return chunks
@@ -181,7 +182,8 @@ def limit_diff_shares(diff, per_file=MAX_FILE_DIFF_CHARS, per_dir=MAX_DIR_DIFF_C
     shares = directory_shares(sizes, total, per_dir)
 
     used, kept, skipped = {}, [], {}
-    for directory, chunk in files:
+    for directory, file_chunk in files:
+        chunk = file_chunk
         room = shares[directory] - used.get(directory, 0)
         if len(chunk) > room:
             # A directory's first file is cut to fit rather than dropped, if there's real room.
@@ -211,8 +213,9 @@ def truncate_diff(diff, limit=MAX_DIFF_CHARS):
     return diff[: diff.rfind("\n", 0, limit) + 1], True
 
 
-def build_input(title, body, diff, truncated, commits="", previous_review=None, discussion="",
-                changed_files=""):
+# Each optional argument is one optional section of the prompt; they are keyword-only.
+def build_input(title, body, diff, truncated, *, commits="", previous_review=None,  # noqa: PLR0913
+                discussion="", changed_files=""):
     parts = [
         # Stated here as well as in the guide, so it holds even when the base
         # branch's guide predates a section below.
@@ -353,9 +356,9 @@ def post_review(repo, pr_number, token, body, commit_id):
 def get_paginated(url, token):
     items, page = [], 1
     while True:
-        batch = request_json(f"{url}?per_page=100&page={page}", token=token)
+        batch = request_json(f"{url}?per_page={PER_PAGE}&page={page}", token=token)
         items += batch
-        if len(batch) < 100:
+        if len(batch) < PER_PAGE:
             return items
         page += 1
 
@@ -435,8 +438,8 @@ def main():
         except urllib.error.URLError as err:
             print(f"::warning::Reviewing without earlier discussion: {err}")
     user_input = build_input(
-        env.get("PR_TITLE", ""), env.get("PR_BODY", ""), diff, truncated, commits, previous, discussion,
-        changed_files,
+        env.get("PR_TITLE", ""), env.get("PR_BODY", ""), diff, truncated, commits=commits,
+        previous_review=previous, discussion=discussion, changed_files=changed_files,
     )
 
     if "--dry-run" in sys.argv:
