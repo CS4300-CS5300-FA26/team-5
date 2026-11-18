@@ -41,7 +41,6 @@ def search_game(game_name):
     return games_search
 
 
-
 def search_cache_key(game_name):
     """IGDB matches titles regardless of case, so "Hollow Knight" and "hollow knight " share one entry.
     The hash keeps the key short and free of spaces, whatever the user typed."""
