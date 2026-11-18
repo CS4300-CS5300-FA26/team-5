@@ -33,7 +33,7 @@ def create_profile(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=Profile)
 def delete_avatar_file(sender, instance, **kwargs):
     """
-        Remove the avatar profile when a user profile is deleted 
+        Remove the avatar profile when a user profile is deleted
     """
     if instance.avatar:
         instance.avatar.delete(save=False)

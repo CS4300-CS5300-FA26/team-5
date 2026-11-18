@@ -113,7 +113,7 @@ class ChangeUsernameTests(TestCase):
 
     def test_duplicate_username_is_case_insensitive(self):
         """
-            Test that even if you make a character uppercase it still doesnt change the name if another user 
+            Test that even if you make a character uppercase it still doesnt change the name if another user
             with that name exists
         """
         self.login()
@@ -155,7 +155,7 @@ class ChangeUsernameTests(TestCase):
 
     def test_too_long_username_rejected(self):
         """
-            Test that you bounds are enforced. 
+            Test that you bounds are enforced.
         """
         self.login()
         response = self.client.post(self.url, {"username": "d" * 151})
@@ -402,7 +402,7 @@ class ChangeAvatarTests(TestCase):
             Test that replacing an avatar with a different file type does not leave an orphaned old file
         """
         self.login("dee")
-        
+
         self.upload(make_image("first.png", "PNG"))
         old_path = Path(Profile.objects.get(user=self.user).avatar.path)
         self.assertTrue(old_path.exists())
@@ -477,7 +477,7 @@ class ChangeAvatarTests(TestCase):
         self.client.post(self.url, {"avatar": make_image(), "user": self.other_user.pk})
         self.assertTrue(Profile.objects.get(user=self.user).avatar)
         self.assertFalse(Profile.objects.get(user=self.other_user).avatar)
-    
+
     def test_deleting_user_deletes_avatar_file(self):
         """
             Test that deleting a user also deletes their avatar file from the disk
