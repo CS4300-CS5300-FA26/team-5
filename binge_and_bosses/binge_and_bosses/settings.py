@@ -201,10 +201,9 @@ MEDIA_ROOT = BASE_DIR / "media"
 CLOUDINARY_CLOUD_NAME = config("CLOUDINARY_CLOUD_NAME", default="")
 
 if CLOUDINARY_CLOUD_NAME:
-    INSTALLED_APPS.insert(
-        INSTALLED_APPS.index("django.contrib.staticfiles"), "cloudinary_storage"
-    )
-    INSTALLED_APPS.append("cloudinary")
+    # After staticfiles, so Django's collectstatic wins. The package's own command
+    # reads STATICFILES_STORAGE, which Django 6 removed, and breaks the Heroku build.
+    INSTALLED_APPS += ["cloudinary_storage", "cloudinary"]
 
     CLOUDINARY_STORAGE = {
         "CLOUD_NAME": CLOUDINARY_CLOUD_NAME,
@@ -212,7 +211,9 @@ if CLOUDINARY_CLOUD_NAME:
         "API_SECRET": config("CLOUDINARY_API_SECRET"),
     }
 
+    # Cloudinary only replaces upload storage. Static storage stays the default, because
+    # Heroku builds the slug (and runs collectstatic) before these vars may exist.
     STORAGES = {
         "default": {"BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage"},
-        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
     }
