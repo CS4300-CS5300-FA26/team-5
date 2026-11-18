@@ -16,10 +16,17 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
+    path('friends/', include('friends.urls')),
     path('admin/', admin.site.urls),
     path('accounts/', include("authentication.urls")),
     path('',include('games.urls')),
     path("profiles/", include("profiles.urls"))
 ]
+
+# Serve uploaded files only in dev when DEBUG=True
+if settings.DEBUG == True:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

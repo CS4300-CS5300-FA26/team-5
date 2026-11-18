@@ -24,10 +24,45 @@
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* File input (avatar upload): match the other settings inputs */
+.settings-card input[type="file"] {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    color: var(--bs-body-color);
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.6rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Style the "Choose file" button inside the file input */
+.settings-card input[type="file"]::file-selector-button {
+    margin-right: 0.75rem;
+    padding: 0.35rem 0.8rem;
+    border: 0;
+    border-radius: 0.4rem;
+    background-color: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+    cursor: pointer;
+}
+
+.settings-card input[type="file"]::file-selector-button:hover {
+    background-color: var(--bs-tertiary-bg);
+}
+
 .settings-card input:focus {
     outline: none;
     border-color: var(--bs-primary);
     box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.2);
+}
+
+/* Large avatar preview on the settings page */
+.avatar-lg {
+    width: 128px;
+    height: 128px;
+    font-size: 3rem;
 }
 
 /* Django help text sometimes renders as a <ul> */

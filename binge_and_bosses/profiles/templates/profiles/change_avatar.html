@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Change Avatar | Binge and Bosses{% endblock %}
+{% load static %}
+{% block extra_head %}
+    <link rel="stylesheet" href="{% static 'css/settings.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-5">
+        <div class="card settings-card shadow-sm border-0">
+            <div class="card-body p-4 p-md-5">
+                <h2 class="settings-title mb-4">Change Avatar</h2>
+
+                {# Success messages from the view #}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} py-2" role="alert">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                {# Errors that apply to the entire form #}
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2" role="alert">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                {# Current avatar preview, or a placeholder using the first initial of the user's username #}
+                <div class="text-center mb-4">
+                    {% if profile.avatar %}
+                        <img src="{{ profile.avatar.url }}" alt="Current avatar" class="avatar avatar-lg">
+                    {% else %}
+                        <div class="avatar avatar-lg avatar-placeholder">
+                            {{ user.username|slice:":1"|upper }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                {# note: enctype="multipart/form-data" is required else the file will not upload #}
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+
+                    {# Same field loop as the other settings pages #}
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
+                                {{ field.label }}
+                            </label>
+                            {{ field }}
+
+                            {% if field.help_text %}
+                                <div class="form-text">
+                                    {{ field.help_text|safe }}
+                                </div>
+                            {% endif %}
+
+                            {# Validation errors #}
+                            {% for error in field.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary px-4">Save</button>
+                        <a href="{% url 'library' %}" class="btn btn-outline-secondary px-4">Cancel</a>
+                    </div>
+                </form>
+                {# This is a separate form so removing does not accidentally submit the file #}
+                {% if profile.avatar %}
+                    <hr class="my-4">
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" name="remove" value="1" class="btn btn-outline-danger px-4">
+                            Remove Avatar
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
