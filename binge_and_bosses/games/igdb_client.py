@@ -39,7 +39,7 @@ def search_game(game_name):
 
     return games_search
 
-    
+
 
 def get_game_details(game_id):
     """One game by its IGDB id, or None if there's no such game."""
@@ -57,7 +57,7 @@ def get_game_details(game_id):
 
     # If not just return specific_game_detail
     return specific_game_detail
-        
+
 
 
 def _query(body):
