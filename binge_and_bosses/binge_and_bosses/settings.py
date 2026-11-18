@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 from importlib.util import find_spec
 from pathlib import Path
 from decouple import config
-from decouple import Csv 
+from decouple import Csv
 import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -30,7 +30,7 @@ IGDB_CLIENT_ID = config('IGDB_CLIENT_ID')
 IGDB_CLIENT_SECRET = config('IGDB_CLIENT_SECRET')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# debug set to false for production 
+# debug set to false for production
 # allowed hosts set to localhost
 # Set production hosts and trusted origins in the Heroku config vars.
 
@@ -104,7 +104,7 @@ DATABASES = {
     }
 }
 
-# config for enviroment variables 
+# config for enviroment variables
 DATABASE_URL = config('DATABASE_URL', default='')
 if DATABASE_URL:
     DATABASES['default'] = dj_database_url.parse(DATABASE_URL)

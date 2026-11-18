@@ -46,7 +46,8 @@ class ChangeUsernameTests(TestCase):
 
     def test_anonymous_get_redirected(self):
         """
-            Test that if an authenticated user tries to access the change username page, they become redirected to 'login'
+            Test that if an authenticated user tries to access the change username page,
+            they become redirected to 'login'
         """
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 302)
@@ -113,7 +114,7 @@ class ChangeUsernameTests(TestCase):
 
     def test_duplicate_username_is_case_insensitive(self):
         """
-            Test that even if you make a character uppercase it still doesnt change the name if another user 
+            Test that even if you make a character uppercase it still doesnt change the name if another user
             with that name exists
         """
         self.login()
@@ -155,7 +156,7 @@ class ChangeUsernameTests(TestCase):
 
     def test_too_long_username_rejected(self):
         """
-            Test that you bounds are enforced. 
+            Test that you bounds are enforced.
         """
         self.login()
         response = self.client.post(self.url, {"username": "d" * 151})
@@ -209,7 +210,8 @@ class ChangePasswordTests(TestCase):
 
     def test_successful_password_change(self):
         """
-            Test that a user can successfully change their password when both new passwords match and old password is correct
+            Test that a user can successfully change their password when both new passwords match
+            and old password is correct
         """
         self.login()
         response = self.client.post(self.url, {
@@ -402,7 +404,7 @@ class ChangeAvatarTests(TestCase):
             Test that replacing an avatar with a different file type does not leave an orphaned old file
         """
         self.login("dee")
-        
+
         self.upload(make_image("first.png", "PNG"))
         old_path = Path(Profile.objects.get(user=self.user).avatar.path)
         self.assertTrue(old_path.exists())

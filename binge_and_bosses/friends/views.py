@@ -16,7 +16,8 @@ def friends_page(request, form=None):
     ).select_related("sender__profile", "recipient__profile").order_by("pk")
     accepted, incoming, outgoing = [], [], []
     for relationship in relationships:
-        relationship.other = relationship.recipient if relationship.sender_id == request.user.pk else relationship.sender
+        is_sender = relationship.sender_id == request.user.pk
+        relationship.other = relationship.recipient if is_sender else relationship.sender
         if relationship.accepted:
             accepted.append(relationship)
         elif relationship.recipient_id == request.user.pk:
@@ -61,7 +62,9 @@ def send(request):
             else:
                 messages.success(request, "Friend request sent.")
                 return redirect("friends:index")
-        messages.info(request, "You are already friends." if relationship.accepted else "A request is already pending.")
+        messages.info(
+            request, "You are already friends." if relationship.accepted else "A request is already pending."
+        )
         return redirect("friends:index")
     return friends_page(request, form)
 

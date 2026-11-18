@@ -5,7 +5,9 @@ from django.db.models.functions import Greatest, Least
 
 class Friendship(models.Model):
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="friendships_sent")
-    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="friendships_received")
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="friendships_received"
+    )
     accepted = models.BooleanField(default=False)
 
     class Meta:

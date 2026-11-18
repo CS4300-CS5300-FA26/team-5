@@ -16,11 +16,11 @@ class UsernameChangeForm(forms.ModelForm):
 
         # ensure that username is unique
         taken = User.objects.filter(username__iexact=username).exclude(pk=self.instance.pk)
-        
+
         if taken.exists():
             raise forms.ValidationError("That username is taken.")
-        
-        return username 
+
+        return username
 
 class StyledPasswordChangeForm(PasswordChangeForm):
     """
@@ -33,7 +33,7 @@ class StyledPasswordChangeForm(PasswordChangeForm):
 
 class AvatarForm(forms.ModelForm):
     """
-        Form for uploading an avatar + cleaning 
+        Form for uploading an avatar + cleaning
     """
     class Meta:
         model = Profile
