@@ -101,6 +101,7 @@ jobs:
           fetch-depth: 0
 
       - name: Push the tested commit to Heroku
+        id: push
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
           HEROKU_APP: binge-and-bosses-team5
@@ -130,3 +131,14 @@ jobs:
 
           GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 git -c credential.helper= push \
             "https://git.heroku.com/${HEROKU_APP}.git" HEAD:main
+          echo "deployed=true" >> "$GITHUB_OUTPUT"
+
+      # Skipped when the push step skipped a stale deployment.
+      - name: Smoke-test production
+        if: steps.push.outputs.deployed == 'true'
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+          HEROKU_APP: binge-and-bosses-team5
+          APP_URL: https://binge-and-bosses-team5-4e736711771e.herokuapp.com
+          EXPECTED_SHA: ${{ github.sha }}
+        run: .github/scripts/smoke-test-production.sh
