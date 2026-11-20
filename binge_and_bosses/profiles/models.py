@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
 # Create your models here.
@@ -29,3 +29,11 @@ def create_profile(sender, instance, created, **kwargs):
     """
     if created:
         Profile.objects.create(user=instance)
+
+@receiver(post_delete, sender=Profile)
+def delete_avatar_file(sender, instance, **kwargs):
+    """
+        Remove the avatar profile when a user profile is deleted
+    """
+    if instance.avatar:
+        instance.avatar.delete(save=False)

@@ -479,3 +479,28 @@ class ChangeAvatarTests(TestCase):
         self.client.post(self.url, {"avatar": make_image(), "user": self.other_user.pk})
         self.assertTrue(Profile.objects.get(user=self.user).avatar)
         self.assertFalse(Profile.objects.get(user=self.other_user).avatar)
+
+    def test_deleting_user_deletes_avatar_file(self):
+        """
+            Test that deleting a user also deletes their avatar file from the disk
+        """
+        self.login("dee")
+        self.upload()
+        path = Path(Profile.objects.get(user=self.user).avatar.path)
+        self.assertTrue(path.exists())
+
+        self.user.delete()
+        self.assertFalse(path.exists())
+
+    def test_deleting_profile_deletes_avatar_file(self):
+        """
+            Test that when deleiting a profile directly it also removes the avatar file from the disk
+        """
+        self.login("dee")
+        self.upload()
+        profile = Profile.objects.get(user=self.user)
+        path = Path(profile.avatar.path)
+
+        profile.delete()
+        self.assertFalse(path.exists())
+
