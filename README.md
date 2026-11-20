@@ -50,7 +50,7 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 ```
 
 ### Step 4. Start Redis with Docker
-Install [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/) and start it with Linux containers enabled. From the repository root (the folder containing `compose.yaml`):
+Install Docker for your platform from [Get Docker](https://docs.docker.com/get-started/get-docker/). On Windows and macOS that's Docker Desktop (on Windows, start it with Linux containers enabled). On Linux you can install [Docker Engine](https://docs.docker.com/engine/install/) with the [Compose plugin](https://docs.docker.com/compose/install/linux/) instead. From the repository root (the folder containing `compose.yaml`):
 
 ```bash
 docker compose up -d --wait redis
@@ -198,3 +198,4 @@ A PR appears in the first matching category; add its manual label before generat
 | 11/17/2026 | Claude Code (Claude Opus 5.5) | Checked that bingeandbosses.com and www serve the app over HTTPS (#39), pointed the README, deployment docs and deploy job at it, and made Heroku redirect HTTP to HTTPS with secure cookies. Wrote the settings tests first and saw them fail. Ran the unit tests, Behave and coverage locally. Submitted in a pull request for teammate review. |
 | 11/17/2026 | Claude Code (Claude Opus 5.5) | Removed the two whitespace-only lines that failed `lint` on `main` after #90, and restored the 11/15 Gemini and 11/16 Codex log rows that #90's merge mixed together. Ran `ruff check`. Submitted in a pull request for teammate review. |
 | 11/17/2026 | Claude Code (Claude Opus 5.5) | Diagnosed the 500 errors on production after the Cloudinary config vars were set (releases v25 to v27), changed the Cloudinary settings so static files and `collectstatic` keep working, and wrote two settings tests first and saw them fail. Ran the unit tests, Behave, coverage and Ruff locally. Submitted in a pull request for teammate review. |
+| 11/17/2026 | Claude Code (Claude Opus 5.5) | Pointed the README's Docker step at Docker's install page for every platform, with Docker Engine and the Compose plugin for Linux (#102). Checked that the links load. Submitted in a pull request for teammate review. |
