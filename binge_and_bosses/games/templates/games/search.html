@@ -32,17 +32,41 @@
                             {% else %}
                                 <span class="cover" style="--h: {% widthratio game.id 1 47 %}"></span>
                             {% endif %}
-                            <div>
+                            <div class="search-info">
+                                <div class="search-tags">
+                                    {% if game.kind %}<span class="pill search-kind{% if game.kind == "Main game" %} main{% endif %}">{{ game.kind }}</span>{% endif %}
+                                    <span class="pill search-year">{{ game.released|slice:":4"|default:"TBA" }}</span>
+                                    {% if game.id in owned %}<span class="pill on status-in-library">In library</span>{% endif %}
+                                    {% if game.rating %}
+                                        <p class="search-score"><span class="hud">IGDB</span> <b>{{ game.rating|floatformat:1 }}</b> <span>/ 5</span></p>
+                                    {% else %}
+                                        <p class="search-score none"><span class="hud">No score</span></p>
+                                    {% endif %}
+                                </div>
                                 <h2>
                                     <a href="{% url 'game_details' game.id %}?q={{ query|urlencode:"" }}">{{ game.name }}</a>
                                 </h2>
-                                <span class="home-muted">{{ game.released|slice:":4"|default:"Release date unknown" }}</span>
+                                <p class="search-summary">{{ game.summary|default:"No description available" }}</p>
+                                <dl class="search-facts">
+                                    <div>
+                                        <dt class="hud">Genres</dt>
+                                        <dd>{{ game.genres|join:", "|default:"Unknown" }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="hud">Platforms</dt>
+                                        <dd>
+                                            {% for platform in game.platforms|slice:":3" %}
+                                                <span class="search-platform">{{ platform }}</span>
+                                            {% empty %}
+                                                Unknown
+                                            {% endfor %}
+                                            {% if game.platforms|length > 3 %}
+                                                <span class="search-platform more">+{{ game.platforms|length|add:"-3" }} more</span>
+                                            {% endif %}
+                                        </dd>
+                                    </div>
+                                </dl>
                             </div>
-                            {% if game.id in owned %}
-                                <span class="pill on status-in-library">In library</span>
-                            {% else %}
-                                <span class="search-cta" aria-hidden="true">View ›</span>
-                            {% endif %}
                         </article>
                     </li>
                 {% empty %}

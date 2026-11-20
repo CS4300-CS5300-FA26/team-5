@@ -301,7 +301,16 @@ class IgdbClientTests(TestCase):
             "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobfzp.jpg",
             "genres": ["Platform", "Adventure"],
             "platforms": ["PC (Microsoft Windows)", "Nintendo Switch"],
+            "kind": None,
         }])
+
+    def test_remakes_and_ports_say_what_they_are(self):
+        self.games = [{"id": i, "name": f"Game {i}", "game_type": t} for i, t in enumerate([0, 8, 11, 99])]
+
+        games = igdb_client.search_game("game")
+
+        self.assertEqual([g["kind"] for g in games], ["Main game", "Remake", "Port", None])
+        self.assertIn("game_type", self.api_calls()[0].kwargs["data"])
 
     def test_search_sends_the_title_credentials_and_release_filter(self):
         igdb_client.search_game("hollow knight")
@@ -333,7 +342,7 @@ class IgdbClientTests(TestCase):
 
         self.assertEqual(igdb_client.search_game("mystery"), [{
             "id": 1, "name": "Mystery", "summary": "", "released": None, "rating": None,
-            "cover": "", "genres": [], "platforms": [],
+            "cover": "", "genres": [], "platforms": [], "kind": None,
         }])
 
     def test_token_is_reused_until_it_expires(self):
@@ -579,6 +588,64 @@ class SearchPageTests(TestCase):
         # No IGDB cover: a generated one instead of a missing picture
         self.assertIsNone(cards["Celeste Classic"].find("img"))
         self.assertIsNotNone(cards["Celeste Classic"].select_one("span.cover"))
+
+    def test_results_say_what_the_game_is_and_what_it_is_about(self, mock_search):
+        mock_search.return_value = [{
+            "id": 1, "name": "Celeste", "released": "2018-01-25", "cover": "", "rating": 4.5, "kind": "Remaster",
+            "summary": "Help Madeline survive her inner demons.", "genres": ["Platform", "Indie"],
+            "platforms": ["PC (Microsoft Windows)", "Nintendo Switch"],
+        }]
+
+        card = self.cards(self.page())["Celeste"]
+        text = card.get_text(" ", strip=True)
+
+        for expected in ["2018", "Remaster", "Platform, Indie", "4.5", "Help Madeline survive her inner demons."]:
+            self.assertIn(expected, text)
+        self.assertEqual([tag.get_text(strip=True) for tag in card.select(".search-platform")],
+                         ["PC (Microsoft Windows)", "Nintendo Switch"])
+
+    def test_results_without_details_still_show(self, mock_search):
+        mock_search.return_value = self.RESULTS
+
+        text = self.cards(self.page())["Celeste Classic"].get_text(" ", strip=True)
+
+        self.assertIn("No description available", text)
+        self.assertIn("No score", text)
+        self.assertIn("Unknown", text)
+
+    def test_every_card_has_the_same_parts(self, mock_search):
+        mock_search.return_value = self.RESULTS
+
+        for card in self.cards(self.page()).values():
+            for part in [".search-tags", ".search-score", ".search-summary", ".search-facts"]:
+                self.assertIsNotNone(card.select_one(part), part)
+
+    def test_platforms_are_tags_and_long_lists_are_shortened(self, mock_search):
+        mock_search.return_value = [{
+            "id": 1, "name": "Celeste", "released": None, "cover": "", "rating": None, "kind": "Main game",
+            "summary": "", "genres": [], "platforms": ["PC", "Switch", "PS4", "Xbox One", "Stadia"],
+        }]
+
+        card = self.cards(self.page())["Celeste"]
+
+        self.assertEqual([tag.get_text(strip=True) for tag in card.select(".search-platform")],
+                         ["PC", "Switch", "PS4", "+2 more"])
+        self.assertEqual(card.select_one(".search-kind").get_text(strip=True), "Main game")
+
+    def test_details_survive_an_igdb_outage_with_a_short_summary(self, mock_search):
+        mock_search.return_value = [{
+            "id": 1, "name": "Celeste", "released": None, "cover": "", "rating": 4.5, "kind": None,
+            "summary": "Climb. " * 200, "genres": ["Platform"], "platforms": ["Nintendo Switch"],
+        }]
+        self.page()
+        mock_search.return_value = None
+
+        text = self.cards(self.page())["Celeste"].get_text(" ", strip=True)
+
+        self.assertIn("Platform", text)
+        self.assertIn("Nintendo Switch", text)
+        self.assertIn("4.5", text)
+        self.assertLess(len(self.client.session["last_search"]["games"][0]["summary"]), 300)
 
     def test_games_already_in_my_library_are_marked(self, mock_search):
         mock_search.return_value = self.RESULTS

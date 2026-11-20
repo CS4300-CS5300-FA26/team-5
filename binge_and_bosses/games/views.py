@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Count, F, Max, Q
 from django.db.models.functions import Lower
 from django.urls import reverse
+from django.utils.text import Truncator
 from django.views.decorators.http import require_POST
 from .models import Catalog, Game
 from .igdb_client import search_game
@@ -106,6 +107,10 @@ def save_review(request, game_id):
     return redirect("game_details", game_id=game_id)
 
 
+# What search.html shows of each result. The summary is cut short: it shows 3 lines at most.
+SAVED_RESULT_FIELDS = ["id", "name", "cover", "released", "rating", "kind", "genres", "platforms"]
+
+
 #return search results from IGDB based on user input, return error on empty
 def game_search(request):
     query = request.GET.get("q", "").strip()
@@ -114,7 +119,7 @@ def game_search(request):
     if games:
         # Keep what search.html shows, so the results survive an IGDB outage.
         request.session["last_search"] = {"q": query, "games": [
-            {"id": g["id"], "name": g["name"], "cover": g["cover"], "released": g["released"]}
+            {**{key: g.get(key) for key in SAVED_RESULT_FIELDS}, "summary": Truncator(g.get("summary", "")).chars(200)}
             for g in games
         ]}
     elif games is None and last_search.get("q") == query:

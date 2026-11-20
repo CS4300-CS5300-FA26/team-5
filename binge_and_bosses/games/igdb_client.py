@@ -14,10 +14,12 @@ TOKEN_URL = "https://id.twitch.tv/oauth2/token"
 API_URL = "https://api.igdb.com/v4/games"
 COVER_URL = "https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg"
 TOKEN_CACHE_KEY = "igdb_access_token"
-FIELDS = "name,summary,first_release_date,total_rating,cover.image_id,genres.name,platforms.name"
+FIELDS = "name,summary,first_release_date,total_rating,cover.image_id,genres.name,platforms.name,game_type"
 # Main games, standalone expansions, remakes, remasters, expanded games and ports.
 # Leaves out mods, DLC, bundles and alternate editions (version_parent), which crowd out the real game.
 RELEASES_ONLY = "where game_type = (0,4,8,9,10,11) & version_parent = null"
+# What each kind of release is called (IGDB game_type ids, the ones RELEASES_ONLY keeps)
+KINDS = {0: "Main game", 4: "Standalone expansion", 8: "Remake", 9: "Remaster", 10: "Expanded game", 11: "Port"}
 
 
 def search_game(game_name):
@@ -106,4 +108,5 @@ def _game(data):
         "cover": COVER_URL.format(cover["image_id"]) if cover else "",
         "genres": [genre["name"] for genre in data.get("genres", [])],
         "platforms": [platform["name"] for platform in data.get("platforms", [])],
+        "kind": KINDS.get(data.get("game_type")),
     }
