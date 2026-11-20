@@ -750,7 +750,7 @@
     border: 1px solid var(--line);
     border-radius: 0.3rem;
     font-size: 0.8125rem;
-    white-space: nowrap;
+    overflow-wrap: anywhere;   /* long names like "PC (Microsoft Windows)" wrap inside narrow cards */
 }
 
 .search-platform.more { color: var(--muted); }
@@ -1035,6 +1035,10 @@
 @media (max-width: 991.98px) {
     .landing-steps ol,
     .home-covers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    /* Two narrow result columns on tablets: a smaller cover, and fact labels above their values */
+    .search-results article { grid-template-columns: 6.5rem minmax(0, 1fr); }
+    .search-facts div { grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
 }
 
 @media (max-width: 767.98px) {
@@ -1072,8 +1076,6 @@
         gap: 0.875rem;
         padding: 0.75rem;
     }
-
-    .search-facts div { grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
