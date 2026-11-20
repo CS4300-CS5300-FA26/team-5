@@ -4,21 +4,35 @@
     {% include "games/_landing_head.html" %}
 {% endblock %}
 {% block content %}
-<div class="landing home search">
-    <section class="home-top">
-        <h1>Search games</h1>
-        <form class="home-search search-form" method="get" role="search">
-            <label class="visually-hidden" for="search-q">Game title or description</label>
-            <input id="search-q" class="form-control form-control-lg" name="q" value="{{ query }}" maxlength="300" required
-                   placeholder="{% if mode %}Describe it: a cozy co-op farming game on Switch…{% else %}Search for a game…{% endif %}">
-            <button class="btn btn-primary btn-lg btn-arcade" type="submit">Search</button>
-            <fieldset class="search-mode">
-                <legend class="visually-hidden">Search by</legend>
-                <label><input type="radio" name="mode" value="title"{% if not mode %} checked{% endif %}> Title</label>
-                <label><input type="radio" name="mode" value="describe"{% if mode %} checked{% endif %}> Description (AI)</label>
-            </fieldset>
-        </form>
-    </section>
+{# The search box is in the top bar (base.html); this page shows what it found #}
+<div class="landing search">
+    {% if query %}
+        <header class="search-top">
+            <p class="search-eyebrow">Results for</p>
+            <h1>“{{ query }}”</h1>
+            {# The same query either way, so switching never means typing it again #}
+            <nav class="search-tabs" aria-label="Search by">
+                <a href="?q={{ query|urlencode:"" }}"{% if not mode %} aria-current="page"{% endif %}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                    Titles
+                </a>
+                <a class="search-tab-ai" href="?q={{ query|urlencode:"" }}&amp;mode=describe"{% if mode %} aria-current="page"{% endif %}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg>
+                    AI picks
+                </a>
+                {% if not error %}<span id="search-count" class="search-count">{{ games|length }} result{{ games|length|pluralize }}</span>{% endif %}
+            </nav>
+        </header>
+    {% else %}
+        <header class="search-top">
+            <h1>Search games</h1>
+            <p class="search-hint">Type a title in the search bar above. Not sure what it's called, or just in the mood for something?
+                Turn on <b>AI mode</b> and describe it, like
+                <a href="?q=zelda+but+darker&amp;mode=describe">zelda but darker</a>,
+                <a href="?q=a+cozy+co-op+farming+game+on+Switch&amp;mode=describe">a cozy co-op farming game on Switch</a> or
+                <a href="?q=stuck+in+a+time+loop&amp;mode=describe">stuck in a time loop</a>.</p>
+        </header>
+    {% endif %}
 
     {% for message in messages %}
         <p class="alert alert-danger" role="alert">{{ message }}</p>
@@ -27,10 +41,9 @@
     {% if error %}
         <p class="alert alert-danger" role="alert">Could not load games. Try again.</p>
     {% elif query %}
-        <section aria-labelledby="search-count">
-            <p id="search-count" class="search-count hud">{{ games|length }} result{{ games|length|pluralize }} for “{{ query }}”</p>
+        <section class="search-found" aria-label="Results">
             {% if wanted %}
-                <p class="search-wanted">Looking for:
+                <p class="search-wanted"><span class="search-wanted-lead">AI looked for</span>
                     {% for label in wanted %}<span class="pill">{{ label }}</span>{% endfor %}
                 </p>
             {% endif %}
@@ -38,26 +51,31 @@
                 {% for game in games %}
                     <li>
                         <article>
-                            {% if game.cover %}
-                                <img class="cover" src="{{ game.cover }}" alt="{{ game.name }}" loading="lazy">
-                            {% else %}
-                                <span class="cover" style="--h: {% widthratio game.id 1 47 %}"></span>
-                            {% endif %}
-                            <div>
-                                <h2>
-                                    <a href="{% url 'game_details' game.id %}?q={{ query|urlencode:"" }}{% if mode %}&amp;mode={{ mode }}{% endif %}">{{ game.name }}</a>
-                                </h2>
-                                <span class="home-muted">{{ game.released|slice:":4"|default:"Release date unknown" }}</span>
+                            <div class="search-cover">
+                                {% if game.cover %}
+                                    <img class="cover" src="{{ game.cover }}" alt="{{ game.name }}" loading="lazy">
+                                {% else %}
+                                    <span class="cover" style="--h: {% widthratio game.id 1 47 %}"></span>
+                                {% endif %}
+                                {% if game.id in owned %}
+                                    <span class="search-owned">In library</span>
+                                {% endif %}
                             </div>
-                            {% if game.id in owned %}
-                                <span class="pill on status-in-library">In library</span>
-                            {% else %}
-                                <span class="search-cta" aria-hidden="true">View ›</span>
-                            {% endif %}
+                            <h2>
+                                <a href="{% url 'game_details' game.id %}?q={{ query|urlencode:"" }}{% if mode %}&amp;mode={{ mode }}{% endif %}">{{ game.name }}</a>
+                            </h2>
+                            <span class="search-year">{{ game.released|slice:":4"|default:"Release date unknown" }}</span>
                         </article>
                     </li>
                 {% empty %}
-                    <li class="home-panel home-muted">No games found</li>
+                    <li class="search-empty">
+                        <strong>No games found</strong>
+                        {% if not mode %}
+                            <span>Not the exact title? <a href="?q={{ query|urlencode:"" }}&amp;mode=describe">Ask AI about “{{ query }}”</a>.</span>
+                        {% else %}
+                            <span>Try describing it another way, or <a href="?q={{ query|urlencode:"" }}">search titles</a>.</span>
+                        {% endif %}
+                    </li>
                 {% endfor %}
             </ul>
         </section>

@@ -1,0 +1,6 @@
+{# The player's avatar, or the first letter of their name in a circle. size: "sm" or "md" #}
+{% if user.profile.avatar %}
+    <img src="{{ user.profile.avatar.url }}" alt="" class="avatar avatar-{{ size }}">
+{% else %}
+    <span class="avatar avatar-{{ size }} avatar-placeholder" aria-hidden="true">{{ user.username|slice:":1"|upper }}</span>
+{% endif %}

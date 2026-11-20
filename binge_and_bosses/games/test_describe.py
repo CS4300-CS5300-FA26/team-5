@@ -1,4 +1,4 @@
-"""Search by description: the IGDB queries it adds, the model call, and the search page in describe mode."""
+"""Search by description: the model call, the IGDB lookup of the games it suggests, and the search page."""
 import json
 from unittest.mock import Mock, patch
 
@@ -12,178 +12,114 @@ from django.urls import reverse
 from . import describe, igdb_client
 from .models import Catalog, Game
 
-VOCABULARY = {
-    "genres": {"Role-playing (RPG)": 12, "Simulator": 13, "Strategy": 15},
-    "themes": {"Fantasy": 17, "Horror": 19},
-    "game_modes": {"Single player": 1, "Co-operative": 3},
-    "platforms": {"Nintendo Switch": 130, "PC (Microsoft Windows)": 6},
-}
-NOTHING_WANTED = {
-    "genres": [], "themes": [], "game_modes": [], "platforms": [],
-    "like_title": None, "released_after": None, "released_before": None,
-}
-NO_FILTERS = {"genres": [], "themes": [], "game_modes": [], "platforms": [],
-              "ids": None, "released_after": None, "released_before": None}
 # A cache of our own, so tests need no Redis and never clear the running app's cache
 LOCAL_CACHE = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
-STARDEW = {"id": 17000, "name": "Stardew Valley", "first_release_date": 1456444800}
+STARDEW = {"id": 17000, "name": "Stardew Valley", "first_release_date": 1456444800}         # 2016
+GOW_2005 = {"id": 549, "name": "God of War", "first_release_date": 1111449600}              # 2005
+GOW_2018 = {"id": 19560, "name": "God of War", "first_release_date": 1524182400}            # 2018
+MAJORA = {"id": 1030, "name": "The Legend of Zelda: Majora's Mask", "first_release_date": 956275200}
 
 
 @override_settings(CACHES=LOCAL_CACHE)
-class IgdbDescribeQueryTests(TestCase):
-    """igdb_client.py: the vocabulary, similar games and filtered queries that search by description uses."""
+class FindTitlesTests(TestCase):
+    """igdb_client.find_titles: one IGDB query finds the games the model suggested, in its order."""
 
     def setUp(self):
-        cache.clear()
-        patcher = patch("games.igdb_client._query", side_effect=self.fake_query)
+        patcher = patch("games.igdb_client._query")
         self.query = patcher.start()
         self.addCleanup(patcher.stop)
-        self.answers = {}
 
-    def fake_query(self, body, endpoint="games"):
-        return self.answers[endpoint].pop(0)   # each endpoint answers from its own list, in order
+    def body(self):
+        return self.query.call_args.args[0]
 
-    def bodies(self):
-        return [c.args[0] for c in self.query.call_args_list]
+    def test_one_query_finds_every_title_in_the_suggested_order(self):
+        self.query.return_value = [GOW_2018, STARDEW]
 
-    def test_vocabulary_maps_igdb_names_to_ids_and_is_cached(self):
-        self.answers = {"genres": [[{"id": 12, "name": "Role-playing (RPG)"}]],
-                        "themes": [[{"id": 17, "name": "Fantasy"}]],
-                        "game_modes": [[{"id": 3, "name": "Co-operative"}]],
-                        "platforms": [[{"id": 130, "name": "Nintendo Switch"}]]}
+        games = igdb_client.find_titles([("Stardew Valley", 2016), ("God of War", 2018)])
 
-        first = igdb_client.vocabulary()
-        second = igdb_client.vocabulary()
+        self.assertEqual(self.query.call_count, 1)
+        self.assertIn('name ~ "Stardew Valley" | name ~ "God of War"', self.body())
+        self.assertIn("version_parent = null", self.body())
+        self.assertEqual([game["name"] for game in games], ["Stardew Valley", "God of War"])
 
-        self.assertEqual(first["genres"], {"Role-playing (RPG)": 12})
-        self.assertEqual(first["platforms"], {"Nintendo Switch": 130})
-        self.assertEqual(second, first)
-        self.assertEqual(self.query.call_count, 4)
+    def test_titles_igdb_does_not_have_are_left_out(self):
+        self.query.return_value = [STARDEW]
 
-    def test_vocabulary_is_none_when_igdb_fails(self):
-        self.query.side_effect = lambda body, endpoint="games": None
+        games = igdb_client.find_titles([("Made Up Game", 2020), ("stardew valley", None)])
 
-        self.assertIsNone(igdb_client.vocabulary())
+        self.assertEqual([game["id"] for game in games], [17000])
 
-    def test_similar_games_uses_the_best_known_match(self):
-        with patch("games.igdb_client.search_game", return_value=[{"id": 17000}, {"id": 5}]):
-            self.answers = {"games": [[{"id": 17000, "similar_games": [1, 2, 3]}]]}
+    def test_a_shared_title_picks_the_suggested_year_else_the_best_known(self):
+        self.query.return_value = [GOW_2018, GOW_2005]   # IGDB sorts the best known first
 
-            self.assertEqual(igdb_client.similar_games("Stardew Valley"), [1, 2, 3])
-        self.assertIn("where id = 17000;", self.bodies()[0])
+        self.assertEqual(igdb_client.find_titles([("God of War", 2005)])[0]["id"], 549)
+        self.assertEqual(igdb_client.find_titles([("God of War", 1999)])[0]["id"], 19560)
 
-    def test_similar_games_is_empty_for_an_unknown_title_and_none_on_failure(self):
-        with patch("games.igdb_client.search_game", return_value=[]):
-            self.assertEqual(igdb_client.similar_games("no such game"), [])
-        with patch("games.igdb_client.search_game", return_value=None):
-            self.assertIsNone(igdb_client.similar_games("Stardew Valley"))
+    def test_curly_quotes_match_and_quotes_cannot_end_the_string(self):
+        self.query.return_value = [MAJORA]
 
-    def test_find_games_needs_every_genre_and_any_platform(self):
-        self.answers = {"games": [[STARDEW]]}
+        games = igdb_client.find_titles([("The Legend of Zelda: Majora’s Mask", 2000), ('Bad "Title\\', None)])
 
-        games = igdb_client.find_games({"genres": [13, 12], "themes": [], "game_modes": [3], "platforms": [130, 6],
-                                        "ids": [17000, 4], "released_after": 2016, "released_before": 2016})
+        self.assertIn('name ~ "The Legend of Zelda: Majora\'s Mask"', self.body())
+        self.assertIn('name ~ "Bad \\"Title\\\\"', self.body())
+        self.assertEqual([game["id"] for game in games], [1030])
 
-        body = self.bodies()[0]
-        self.assertIn("genres = [13,12]", body)
-        self.assertIn("game_modes = [3]", body)
-        self.assertIn("platforms = (130,6)", body)
-        self.assertIn("id = (17000,4)", body)
-        self.assertIn("first_release_date >= 1451606400", body)   # 2016-01-01 UTC
-        self.assertIn("first_release_date < 1483228800", body)    # 2017-01-01 UTC
-        self.assertIn("version_parent = null", body)
-        self.assertIn("sort total_rating_count desc;", body)
-        self.assertNotIn("themes", body)
-        self.assertEqual([game["name"] for game in games], ["Stardew Valley"])
+    def test_a_game_suggested_twice_is_listed_once_and_at_most_ten_are_listed(self):
+        rows = [{"id": i, "name": f"Game {i}"} for i in range(12)]
+        self.query.return_value = rows
 
-    def test_find_games_accepts_any_genre_when_no_game_has_all_of_them(self):
-        self.answers = {"games": [[], [STARDEW]]}
+        games = igdb_client.find_titles([("Game 0", None)] + [(row["name"], None) for row in rows])
 
-        games = igdb_client.find_games({**NO_FILTERS, "genres": [13, 12]})
+        self.assertEqual([game["id"] for game in games], list(range(10)))
 
-        self.assertIn("genres = (13,12)", self.bodies()[1])
-        self.assertEqual([game["name"] for game in games], ["Stardew Valley"])
+    def test_no_titles_skips_igdb_and_failure_is_none(self):
+        self.assertEqual(igdb_client.find_titles([]), [])
+        self.query.assert_not_called()
 
-    def test_find_games_is_none_when_igdb_fails(self):
-        self.answers = {"games": [None]}
-
-        self.assertIsNone(igdb_client.find_games({**NO_FILTERS, "genres": [13]}))
+        self.query.return_value = None
+        self.assertIsNone(igdb_client.find_titles([("Stardew Valley", 2016)]))
 
 
 @override_settings(OPENAI_API_KEY="test-key", OPENAI_MODEL="test-model", CACHES=LOCAL_CACHE)
 class DescribeTests(TestCase):
-    """describe.py: the model turns a description into IGDB names, and the code turns those into a search."""
+    """describe.py: the model suggests games for a description, and IGDB confirms them."""
 
     def setUp(self):
         cache.clear()
-        self.wanted = {**NOTHING_WANTED, "genres": ["Simulator"], "platforms": ["Nintendo Switch"]}
+        self.answer = {"looking_for": ["Farming", "Co-op"],
+                       "games": [{"title": "Stardew Valley", "year": 2016}, {"title": "Fae Farm", "year": 2023}]}
         patcher = patch("games.describe.OpenAI")
         self.openai = patcher.start()
         self.addCleanup(patcher.stop)
         self.create = self.openai.return_value.responses.create
-        self.create.side_effect = lambda **kwargs: Mock(output_text=json.dumps(self.wanted))
-        for name, value in [("vocabulary", VOCABULARY), ("find_games", [{"id": 17000, "name": "Stardew Valley"}]),
-                            ("similar_games", [17000, 4])]:
-            fake = patch(f"games.describe.igdb_client.{name}", return_value=value)
-            setattr(self, name, fake.start())
-            self.addCleanup(fake.stop)
+        self.create.side_effect = lambda **kwargs: Mock(output_text=json.dumps(self.answer))
+        fake = patch("games.describe.igdb_client.find_titles", return_value=[{"id": 17000, "name": "Stardew Valley"}])
+        self.find_titles = fake.start()
+        self.addCleanup(fake.stop)
 
-    def test_model_gets_the_description_and_only_igdb_names_to_choose_from(self):
+    def test_model_gets_the_description_with_a_strict_schema(self):
         describe.search_by_description("a cozy farming game")
 
         kwargs = self.create.call_args.kwargs
         self.assertEqual(kwargs["model"], "test-model")
         self.assertEqual(kwargs["input"], "a cozy farming game")
-        schema = kwargs["text"]["format"]["schema"]
-        allowed = {kind: schema["properties"][kind]["items"]["enum"] for kind in ("genres", "platforms")}
         self.assertTrue(kwargs["text"]["format"]["strict"])
-        self.assertEqual(allowed["genres"], ["Role-playing (RPG)", "Simulator", "Strategy"])
-        self.assertEqual(allowed["platforms"], ["Nintendo Switch", "PC (Microsoft Windows)"])
-        self.assertEqual(sorted(schema["required"]), sorted(NOTHING_WANTED))
+        self.assertEqual(sorted(kwargs["text"]["format"]["schema"]["required"]), ["games", "looking_for"])
 
-    def test_names_become_ids_and_labels(self):
-        games, labels = describe.search_by_description("a cozy farming game on Switch")
+    def test_suggested_games_are_looked_up_and_labelled(self):
+        games, labels = describe.search_by_description("a cozy co-op farming game")
 
-        filters = self.find_games.call_args.args[0]
-        self.assertEqual(filters["genres"], [13])
-        self.assertEqual(filters["platforms"], [130])
-        self.assertIsNone(filters["ids"])
+        self.find_titles.assert_called_once_with([("Stardew Valley", 2016), ("Fae Farm", 2023)])
         self.assertEqual(games, [{"id": 17000, "name": "Stardew Valley"}])
-        self.assertEqual(labels, ["Simulator", "Nintendo Switch"])
+        self.assertEqual(labels, ["Farming", "Co-op"])
 
-    def test_a_named_game_limits_results_to_similar_games(self):
-        self.wanted.update(like_title="Stardew Valley", released_after=2018, released_before=2020)
+    def test_at_most_twelve_suggestions_and_four_labels(self):
+        self.answer = {"looking_for": list("abcdef"), "games": [{"title": f"G{i}", "year": None} for i in range(20)]}
 
-        _, labels = describe.search_by_description("like Stardew Valley but newer")
+        _, labels = describe.search_by_description("anything")
 
-        self.similar_games.assert_called_once_with("Stardew Valley")
-        filters = self.find_games.call_args.args[0]
-        self.assertEqual(filters["ids"], [17000, 4])
-        self.assertEqual((filters["released_after"], filters["released_before"]), (2018, 2020))
-        self.assertIn("Like Stardew Valley", labels)
-        self.assertIn("2018–2020", labels)
-
-    def test_a_named_game_without_similar_games_is_ignored(self):
-        self.wanted["like_title"] = "Obscure Game"
-        self.similar_games.return_value = []
-
-        describe.search_by_description("like Obscure Game")
-
-        self.assertIsNone(self.find_games.call_args.args[0]["ids"])
-
-    def test_names_igdb_does_not_know_are_dropped(self):
-        self.wanted["genres"] = ["Simulator", "Made up"]
-
-        _, labels = describe.search_by_description("a farming game")
-
-        self.assertEqual(self.find_games.call_args.args[0]["genres"], [13])
-        self.assertNotIn("Made up", labels)
-
-    def test_a_description_with_nothing_to_search_for_finds_nothing(self):
-        self.wanted = dict(NOTHING_WANTED)
-
-        self.assertEqual(describe.search_by_description("hello"), ([], []))
-        self.find_games.assert_not_called()
+        self.assertEqual(len(self.find_titles.call_args.args[0]), 12)
+        self.assertEqual(labels, list("abcd"))
 
     def test_the_same_description_is_answered_from_the_cache(self):
         describe.search_by_description("a cozy farming game")
@@ -198,8 +134,8 @@ class DescribeTests(TestCase):
         self.create.side_effect = lambda **kwargs: Mock(output_text="not json")
         self.assertIsNone(describe.search_by_description("a farming game"))
 
-        self.create.side_effect = lambda **kwargs: Mock(output_text=json.dumps(self.wanted))
-        self.vocabulary.return_value = None
+        self.create.side_effect = lambda **kwargs: Mock(output_text=json.dumps(self.answer))
+        self.find_titles.return_value = None
         self.assertIsNone(describe.search_by_description("a farming game"))
 
     @override_settings(OPENAI_API_KEY="")
@@ -228,7 +164,6 @@ class DescribeSearchPageTests(TestCase):
         self.assertIn("Stardew Valley", page.select_one("article").get_text())
         self.assertEqual([pill.get_text() for pill in page.select(".search-wanted .pill")],
                          ["Simulator", "Nintendo Switch"])
-        self.assertTrue(page.select_one('input[name="mode"][value="describe"]').has_attr("checked"))
         link = page.select_one("article h2 a")["href"]
         self.assertIn("mode=describe", link)
 
@@ -237,7 +172,7 @@ class DescribeSearchPageTests(TestCase):
             page = self.page(query="Stardew", mode="title")
 
         mock_describe.assert_not_called()
-        self.assertTrue(page.select_one('input[name="mode"][value="title"]').has_attr("checked"))
+        self.assertEqual(page.select_one('.search-tabs [aria-current="page"]').get_text(strip=True), "Titles")
 
     def test_failure_shows_the_error(self, mock_describe):
         mock_describe.return_value = None
@@ -259,6 +194,17 @@ class DescribeSearchPageTests(TestCase):
         self.client.force_login(user)
 
         self.assertIn("In library", self.page().select_one("article").get_text())
+
+    def test_tabs_switch_the_same_query_between_titles_and_ai(self, mock_describe):
+        mock_describe.return_value = (self.RESULTS, [])
+
+        tabs = self.page(query="zelda but darker").select(".search-tabs a")
+
+        self.assertEqual([tab.get_text(strip=True) for tab in tabs], ["Titles", "AI picks"])
+        self.assertEqual(tabs[0]["href"], "?q=zelda%20but%20darker")
+        self.assertEqual(tabs[1]["href"], "?q=zelda%20but%20darker&mode=describe")
+        self.assertEqual(tabs[1]["aria-current"], "page")
+        self.assertFalse(tabs[0].has_attr("aria-current"))
 
     def test_details_back_link_returns_to_the_description_search(self, mock_describe):
         with patch("games.catalog.get_game_details", return_value=None):

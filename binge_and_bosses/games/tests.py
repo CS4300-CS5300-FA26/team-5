@@ -81,7 +81,7 @@ class LandingPageTests(TestCase):
 
         # The nav bar's Library link counts: an empty library has no library card on the page
         self.assertIn(reverse("library"), self.links(response, "body").values())
-        self.assertIsNotNone(page.select_one(f'main form[action="{reverse("game_search")}"]'))
+        self.assertIsNotNone(page.select_one(f'nav form[action="{reverse("game_search")}"]'))
         self.assertNotIn(reverse("signup"), self.links(response, "body").values())
 
     def test_page_loads_its_stylesheet(self):
@@ -121,12 +121,6 @@ class PlayerHomeTests(TestCase):
         self.assertIn("Welcome back, player_one", text)
         self.assertNotIn("One save file for", text)
         self.assertNotIn("Find it", text)
-
-    def test_player_home_has_a_search_box(self):
-        form = self.page().select_one(f'form[action="{reverse("game_search")}"]')
-
-        self.assertEqual(form["method"], "get")
-        self.assertIsNotNone(form.select_one('input[name="q"]'))
 
     def test_library_card_shows_counts_ratings_and_reviews(self):
         self.add("Hades II", rating=5, review="Best one yet.")
@@ -558,14 +552,6 @@ class SearchPageTests(TestCase):
 
     def cards(self, page):
         return {card.h2.get_text(strip=True): card for card in page.select("article")}
-
-    def test_search_box_is_labelled_and_keeps_the_query(self, mock_search):
-        mock_search.return_value = self.RESULTS
-
-        box = self.page().select_one('form[role="search"] input[name="q"]')
-
-        self.assertEqual(box["value"], "Celeste")
-        self.assertIsNotNone(self.page().find("label", attrs={"for": box["id"]}))
 
     def test_results_show_count_year_and_cover(self, mock_search):
         mock_search.return_value = self.RESULTS

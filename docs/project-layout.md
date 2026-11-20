@@ -8,7 +8,7 @@ team-5/
 │   ├── binge_and_bosses/      ← project settings and top-level URLs
 │   │   ├── settings.py
 │   │   └── urls.py
-│   ├── templates/base.html    ← shared page layout (Bootstrap); new pages extend it
+│   ├── templates/base.html    ← shared page layout (Bootstrap) and the top bar with the search box; new pages extend it
 │   ├── behave.ini             ← skips @wip scenarios by default
 │   ├── features/              ← landing, account, search, details, library, play status, rating and review scenarios; steps in steps/
 │   ├── authentication/        ← accounts: custom User model, sign-up, log-in
@@ -22,8 +22,8 @@ team-5/
 │       ├── models.py          ← Game metadata and Catalog library entries (status, rating, review)
 │       ├── forms.py           ← ReviewForm validates the optional rating and review
 │       ├── views.py           ← home, library, IGDB search and details views
-│       ├── igdb_client.py     ← search_game and get_game_details call IGDB; vocabulary, similar_games and find_games serve search by description
-│       ├── describe.py        ← search by description: an OpenAI model turns a description into IGDB filters
+│       ├── igdb_client.py     ← search_game and get_game_details call IGDB; find_titles looks up the games search by description suggests
+│       ├── describe.py        ← search by description: an OpenAI model suggests games, IGDB confirms them
 │       ├── urls.py
 │       ├── templates/games/   ← index.html (visitor landing page), home.html (player home page), library.html, search.html, details.html, plus _cover/_stars partials
 │       ├── static/games/css/  ← landing.css (shared by the landing, home, library, search and game pages)
@@ -57,8 +57,8 @@ Search and details fetch IGDB data through `games/igdb_client.py`, which gets an
 ## Pages
 | URL | Name | What it is |
 | --- | --- | --- |
-| `/` | `index` | Visitors get the landing page: what the app does, an example library, Sign up and Log in. Players get their home page: a search box, library stats, games popular with other players that they don't have yet, and recently added games. Makes no IGDB calls. |
-| `/search/?q=title` | `game_search` | Search IGDB by title (main games, remakes, remasters, ports and expansions; no mods or alternate editions); shows up to five results with their release year, and marks games already in your library. If IGDB fails, shows this visitor's last results for the same search (kept in the session). With `&mode=describe`, searches by description instead: up to ten games, plus what the search looked for (see [Search by description](#search-by-description)). No login required. |
+| `/` | `index` | Visitors get the landing page: what the app does, an example library, Sign up and Log in. Players get their home page: library stats, games popular with other players that they don't have yet, and recently added games. Makes no IGDB calls. |
+| `/search/?q=title` | `game_search` | Search IGDB by title (main games, remakes, remasters, ports and expansions; no mods or alternate editions); shows up to five results with their release year, and marks games already in your library. If IGDB fails, shows this visitor's last results for the same search (kept in the session). With `&mode=describe`, searches by description instead: up to ten games, plus what the search looked for (see [Search by description](#search-by-description)). Tabs switch the same query between the two. The search box is in the top bar on every page (`base.html`, `static/js/search.js`). No login required. |
 | `/<int:game_id>/` | `game_details` | Details for an IGDB game ID: cover, facts, the IGDB score and our players' average, everyone's reviews, and the player's own status, rating and review. If IGDB fails, goes back to the search results with an error when opened from a search, otherwise shows the error on this page. No login required. |
 | `/library/` | `library` | The user's saved games, statuses and ratings. `?sort=recent` (default), `title` or `rating` (unrated last). Requires login. |
 | `/<int:game_id>/add/` | `add_to_library` | Add an IGDB game to the user's library. POST and login required. |
@@ -116,12 +116,14 @@ Then add it to `INSTALLED_APPS` in `settings.py`. `startapp` doesn't create a `u
 
 ## Search by description
 
-A player can describe the game they want ("a cozy co-op farming game on Switch") instead of typing its title. `games/describe.py` sends the description to an OpenAI model with a strict JSON schema. The model can only pick genre, theme, game mode and platform names that IGDB has (fetched from IGDB and cached for a day), plus a game to compare with and release years. Our code turns those names into IGDB IDs and runs the query, so every result is a real IGDB game:
+A player can describe the game they want ("zelda but darker", "a cozy co-op farming game on Switch") instead of typing its title. `games/describe.py` sends the description to an OpenAI model with a strict JSON schema. The model suggests up to 12 games by title and release year, plus up to four short tags for what it understood. `igdb_client.find_titles` then looks the titles up in one IGDB query, so every result is a real IGDB game:
 
-- Genres, themes and game modes must all match. If no game has all of them, any one is enough. Platforms only need one match.
-- "Like Hades" limits the results to the games IGDB lists as similar to Hades. If IGDB lists none, the search runs without the comparison.
-- Results are the ten games with the most IGDB ratings. Each description's results are cached for an hour, so repeating a search doesn't call the model again.
-- The page shows what the search looked for as pills above the results. A description with nothing to search for finds no games.
+- Titles match exactly, ignoring case and curly quotes. Titles IGDB doesn't have are left out. When several games share a title, the one from the suggested year wins.
+- Results keep the model's order, best match first, up to ten. Each description's results are cached for an hour, so repeating a search doesn't call the model again.
+- Naming a game or series ("zelda") lists games from it. A comparison ("games like zelda", "hades but shorter") lists other games, never the named one or its series.
+- The page shows the model's tags as pills above the results.
+
+We first had the model pick IGDB genres, themes, game modes and platforms, but those lists can't say "third-person", "shorter" or "darker", so those searches came back wrong.
 
 ## Friends (Story 10 / #15)
 

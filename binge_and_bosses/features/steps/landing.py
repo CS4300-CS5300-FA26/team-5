@@ -53,10 +53,10 @@ def on_page(context, page):
 
 @then("I see links to my library and to search")
 def see_player_links(context):
-    main = BeautifulSoup(context.response.content, "html.parser").select_one("main")
-    # The nav bar's Library link counts: an empty library has no library card on the page
+    nav = BeautifulSoup(context.response.content, "html.parser").select_one("nav")
+    # The nav bar's Library link and search box count: an empty library has no library card on the page
     context.test.assertIn(reverse("library"), links(context, "body").values())
-    context.test.assertIsNotNone(main.select_one(f'form[action="{reverse("game_search")}"]'))
+    context.test.assertIsNotNone(nav.select_one(f'form[action="{reverse("game_search")}"]'))
 
 
 @then('I do not see a "Sign up" link')
