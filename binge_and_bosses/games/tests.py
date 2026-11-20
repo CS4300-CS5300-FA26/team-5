@@ -317,7 +317,7 @@ class IgdbClientTests(TestCase):
 
         self.assertIn('search "say \\"hi\\" \\\\o/";', self.api_calls()[0].kwargs["data"])
 
-    def test_search_puts_the_most_rated_matches_first_and_keeps_five(self):
+    def test_search_puts_the_most_rated_matches_first_and_keeps_them_all(self):
         # IGDB ranks by text match only, so a fan game can come before the real one
         counts = [0, 2348, 111, None, 5, 40, 0]
         self.games = [{"id": i, "name": f"Game {i}", "total_rating_count": n} for i, n in enumerate(counts)]
@@ -325,8 +325,8 @@ class IgdbClientTests(TestCase):
 
         games = igdb_client.search_game("game")
 
-        self.assertEqual([g["id"] for g in games], [1, 2, 5, 4, 0])
-        self.assertIn("limit 20;", self.api_calls()[0].kwargs["data"])
+        self.assertEqual([g["id"] for g in games], [1, 2, 5, 4, 0, 3, 6])
+        self.assertIn("limit 500;", self.api_calls()[0].kwargs["data"])
 
     def test_missing_fields_get_empty_values(self):
         self.games = [{"id": 1, "name": "Mystery"}]
@@ -359,7 +359,7 @@ class IgdbClientTests(TestCase):
 
     def test_rejected_token_is_replaced_once(self):
         igdb_client.search_game("hollow knight")
-        cache.delete("SearchGame_hollow knight")
+        cache.delete(igdb_client.SEARCH_CACHE_KEY.format("hollow knight"))
         self.api_status = 401
 
         games = igdb_client.search_game("hollow knight")
@@ -417,7 +417,7 @@ class GameSearchandDetailsViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context['error'])
-        self.assertEqual(response.context['games'], [])
+        self.assertEqual(list(response.context['page']), [])
 
     @patch('games.views.search_game')
     def test_search_failure_shows_last_results_for_same_query(self, mock_search_game):
@@ -436,7 +436,7 @@ class GameSearchandDetailsViewTests(TestCase):
         response = self.client.get('/search/?q=Zelda')
 
         self.assertTrue(response.context['error'])
-        self.assertEqual(response.context['games'], [])
+        self.assertEqual(list(response.context['page']), [])
 
     @patch('games.views.search_game')
     def test_search_links_preserve_encoded_query(self, mock_search_game):
@@ -551,10 +551,13 @@ class SearchPageTests(TestCase):
         {"id": 2, "name": "Celeste Classic", "released": None, "cover": ""},
     ]
 
-    def page(self, query="Celeste"):
-        response = self.client.get(reverse("game_search"), {"q": query} if query else {})
+    def page(self, query="Celeste", **params):
+        response = self.client.get(reverse("game_search"), {"q": query, **params} if query else {})
         self.assertEqual(response.status_code, 200)
         return BeautifulSoup(response.content, "html.parser").select_one("main")
+
+    def many(self, count):
+        return [{"id": i, "name": f"Game {i}", "released": None, "cover": ""} for i in range(1, count + 1)]
 
     def cards(self, page):
         return {card.h2.get_text(strip=True): card for card in page.select("article")}
@@ -613,6 +616,81 @@ class SearchPageTests(TestCase):
         alert = self.page().select_one('[role="alert"]')
 
         self.assertIn("Could not load games. Try again.", alert.get_text())
+
+    def test_first_ten_results_show_by_default(self, mock_search):
+        mock_search.return_value = self.many(23)
+
+        page = self.page()
+
+        self.assertEqual(list(self.cards(page)), [f"Game {i}" for i in range(1, 11)])
+        self.assertIn("1–10 of 23 results", page.select_one(".search-count").get_text())
+        self.assertEqual(page.select_one('select[name="per_page"] option[selected]')["value"], "10")
+        self.assertIn("of 3", page.select_one(".search-pages").get_text())
+        self.assertEqual(page.select_one('.search-pages input[name="page"]')["value"], "1")
+
+    def test_next_page_shows_the_next_results(self, mock_search):
+        mock_search.return_value = self.many(23)
+
+        page = self.page(page=3)
+
+        self.assertEqual(list(self.cards(page)), [f"Game {i}" for i in range(21, 24)])
+        self.assertIn("21–23 of 23 results", page.select_one(".search-count").get_text())
+
+    def test_page_links_keep_the_query_and_page_size(self, mock_search):
+        mock_search.return_value = self.many(60)
+
+        nav = self.page(query="Game & more", page=2, per_page=25).select_one(".search-pages")
+        links = {a.get_text(strip=True): a["href"] for a in nav.select("a")}
+
+        self.assertEqual(links["‹ Previous"], "?q=Game+%26+more&per_page=25&page=1")
+        self.assertEqual(links["Next ›"], "?q=Game+%26+more&per_page=25&page=3")
+
+    def test_page_buttons_stay_put_and_are_disabled_at_the_ends(self, mock_search):
+        mock_search.return_value = self.many(23)
+
+        for number, links in [(1, ["Next ›"]), (2, ["‹ Previous", "Next ›"]), (3, ["‹ Previous"])]:
+            nav = self.page(page=number).select_one(".search-pages")
+            # Both buttons are always there; at the ends one is shown but isn't a link
+            self.assertEqual(
+                [b.get_text(strip=True) for b in nav.select(".search-page-button")], ["‹ Previous", "Next ›"],
+            )
+            self.assertEqual([a.get_text(strip=True) for a in nav.select("a")], links)
+
+    def test_page_box_jumps_to_a_typed_page(self, mock_search):
+        mock_search.return_value = self.many(60)
+
+        form = self.page(query="Game & more", page=2, per_page=25).select_one(".search-pages form")
+        box = form.select_one('input[name="page"]')
+
+        self.assertEqual((box["type"], box["min"], box["max"], box["value"]), ("number", "1", "3", "2"))
+        self.assertIsNotNone(form.find("label", attrs={"for": box["id"]}))
+        self.assertEqual(form.select_one('input[name="q"]')["value"], "Game & more")
+        self.assertEqual(form.select_one('input[name="per_page"]')["value"], "25")
+
+    def test_page_size_menu_shows_more_results(self, mock_search):
+        mock_search.return_value = self.many(60)
+
+        page = self.page(per_page=50)
+
+        self.assertEqual(len(self.cards(page)), 50)
+        form = page.select_one("form.search-size")
+        self.assertEqual(form.select_one('input[name="q"]')["value"], "Celeste")
+        self.assertEqual([o["value"] for o in form.select("option")], ["10", "25", "50", "100"])
+
+    def test_unknown_page_size_or_page_falls_back(self, mock_search):
+        mock_search.return_value = self.many(23)
+
+        self.assertEqual(len(self.cards(self.page(per_page=100000))), 10)
+        self.assertEqual(list(self.cards(self.page(page="last")))[0], "Game 1")
+        self.assertEqual(list(self.cards(self.page(page=99)))[0], "Game 21")
+
+    def test_one_page_of_results_has_no_page_links(self, mock_search):
+        mock_search.return_value = self.RESULTS
+
+        page = self.page()
+
+        self.assertIsNone(page.select_one(".search-pages"))
+        self.assertIn("2 results", page.select_one(".search-count").get_text())
 
     def test_empty_search_shows_no_results_or_count(self, mock_search):
         page = self.page(query="")

@@ -96,3 +96,31 @@ def default_cover(context):
     context.test.assertIsNotNone(page.find("img", attrs={
         "src": "/static/games/cover-placeholder.svg", "alt": "No cover available",
     }))
+
+
+@given('IGDB has {count:d} games matching "{query}"')
+def many_matches(context, count, query):
+    context.fake_games = [
+        {"id": i, "name": f"{query} {i}", "released": None, "cover": ""} for i in range(1, count + 1)
+    ]
+
+
+@when("I choose to show {per_page:d} results per page")
+def choose_page_size(context, per_page):
+    context.response = context.test.client.get(reverse("game_search"), {"q": context.query, "per_page": per_page})
+
+
+@then("I see results {first:d} to {last:d} of {total:d}")
+def see_results(context, first, last, total):
+    page = BeautifulSoup(context.response.content, "html.parser")
+    titles = [link.get_text(strip=True) for link in page.select("article h2 a")]
+    context.test.assertEqual(titles, [f"{context.query} {i}" for i in range(first, last + 1)])
+    context.test.assertIn(f"{first}–{last} of {total} results", page.select_one(".search-count").get_text())
+
+
+@when("I go to page {number:d}")
+def go_to_page(context, number):
+    form = BeautifulSoup(context.response.content, "html.parser").select_one(".search-pages form")
+    context.test.assertIsNotNone(form, "No page box on the search results")
+    fields = {field["name"]: field.get("value", "") for field in form.select("input[name]")}
+    context.response = context.test.client.get(reverse("game_search"), {**fields, "page": number})

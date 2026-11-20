@@ -14,6 +14,8 @@ TOKEN_URL = "https://id.twitch.tv/oauth2/token"
 API_URL = "https://api.igdb.com/v4/games"
 COVER_URL = "https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg"
 TOKEN_CACHE_KEY = "igdb_access_token"
+SEARCH_CACHE_KEY = "SearchGameAll_{}"   # "All": older entries under SearchGame_ held only the top 5
+SEARCH_LIMIT = 500   # the most IGDB returns for one query
 FIELDS = "name,summary,first_release_date,total_rating,cover.image_id,genres.name,platforms.name"
 # Main games, standalone expansions, remakes, remasters, expanded games and ports.
 # Leaves out mods, DLC, bundles and alternate editions (version_parent), which crowd out the real game.
@@ -21,19 +23,20 @@ RELEASES_ONLY = "where game_type = (0,4,8,9,10,11) & version_parent = null"
 
 
 def search_game(game_name):
-    """The 5 best-known games matching the title. IGDB ranks matches by text alone, which can put a
-    fan game or an obscure namesake first, so we fetch 20 and sort them by how many ratings they have."""
+    """Every game matching the title (up to SEARCH_LIMIT), best-known first. IGDB ranks matches by
+    text alone, which can put a fan game or an obscure namesake first, so we sort them by how many
+    ratings they have."""
     title = game_name.replace("\\", "\\\\").replace('"', '\\"')
-    cache_key = f"SearchGame_{game_name}"
+    cache_key = SEARCH_CACHE_KEY.format(game_name)
 
     games_search = cache.get(cache_key)
 
     if games_search is None:
-        games = _query(f'search "{title}"; fields {FIELDS},total_rating_count; {RELEASES_ONLY}; limit 20;')
+        games = _query(f'search "{title}"; fields {FIELDS},total_rating_count; {RELEASES_ONLY}; limit {SEARCH_LIMIT};')
         if games is None:
             return None
         games.sort(key=lambda game: game.get("total_rating_count", 0), reverse=True)
-        game_search_result = [_game(game) for game in games[:5]]
+        game_search_result = [_game(game) for game in games]
         cache.set(cache_key,game_search_result,timeout=3600)
         return game_search_result
 
