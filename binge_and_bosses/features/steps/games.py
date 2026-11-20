@@ -1,7 +1,8 @@
 """
-    Steps for searching and opening game details (stories #9 and #10).
-    IGDB is faked in environment.py for scenarios tagged @fake_igdb.
+Steps for searching and opening game details (stories #9 and #10).
+IGDB is faked in environment.py for scenarios tagged @fake_igdb.
 """
+
 from behave import given, when, then
 from bs4 import BeautifulSoup
 from django.urls import reverse
@@ -33,9 +34,15 @@ def matching_titles_and_covers(context):
     context.test.assertTrue(matching_games(context), "No fake game matches the search")
     for game in matching_games(context):
         context.test.assertContains(context.response, game["name"])
-        context.test.assertIsNotNone(page.find("img", attrs={
-            "src": game["cover"], "alt": game["name"],
-        }))
+        context.test.assertIsNotNone(
+            page.find(
+                "img",
+                attrs={
+                    "src": game["cover"],
+                    "alt": game["name"],
+                },
+            )
+        )
 
 
 @given("search results are on the screen")
@@ -65,9 +72,15 @@ def click_game(context):
 def game_details(context):
     context.test.assertContains(context.response, context.game["name"])
     page = BeautifulSoup(context.response.content, "html.parser")
-    context.test.assertIsNotNone(page.find("img", attrs={
-        "src": context.game["cover"], "alt": context.game["name"],
-    }))
+    context.test.assertIsNotNone(
+        page.find(
+            "img",
+            attrs={
+                "src": context.game["cover"],
+                "alt": context.game["name"],
+            },
+        )
+    )
     context.test.assertContains(context.response, context.game["summary"])
     for name in context.game["genres"] + context.game["platforms"]:
         context.test.assertContains(context.response, name)
@@ -93,6 +106,12 @@ def open_details(context):
 @then("I see a default cover")
 def default_cover(context):
     page = BeautifulSoup(context.response.content, "html.parser")
-    context.test.assertIsNotNone(page.find("img", attrs={
-        "src": "/static/games/cover-placeholder.svg", "alt": "No cover available",
-    }))
+    context.test.assertIsNotNone(
+        page.find(
+            "img",
+            attrs={
+                "src": "/static/games/cover-placeholder.svg",
+                "alt": "No cover available",
+            },
+        )
+    )

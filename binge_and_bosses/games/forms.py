@@ -9,10 +9,10 @@ class ReviewForm(forms.ModelForm):
         fields = ["rating", "review", "status"]
         widgets = {
             # The blank choice lets a player remove a rating and keep their review
-            "rating": forms.RadioSelect(choices=[("", "Not rated")] + [
-                (value, "1 star" if value == 1 else f"{value} stars")
-                for value in range(1, 6)
-            ]),
+            "rating": forms.RadioSelect(
+                choices=[("", "Not rated")]
+                + [(value, "1 star" if value == 1 else f"{value} stars") for value in range(1, 6)]
+            ),
             "review": forms.Textarea(attrs={"rows": 4, "class": "form-control"}),
             "status": forms.Select(choices=Catalog.Status.choices),
         }

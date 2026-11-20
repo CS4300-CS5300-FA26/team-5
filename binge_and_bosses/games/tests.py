@@ -10,7 +10,7 @@ from django.test import TestCase, override_settings
 from .models import Game, Catalog
 from .catalog import get_or_import
 
-from unittest.mock import patch,Mock
+from unittest.mock import patch, Mock
 import requests
 from django.conf import settings
 from django.core.cache import cache
@@ -23,7 +23,6 @@ from django.contrib.auth import get_user_model
 
 # Tests for the landing page (URL "/" -> index view -> games/index.html).
 class LandingPageTests(TestCase):
-
     def links(self, response, scope="main"):
         page = BeautifulSoup(response.content, "html.parser").select_one(scope)
         return {a.get_text(" ", strip=True): a["href"] for a in page.select("a[href]")}
@@ -47,11 +46,14 @@ class LandingPageTests(TestCase):
         page = BeautifulSoup(self.client.get(reverse("index")).content, "html.parser")
         covers = [img["src"] for img in page.select("main img.cover")]
 
-        self.assertEqual(covers, [
-            "https://images.igdb.com/igdb/image/upload/t_cover_big/coaknx.jpg",   # Hades II
-            "https://images.igdb.com/igdb/image/upload/t_cover_big/co9gam.jpg",   # Clair Obscur: Expedition 33
-            "https://images.igdb.com/igdb/image/upload/t_cover_big/cobebu.jpg",   # Hollow Knight: Silksong
-        ])
+        self.assertEqual(
+            covers,
+            [
+                "https://images.igdb.com/igdb/image/upload/t_cover_big/coaknx.jpg",  # Hades II
+                "https://images.igdb.com/igdb/image/upload/t_cover_big/co9gam.jpg",  # Clair Obscur: Expedition 33
+                "https://images.igdb.com/igdb/image/upload/t_cover_big/cobebu.jpg",  # Hollow Knight: Silksong
+            ],
+        )
         self.assertIn("IGDB", page.select_one("main").get_text())
 
     def test_demos_use_the_play_statuses_from_story_12(self):
@@ -103,7 +105,10 @@ class PlayerHomeTests(TestCase):
 
     def add(self, title, user=None, **entry):
         game = Game.objects.create(
-            igdb_id=self.next_igdb_id, game_title=title, game_description="", game_rating=4.0,
+            igdb_id=self.next_igdb_id,
+            game_title=title,
+            game_description="",
+            game_rating=4.0,
             game_image=f"https://media.example.com/{title}.jpg",
         )
         self.next_igdb_id += 1
@@ -152,7 +157,7 @@ class PlayerHomeTests(TestCase):
         self.add("Stardew Valley", user=ben)
         for player in (ben, cy):
             Catalog.objects.create(user=player, games=balatro)
-        for player in (ben, cy, self.user):   # the most popular, but you already have it
+        for player in (ben, cy, self.user):  # the most popular, but you already have it
             Catalog.objects.create(user=player, games=celeste)
         Catalog.objects.create(user=ben, games=hades)
 
@@ -166,9 +171,9 @@ class PlayerHomeTests(TestCase):
         self.assertEqual(rows[0]["href"], reverse("game_details", args=[balatro.igdb_id]))
 
     def test_popular_skips_games_without_an_id_to_link_to(self):
-        self.add("Hades II")   # the cards only show once your library has a game
+        self.add("Hades II")  # the cards only show once your library has a game
         ana = self.player("ana")
-        orphan = self.add("Saved by hand", user=ana).games   # e.g. added in the admin without an id
+        orphan = self.add("Saved by hand", user=ana).games  # e.g. added in the admin without an id
         orphan.igdb_id = None
         orphan.save()
 
@@ -203,7 +208,7 @@ class PlayerHomeTests(TestCase):
 
         self.assertIn("1 game", page.select_one(".home-library .hud").get_text())
         self.assertNotIn("Balatro", page.select_one(".home-recent").get_text())
-        self.assertIn("Balatro", page.select_one(".home-popular").get_text())   # suggested, not counted
+        self.assertIn("Balatro", page.select_one(".home-popular").get_text())  # suggested, not counted
 
     def test_empty_library_points_to_search(self):
         page = self.page()
@@ -214,7 +219,6 @@ class PlayerHomeTests(TestCase):
 
 # Dark mode: base.html gives every page a toggle and loads the script that applies the theme.
 class DarkModeToggleTests(TestCase):
-
     def test_every_page_has_a_dark_mode_toggle(self):
         for url in (reverse("index"), reverse("login"), reverse("signup")):
             with self.subTest(url=url):
@@ -230,7 +234,6 @@ class DarkModeToggleTests(TestCase):
 
 
 class BrandLogoTests(TestCase):
-
     def test_every_page_shows_the_logo_beside_the_app_name(self):
         for url in (reverse("index"), reverse("login"), reverse("signup")):
             with self.subTest(url=url):
@@ -243,10 +246,14 @@ class BrandLogoTests(TestCase):
                 self.assertEqual(brand.get_text(strip=True), "Binge and Bosses")
 
 
-@override_settings(CACHES={"default": {
-    "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-    "LOCATION": "igdb-client-tests",
-}})
+@override_settings(
+    CACHES={
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "igdb-client-tests",
+        }
+    }
+)
 class IgdbClientTests(TestCase):
     """games/igdb_client.py: gets a Twitch token, queries IGDB and returns games in our own shape."""
 
@@ -254,7 +261,7 @@ class IgdbClientTests(TestCase):
         "id": 14593,
         "name": "Hollow Knight",
         "summary": "Forge your own path in Hollow Knight!",
-        "first_release_date": 1487894400,   # 2017-02-24 UTC
+        "first_release_date": 1487894400,  # 2017-02-24 UTC
         "total_rating": 92.4,
         "cover": {"id": 1, "image_id": "cobfzp"},
         "genres": [{"id": 8, "name": "Platform"}, {"id": 31, "name": "Adventure"}],
@@ -280,7 +287,7 @@ class IgdbClientTests(TestCase):
             response.status_code = self.api_status
             response.json.return_value = self.games
             if self.api_status == HTTPStatus.UNAUTHORIZED:
-                self.api_status = 200   # the next try, with a new token, works
+                self.api_status = 200  # the next try, with a new token, works
         response.raise_for_status.side_effect = (
             None if response.status_code < HTTPStatus.BAD_REQUEST else requests.HTTPError(str(response.status_code))
         )
@@ -292,16 +299,21 @@ class IgdbClientTests(TestCase):
     def test_search_returns_games_in_our_shape(self):
         games = igdb_client.search_game("hollow knight")
 
-        self.assertEqual(games, [{
-            "id": 14593,
-            "name": "Hollow Knight",
-            "summary": "Forge your own path in Hollow Knight!",
-            "released": "2017-02-24",
-            "rating": 4.62,
-            "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobfzp.jpg",
-            "genres": ["Platform", "Adventure"],
-            "platforms": ["PC (Microsoft Windows)", "Nintendo Switch"],
-        }])
+        self.assertEqual(
+            games,
+            [
+                {
+                    "id": 14593,
+                    "name": "Hollow Knight",
+                    "summary": "Forge your own path in Hollow Knight!",
+                    "released": "2017-02-24",
+                    "rating": 4.62,
+                    "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobfzp.jpg",
+                    "genres": ["Platform", "Adventure"],
+                    "platforms": ["PC (Microsoft Windows)", "Nintendo Switch"],
+                }
+            ],
+        )
 
     def test_search_sends_the_title_credentials_and_release_filter(self):
         igdb_client.search_game("hollow knight")
@@ -331,10 +343,21 @@ class IgdbClientTests(TestCase):
     def test_missing_fields_get_empty_values(self):
         self.games = [{"id": 1, "name": "Mystery"}]
 
-        self.assertEqual(igdb_client.search_game("mystery"), [{
-            "id": 1, "name": "Mystery", "summary": "", "released": None, "rating": None,
-            "cover": "", "genres": [], "platforms": [],
-        }])
+        self.assertEqual(
+            igdb_client.search_game("mystery"),
+            [
+                {
+                    "id": 1,
+                    "name": "Mystery",
+                    "summary": "",
+                    "released": None,
+                    "rating": None,
+                    "cover": "",
+                    "genres": [],
+                    "platforms": [],
+                }
+            ],
+        )
 
     def test_token_is_reused_until_it_expires(self):
         igdb_client.search_game("hollow knight")
@@ -391,98 +414,99 @@ class IgdbClientTests(TestCase):
 
 
 class GameSearchandDetailsViewTests(TestCase):
-
-    @patch('games.views.search_game')
-    def test_game_search_view(self,mock_search_game):
+    @patch("games.views.search_game")
+    def test_game_search_view(self, mock_search_game):
 
         mock_search_game.return_value = [
-            {'id': 1, 'name': 'Minecraft', 'cover': '', 'released': None},
-            {'id': 2, 'name': 'Minecraft Pocket Edition', 'cover': '', 'released': None}
+            {"id": 1, "name": "Minecraft", "cover": "", "released": None},
+            {"id": 2, "name": "Minecraft Pocket Edition", "cover": "", "released": None},
         ]
 
-        response = self.client.get('/search/?q=Minecraft')
+        response = self.client.get("/search/?q=Minecraft")
 
-        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.status_code, 200)
 
         mock_search_game.assert_called_once_with("Minecraft")
 
-        self.assertContains(response,"Minecraft")
-        self.assertContains(response,"Minecraft Pocket Edition")
+        self.assertContains(response, "Minecraft")
+        self.assertContains(response, "Minecraft Pocket Edition")
 
-    @patch('games.views.search_game')
+    @patch("games.views.search_game")
     def test_search_api_failure(self, mock_search_game):
         mock_search_game.return_value = None
 
-        response = self.client.get('/search/?q=Minecraft')
+        response = self.client.get("/search/?q=Minecraft")
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.context['error'])
-        self.assertEqual(response.context['games'], [])
+        self.assertTrue(response.context["error"])
+        self.assertEqual(response.context["games"], [])
 
-    @patch('games.views.search_game')
+    @patch("games.views.search_game")
     def test_search_failure_shows_last_results_for_same_query(self, mock_search_game):
         mock_search_game.return_value = [
-            {'id': 1, 'name': 'Minecraft', 'cover': 'https://example.com/m.jpg', 'released': None},
+            {"id": 1, "name": "Minecraft", "cover": "https://example.com/m.jpg", "released": None},
         ]
-        self.client.get('/search/?q=Minecraft')
+        self.client.get("/search/?q=Minecraft")
         mock_search_game.return_value = None
 
-        response = self.client.get('/search/?q=Minecraft')
+        response = self.client.get("/search/?q=Minecraft")
 
-        self.assertFalse(response.context['error'])
-        self.assertContains(response, 'Minecraft')
-        self.assertContains(response, 'https://example.com/m.jpg')
+        self.assertFalse(response.context["error"])
+        self.assertContains(response, "Minecraft")
+        self.assertContains(response, "https://example.com/m.jpg")
 
-        response = self.client.get('/search/?q=Zelda')
+        response = self.client.get("/search/?q=Zelda")
 
-        self.assertTrue(response.context['error'])
-        self.assertEqual(response.context['games'], [])
+        self.assertTrue(response.context["error"])
+        self.assertEqual(response.context["games"], [])
 
-    @patch('games.views.search_game')
+    @patch("games.views.search_game")
     def test_search_links_preserve_encoded_query(self, mock_search_game):
-        mock_search_game.return_value = [{'id': 1, 'name': 'Pokemon Red', 'cover': '', 'released': None}]
+        mock_search_game.return_value = [{"id": 1, "name": "Pokemon Red", "cover": "", "released": None}]
 
-        response = self.client.get(reverse('game_search'), {'q': 'Pokémon & Red/Blue'})
+        response = self.client.get(reverse("game_search"), {"q": "Pokémon & Red/Blue"})
 
-        self.assertContains(
-            response, 'href="/1/?q=Pok%C3%A9mon%20%26%20Red%2FBlue"'
-        )
+        self.assertContains(response, 'href="/1/?q=Pok%C3%A9mon%20%26%20Red%2FBlue"')
 
-    @patch('games.catalog.get_game_details')
-    def test_game_details_view_for_new_games_not_in_database(self,mock_search_game_detail):
+    @patch("games.catalog.get_game_details")
+    def test_game_details_view_for_new_games_not_in_database(self, mock_search_game_detail):
 
         mock_search_game_detail.return_value = {
-            'id':1,
-            'name':'Minecraft',
-            'summary':'',
-            'rating':None,
-            'cover':'',
-            'released':'2011-11-18',
-            'genres': ['Action', 'Adventure'],
-            'platforms': ['PC (Microsoft Windows)'],
+            "id": 1,
+            "name": "Minecraft",
+            "summary": "",
+            "rating": None,
+            "cover": "",
+            "released": "2011-11-18",
+            "genres": ["Action", "Adventure"],
+            "platforms": ["PC (Microsoft Windows)"],
         }
 
-        response = self.client.get('/1/')
+        response = self.client.get("/1/")
 
-        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.status_code, 200)
 
         mock_search_game_detail.assert_called_once_with(1)
 
-        self.assertContains(response,"Minecraft")
+        self.assertContains(response, "Minecraft")
         self.assertTrue(Game.objects.filter(igdb_id=1).exists())
-        self.assertContains(response,'Nov 18, 2011')
-        self.assertContains(response, 'Action, Adventure')
-        self.assertContains(response, 'PC (Microsoft Windows)')
+        self.assertContains(response, "Nov 18, 2011")
+        self.assertContains(response, "Action, Adventure")
+        self.assertContains(response, "PC (Microsoft Windows)")
 
-    @patch('games.catalog.get_game_details')
-    def test_game_details_view_when_game_is_in_database(self,mock_details):
+    @patch("games.catalog.get_game_details")
+    def test_game_details_view_when_game_is_in_database(self, mock_details):
 
         Game.objects.create(
-        igdb_id=1, game_title="Minecraft", game_description="Build things.",
-        game_rating=4.5, game_genre="Sandbox", game_platforms="PC",
+            igdb_id=1,
+            game_title="Minecraft",
+            game_description="Build things.",
+            game_rating=4.5,
+            game_genre="Sandbox",
+            game_platforms="PC",
         )
 
-        response = self.client.get(reverse('game_details', args=[1]))
+        response = self.client.get(reverse("game_details", args=[1]))
 
         mock_details.assert_not_called()
         self.assertContains(response, "Minecraft")
@@ -490,56 +514,64 @@ class GameSearchandDetailsViewTests(TestCase):
         self.assertContains(response, "Sandbox")
         self.assertContains(response, "PC")
 
-    @patch('games.catalog.get_game_details')
+    @patch("games.catalog.get_game_details")
     def test_details_api_failure(self, mock_get_game_details):
 
         mock_get_game_details.return_value = None
 
-        response = self.client.get('/1/')
+        response = self.client.get("/1/")
 
         self.assertEqual(response.status_code, 200)
 
         mock_get_game_details.assert_called_once_with(1)
 
-        self.assertTrue(response.context['error'])
-        self.assertIsNone(response.context['game'])
-        self.assertContains(response, 'Could not load game details. Try again.')
+        self.assertTrue(response.context["error"])
+        self.assertIsNone(response.context["game"])
+        self.assertContains(response, "Could not load game details. Try again.")
 
-    @patch('games.views.search_game')
-    @patch('games.catalog.get_game_details')
+    @patch("games.views.search_game")
+    @patch("games.catalog.get_game_details")
     def test_details_failure_returns_to_search_with_message(self, mock_details, mock_search):
         mock_details.return_value = None
-        mock_search.return_value = [{'id': 1, 'name': 'Pokemon Red', 'cover': '', 'released': None}]
+        mock_search.return_value = [{"id": 1, "name": "Pokemon Red", "cover": "", "released": None}]
 
-        response = self.client.get(
-            reverse('game_details', args=[1]), {'q': 'Pokémon & Red/Blue'}, follow=True
-        )
+        response = self.client.get(reverse("game_details", args=[1]), {"q": "Pokémon & Red/Blue"}, follow=True)
 
-        self.assertRedirects(response, '/search/?q=Pok%C3%A9mon%20%26%20Red%2FBlue')
-        self.assertContains(response, 'Could not load game details. Try again.')
-        self.assertContains(response, 'Pokemon Red')
-        shown_messages = list(response.context['messages'])
+        self.assertRedirects(response, "/search/?q=Pok%C3%A9mon%20%26%20Red%2FBlue")
+        self.assertContains(response, "Could not load game details. Try again.")
+        self.assertContains(response, "Pokemon Red")
+        shown_messages = list(response.context["messages"])
         self.assertEqual(len(shown_messages), 1)
         self.assertEqual(shown_messages[0].level, messages.ERROR)
-        mock_search.assert_called_once_with('Pokémon & Red/Blue')
+        mock_search.assert_called_once_with("Pokémon & Red/Blue")
 
-    @patch('games.catalog.get_game_details')
+    @patch("games.catalog.get_game_details")
     def test_missing_cover_uses_placeholder(self, mock_details):
         mock_details.return_value = {
-            'id': 1, 'name': 'Pokemon Red', 'summary': '', 'rating': None, 'cover': '',
-            'released': None, 'genres': [], 'platforms': [],
+            "id": 1,
+            "name": "Pokemon Red",
+            "summary": "",
+            "rating": None,
+            "cover": "",
+            "released": None,
+            "genres": [],
+            "platforms": [],
         }
 
-        response = self.client.get(reverse('game_details', args=[1]))
+        response = self.client.get(reverse("game_details", args=[1]))
 
-        page = BeautifulSoup(response.content, 'html.parser')
-        self.assertIsNotNone(page.find('img', attrs={
-            'src': '/static/games/cover-placeholder.svg',
-            'alt': 'No cover available',
-        }))
-        self.assertContains(response, 'No description available')
-        self.assertIsNotNone(finders.find('games/cover-placeholder.svg'))
-
+        page = BeautifulSoup(response.content, "html.parser")
+        self.assertIsNotNone(
+            page.find(
+                "img",
+                attrs={
+                    "src": "/static/games/cover-placeholder.svg",
+                    "alt": "No cover available",
+                },
+            )
+        )
+        self.assertContains(response, "No description available")
+        self.assertIsNotNone(finders.find("games/cover-placeholder.svg"))
 
 
 @patch("games.views.search_game")
@@ -625,7 +657,6 @@ class SearchPageTests(TestCase):
 # Tests that the library page displays correctly and that logged out users
 # are redirected to the login page when visiting.
 class LibraryPageTests(TestCase):
-
     def setUp(self):
         self.user = get_user_model().objects.create_user(
             username="user_b", email="user_b@example.com", password="TesTINGp#ass0r0d"
@@ -634,7 +665,10 @@ class LibraryPageTests(TestCase):
 
     def add(self, title, user=None, **entry):
         game = Game.objects.create(
-            igdb_id=self.next_igdb_id, game_title=title, game_description="", game_rating=4.0,
+            igdb_id=self.next_igdb_id,
+            game_title=title,
+            game_description="",
+            game_rating=4.0,
         )
         self.next_igdb_id += 1
         return Catalog.objects.create(user=user or self.user, games=game, **entry)
@@ -746,9 +780,9 @@ class LibraryPageTests(TestCase):
     def test_logout_is_only_in_the_nav_bar(self):
         self.assertIsNone(self.page().find("form", action=reverse("logout")))
 
+
 # Test that Catalog's get_or_import method works as expected
 class CatalogGetOrImportTests(TestCase):
-
     @patch("games.catalog.get_game_details")
     def test_returns_existing_game_without_calling_igdb(self, mock_details):
         existing = Game.objects.create(
@@ -822,8 +856,8 @@ class CatalogGetOrImportTests(TestCase):
         self.assertEqual(game.game_genre, "")
         self.assertEqual(game.game_platforms, "")
 
-class AddToLibraryViewTests(TestCase):
 
+class AddToLibraryViewTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
             username="player1", email="player1@example.com", password="testpassword123"
@@ -878,10 +912,12 @@ class AddToLibraryViewTests(TestCase):
         self.assertRedirects(response, f"{reverse('login')}?next={url}")
         self.assertEqual(Catalog.objects.count(), 0)
 
-
     def test_catalog_rejects_duplicate_user_and_game(self):
         game = Game.objects.create(
-            igdb_id=10, game_title="Portal", game_description="A puzzle game.", game_rating=4.7,
+            igdb_id=10,
+            game_title="Portal",
+            game_description="A puzzle game.",
+            game_rating=4.7,
         )
         Catalog.objects.create(user=self.user, games=game)
 
@@ -889,8 +925,8 @@ class AddToLibraryViewTests(TestCase):
             with transaction.atomic():
                 Catalog.objects.create(user=self.user, games=game)
 
-class RemoveFromLibraryViewTests(TestCase):
 
+class RemoveFromLibraryViewTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
             username="player1", email="player1@example.com", password="testpassword123"
@@ -945,9 +981,14 @@ class DetailsPageTests(TestCase):
     """The game page: cover and facts from IGDB, our players' average, and the player's own save file."""
 
     GAME = {
-        "id": 42, "name": "Portal", "summary": "A puzzle game with portals.", "released": "2007-10-10",
-        "rating": 4.5, "cover": "https://images.example.com/portal.jpg",
-        "genres": ["Puzzle", "Shooter"], "platforms": ["PC (Microsoft Windows)", "Xbox 360"],
+        "id": 42,
+        "name": "Portal",
+        "summary": "A puzzle game with portals.",
+        "released": "2007-10-10",
+        "rating": 4.5,
+        "cover": "https://images.example.com/portal.jpg",
+        "genres": ["Puzzle", "Shooter"],
+        "platforms": ["PC (Microsoft Windows)", "Xbox 360"],
     }
 
     def setUp(self):
@@ -955,7 +996,7 @@ class DetailsPageTests(TestCase):
         self.details = patcher.start()
         self.addCleanup(patcher.stop)
         self.user = get_user_model().objects.create_user(username="player", email="player@example.com")
-        self.game = get_or_import(42)   # saved from the fake IGDB answer, as the first visit would
+        self.game = get_or_import(42)  # saved from the fake IGDB answer, as the first visit would
 
     def page(self, **params):
         response = self.client.get(reverse("game_details", args=[42]), params)
@@ -1072,11 +1113,13 @@ class DetailsPageTests(TestCase):
 
 
 class ReviewTests(TestCase):
-
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="player", email="player@example.com")
         self.game = Game.objects.create(
-            igdb_id=42, game_title="Portal", game_description="Puzzles.", game_rating=4.7,
+            igdb_id=42,
+            game_title="Portal",
+            game_description="Puzzles.",
+            game_rating=4.7,
         )
         self.entry = Catalog.objects.create(user=self.user, games=self.game)
         self.client.force_login(self.user)
@@ -1085,9 +1128,9 @@ class ReviewTests(TestCase):
         self.addCleanup(patcher.stop)
 
     def save_review(self, rating="", review="", status=Catalog.Status.NOT_STARTED, **kwargs):
-        return self.client.post(reverse("save_review", args=[42]), {
-            "rating": rating, "review": review, "status": status
-        }, **kwargs)
+        return self.client.post(
+            reverse("save_review", args=[42]), {"rating": rating, "review": review, "status": status}, **kwargs
+        )
 
     def assert_entry(self, rating, review, edited, status=Catalog.Status.NOT_STARTED):
         self.entry.refresh_from_db()
@@ -1147,9 +1190,12 @@ class ReviewTests(TestCase):
                 self.assertRedirects(response, reverse("game_details", args=[42]))
                 self.assertContains(response, "Pick a rating from 1 to 5.")
                 shown = list(response.context["messages"])
-                self.assertEqual([(m.level, str(m)) for m in shown], [
-                    (messages.ERROR, "Pick a rating from 1 to 5."),
-                ])
+                self.assertEqual(
+                    [(m.level, str(m)) for m in shown],
+                    [
+                        (messages.ERROR, "Pick a rating from 1 to 5."),
+                    ],
+                )
                 self.assert_entry(3, "Keep this.", True)
 
     def test_database_rejects_out_of_range_rating(self):
@@ -1195,9 +1241,16 @@ class ReviewTests(TestCase):
     def test_user_cannot_change_another_users_entry(self):
         other = get_user_model().objects.create_user(username="other", email="other@example.com")
         entry = Catalog.objects.create(user=other, games=self.game, rating=2, review="Their review.")
-        response = self.client.post(reverse("save_review", args=[42]), {
-            "rating": 5, "review": "My review.", "status": Catalog.Status.COMPLETED, "user": other.pk, "id": entry.pk,
-        })
+        response = self.client.post(
+            reverse("save_review", args=[42]),
+            {
+                "rating": 5,
+                "review": "My review.",
+                "status": Catalog.Status.COMPLETED,
+                "user": other.pk,
+                "id": entry.pk,
+            },
+        )
         self.assertRedirects(response, reverse("game_details", args=[42]))
         self.assert_entry(5, "My review.", False, status=Catalog.Status.COMPLETED)
         self.entry.delete()
@@ -1303,14 +1356,10 @@ class ReviewTests(TestCase):
                 self.entry.status = Catalog.Status.NOT_STARTED
                 self.entry.save()
 
-                response = self.save_review(
-                    4, "Keep this.", status=Catalog.Status.COMPLETED
-                )
+                response = self.save_review(4, "Keep this.", status=Catalog.Status.COMPLETED)
 
                 self.assertRedirects(response, reverse("game_details", args=[42]))
-                self.assert_entry(
-                    4, "Keep this.", edited, status=Catalog.Status.COMPLETED
-                )
+                self.assert_entry(4, "Keep this.", edited, status=Catalog.Status.COMPLETED)
 
     def test_missing_or_invalid_status_changes_nothing(self):
         self.entry.rating, self.entry.review = 3, "Keep this."
@@ -1328,6 +1377,4 @@ class ReviewTests(TestCase):
 
                 self.assertRedirects(response, reverse("game_details", args=[42]))
                 self.assertContains(response, "Pick a valid play status.")
-                self.assert_entry(
-                    3, "Keep this.", True, status=Catalog.Status.PLAYING
-                )
+                self.assert_entry(3, "Keep this.", True, status=Catalog.Status.PLAYING)

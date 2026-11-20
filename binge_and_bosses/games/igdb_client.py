@@ -1,8 +1,9 @@
 """
-    Game data from IGDB (igdb.com). Twitch issues the access token: we cache it until shortly
-    before it expires, and get a new one if IGDB rejects it. Both functions return games in our
-    own shape (see _game), or None when IGDB or Twitch can't be reached.
+Game data from IGDB (igdb.com). Twitch issues the access token: we cache it until shortly
+before it expires, and get a new one if IGDB rejects it. Both functions return games in our
+own shape (see _game), or None when IGDB or Twitch can't be reached.
 """
+
 from datetime import datetime, timezone
 from http import HTTPStatus
 
@@ -34,11 +35,10 @@ def search_game(game_name):
             return None
         games.sort(key=lambda game: game.get("total_rating_count", 0), reverse=True)
         game_search_result = [_game(game) for game in games[:5]]
-        cache.set(cache_key,game_search_result,timeout=3600)
+        cache.set(cache_key, game_search_result, timeout=3600)
         return game_search_result
 
     return games_search
-
 
 
 def get_game_details(game_id):
@@ -52,18 +52,17 @@ def get_game_details(game_id):
     if specific_game_detail is None:
         games = _query(f"fields {FIELDS}; where id = {int(game_id)};")
         specific_game_detail = _game(games[0]) if games else None
-        cache.set(cache_key,specific_game_detail,timeout=3600)
+        cache.set(cache_key, specific_game_detail, timeout=3600)
         return specific_game_detail
 
     # If not just return specific_game_detail
     return specific_game_detail
 
 
-
 def _query(body):
     try:
         response = _post(body, _token())
-        if response.status_code == HTTPStatus.UNAUTHORIZED:   # the token was revoked or expired early
+        if response.status_code == HTTPStatus.UNAUTHORIZED:  # the token was revoked or expired early
             response = _post(body, _token(refresh=True))
         response.raise_for_status()
         return response.json()
@@ -72,20 +71,29 @@ def _query(body):
 
 
 def _post(body, token):
-    return requests.post(API_URL, data=body, timeout=10, headers={
-        "Client-ID": settings.IGDB_CLIENT_ID,
-        "Authorization": f"Bearer {token}",
-    })
+    return requests.post(
+        API_URL,
+        data=body,
+        timeout=10,
+        headers={
+            "Client-ID": settings.IGDB_CLIENT_ID,
+            "Authorization": f"Bearer {token}",
+        },
+    )
 
 
 def _token(refresh=False):
     token = None if refresh else cache.get(TOKEN_CACHE_KEY)
     if token is None:
-        response = requests.post(TOKEN_URL, timeout=10, params={
-            "client_id": settings.IGDB_CLIENT_ID,
-            "client_secret": settings.IGDB_CLIENT_SECRET,
-            "grant_type": "client_credentials",
-        })
+        response = requests.post(
+            TOKEN_URL,
+            timeout=10,
+            params={
+                "client_id": settings.IGDB_CLIENT_ID,
+                "client_secret": settings.IGDB_CLIENT_SECRET,
+                "grant_type": "client_credentials",
+            },
+        )
         response.raise_for_status()
         data = response.json()
         token = data["access_token"]
@@ -102,7 +110,7 @@ def _game(data):
         "name": data.get("name", ""),
         "summary": data.get("summary", ""),
         "released": datetime.fromtimestamp(released, timezone.utc).date().isoformat() if released else None,
-        "rating": round(rating / 20, 2) if rating is not None else None,   # IGDB rates 0-100; we use 0-5
+        "rating": round(rating / 20, 2) if rating is not None else None,  # IGDB rates 0-100; we use 0-5
         "cover": COVER_URL.format(cover["image_id"]) if cover else "",
         "genres": [genre["name"] for genre in data.get("genres", [])],
         "platforms": [platform["name"] for platform in data.get("platforms", [])],

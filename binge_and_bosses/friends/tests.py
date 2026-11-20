@@ -11,8 +11,7 @@ class FriendRequestTests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
         cls.alice, cls.bob, cls.eve = [
-            User.objects.create_user(username=name, email=f"{name}@example.com")
-            for name in ("alice", "bob", "eve")
+            User.objects.create_user(username=name, email=f"{name}@example.com") for name in ("alice", "bob", "eve")
         ]
 
     def setUp(self):
@@ -22,9 +21,7 @@ class FriendRequestTests(TestCase):
         return (client or self.client).post(reverse("friends:send"), {"username": username}, follow=True)
 
     def action(self, action, relationship, client=None):
-        return (client or self.client).post(
-            reverse(f"friends:{action}", args=[relationship.pk]), follow=True
-        )
+        return (client or self.client).post(reverse(f"friends:{action}", args=[relationship.pk]), follow=True)
 
     def test_send_and_recipient_sees_pending(self):
         self.assertContains(self.send(), "Friend request sent.")
@@ -36,9 +33,11 @@ class FriendRequestTests(TestCase):
         self.assertContains(response, reverse("friends:accept", args=[relationship.pk]))
 
     def test_unknown_self_and_blank_requests_create_nothing(self):
-        for username, message in [("missing", "No player with that username"),
-                                  ("alice", "You cannot add yourself."),
-                                  ("", "This field is required.")]:
+        for username, message in [
+            ("missing", "No player with that username"),
+            ("alice", "You cannot add yourself."),
+            ("", "This field is required."),
+        ]:
             with self.subTest(username=username):
                 self.assertContains(self.send(username), message)
                 self.assertFalse(Friendship.objects.exists())
@@ -110,8 +109,7 @@ class FriendRequestTests(TestCase):
         self.send()
         relationship = Friendship.objects.get()
         urls = [reverse("friends:send")] + [
-            reverse(f"friends:{action}", args=[relationship.pk])
-            for action in ("accept", "decline", "remove")
+            reverse(f"friends:{action}", args=[relationship.pk]) for action in ("accept", "decline", "remove")
         ]
         csrf_client = Client(enforce_csrf_checks=True)
         csrf_client.force_login(self.bob)

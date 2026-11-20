@@ -54,9 +54,7 @@ def pending_request(context):
 
 @when("I accept it")
 def accept_request(context):
-    context.response = context.test.client.post(
-        reverse("friends:accept", args=[context.relationship.pk]), follow=True
-    )
+    context.response = context.test.client.post(reverse("friends:accept", args=[context.relationship.pk]), follow=True)
 
 
 @when("I decline it")
@@ -93,6 +91,4 @@ def accepted_friend(context):
 
 @when("I remove them")
 def remove_friend(context):
-    context.response = context.test.client.post(
-        reverse("friends:remove", args=[context.relationship.pk]), follow=True
-    )
+    context.response = context.test.client.post(reverse("friends:remove", args=[context.relationship.pk]), follow=True)

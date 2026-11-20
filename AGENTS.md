@@ -22,7 +22,7 @@ uv run --locked python manage.py behave --simple
 uv run --locked coverage run manage.py test
 uv run --locked coverage run --append manage.py behave --simple
 uv run --locked coverage report -m --fail-under=80
-cd .. && uv run --locked ruff check .
+cd .. && uv run --locked ruff check . && uv run --locked ruff format --check .
 ```
 
 ## Code conventions
@@ -46,7 +46,7 @@ Use merge commits when merging PRs.
 - For each feature, include the story's Gherkin as a Behave `.feature` file in the same PR
   ([agreed design, decision 9](docs/design/behave.md#decisions)).
 - Write tests first and see them fail before implementing the behavior; record commands and results.
-- CI's `lint` check passes with no Ruff findings.
+- CI's `lint` check passes with no Ruff findings and no unformatted files.
 - CI's `test` check passes, including unit tests, Behave and at least 80% combined coverage.
 - Before approving, CI is green and every AI review
   [Must fix](.github/ai-review-guide.md#output-format-github-markdown) is fixed or answered.

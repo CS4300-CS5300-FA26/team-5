@@ -57,7 +57,6 @@ class GetCommitMessagesTests(unittest.TestCase):
         self.assertIn("Explains why.", log)
         self.assertNotIn("base", log)
 
-
     def test_long_history_keeps_the_latest_commits(self):
         base = make_repo(self)
         for i in range(60):
@@ -92,17 +91,18 @@ class GetChangedFilesTests(unittest.TestCase):
     def test_grouped_list_still_names_excluded_and_risky_files(self):
         base = make_repo(self)
         files = {f"binge_and_bosses/flask/m{i:03}.py": "x\n" for i in range(120)}
-        files.update({
-            "binge_and_bosses/db.sqlite3": "data\n",      # left out of the diff
-            "binge_and_bosses/.env": "SECRET_KEY=x\n",    # in the diff, but risky
-            "binge_and_bosses/staticfiles/admin.css": "a\n",  # left out of the diff
-            "binge_and_bosses/games/views.py": "a\n",     # ordinary: only in a group
-        })
+        files.update(
+            {
+                "binge_and_bosses/db.sqlite3": "data\n",  # left out of the diff
+                "binge_and_bosses/.env": "SECRET_KEY=x\n",  # in the diff, but risky
+                "binge_and_bosses/staticfiles/admin.css": "a\n",  # left out of the diff
+                "binge_and_bosses/games/views.py": "a\n",  # ordinary: only in a group
+            }
+        )
         head = commit_files(files)
         listing = ai_review.get_changed_files(base, head)
         self.assertIn("124 files changed", listing)
-        for path in ("binge_and_bosses/db.sqlite3", "binge_and_bosses/.env",
-                     "binge_and_bosses/staticfiles/admin.css"):
+        for path in ("binge_and_bosses/db.sqlite3", "binge_and_bosses/.env", "binge_and_bosses/staticfiles/admin.css"):
             self.assertIn(path + " (+1 -0)", listing)
         self.assertNotIn("games/views.py", listing)
         self.assertIn("binge_and_bosses/flask/ (120 files", listing)
@@ -184,23 +184,26 @@ class LimitDiffSharesTests(unittest.TestCase):
         self.assertIn("more characters of this file omitted", limited)
 
     def test_renamed_file_is_filed_under_its_new_path(self):
-        diff = ("diff --git a/binge_and_bosses/flask/x.py b/binge_and_bosses/games/x.py\n"
-                "similarity index 90%\nrename from binge_and_bosses/flask/x.py\n"
-                "rename to binge_and_bosses/games/x.py\n")
+        diff = (
+            "diff --git a/binge_and_bosses/flask/x.py b/binge_and_bosses/games/x.py\n"
+            "similarity index 90%\nrename from binge_and_bosses/flask/x.py\n"
+            "rename to binge_and_bosses/games/x.py\n"
+        )
         self.assertEqual(ai_review.split_diff_by_file(diff)[0][0], "binge_and_bosses/games/x.py")
 
     def test_rename_out_of_a_full_directory_is_still_reviewed(self):
         vendored = "".join(fake_file_diff(f"binge_and_bosses/flask/m{i}.py", 50) for i in range(50))
-        moved = ("diff --git a/binge_and_bosses/flask/views.py b/binge_and_bosses/games/views.py\n"
-                 "similarity index 90%\nrename from binge_and_bosses/flask/views.py\n"
-                 "rename to binge_and_bosses/games/views.py\n@@ -1 +1 @@\n-old\n+def index(request):\n")
+        moved = (
+            "diff --git a/binge_and_bosses/flask/views.py b/binge_and_bosses/games/views.py\n"
+            "similarity index 90%\nrename from binge_and_bosses/flask/views.py\n"
+            "rename to binge_and_bosses/games/views.py\n@@ -1 +1 @@\n-old\n+def index(request):\n"
+        )
         limited = ai_review.limit_diff_shares(vendored + moved, per_dir=5_000)
         self.assertIn("+def index(request):", limited)
 
     def test_many_full_directories_still_leave_room_for_app_code(self):
         # Four directories that each want more than their 40k cap, then the app.
-        crowded = "".join(fake_file_diff(f"vendor{d}/pkg/m{i}.py", 600)
-                          for d in range(4) for i in range(10))
+        crowded = "".join(fake_file_diff(f"vendor{d}/pkg/m{i}.py", 600) for d in range(4) for i in range(10))
         diff = crowded + fake_file_diff("binge_and_bosses/games/views.py", 5)
         limited = ai_review.limit_diff_shares(diff)
         self.assertIn("binge_and_bosses/games/views.py", limited)
@@ -265,11 +268,7 @@ class ExtractTextTests(unittest.TestCase):
         self.assertEqual(ai_review.extract_text(response), "First.\nSecond.")
 
     def test_reports_refusal(self):
-        response = {
-            "output": [
-                {"type": "message", "content": [{"type": "refusal", "refusal": "no"}]}
-            ]
-        }
+        response = {"output": [{"type": "message", "content": [{"type": "refusal", "refusal": "no"}]}]}
         self.assertIn("declined", ai_review.extract_text(response))
 
     def test_empty_output_gives_empty_text(self):
@@ -277,16 +276,21 @@ class ExtractTextTests(unittest.TestCase):
 
 
 def done(text="ok", status="completed"):
-    return {"id": "resp_1", "status": status,
-            "output": [{"type": "message", "content": [{"type": "output_text", "text": text}]}]}
+    return {
+        "id": "resp_1",
+        "status": status,
+        "output": [{"type": "message", "content": [{"type": "output_text", "text": text}]}],
+    }
 
 
 class CallOpenAITests(unittest.TestCase):
     def call(self, responses, clock=None):
-        with mock.patch.object(ai_review, "request_json", side_effect=responses) as req, \
-                mock.patch.object(ai_review.time, "sleep") as sleep, \
-                mock.patch.object(ai_review.time, "monotonic", side_effect=clock or (lambda: 0)), \
-                mock.patch("builtins.print") as printed:
+        with (
+            mock.patch.object(ai_review, "request_json", side_effect=responses) as req,
+            mock.patch.object(ai_review.time, "sleep") as sleep,
+            mock.patch.object(ai_review.time, "monotonic", side_effect=clock or (lambda: 0)),
+            mock.patch("builtins.print") as printed,
+        ):
             try:
                 return ai_review.call_openai("key", "guide", "input"), req, sleep, printed
             except RuntimeError as err:
@@ -330,8 +334,16 @@ class CallOpenAITests(unittest.TestCase):
         self.assertIn("server_error", str(result))
 
     def test_empty_review_raises_with_status(self):
-        result, _, _, _ = self.call([{"id": "resp_1", "status": "incomplete", "output": [],
-                                      "incomplete_details": {"reason": "max_output_tokens"}}])
+        result, _, _, _ = self.call(
+            [
+                {
+                    "id": "resp_1",
+                    "status": "incomplete",
+                    "output": [],
+                    "incomplete_details": {"reason": "max_output_tokens"},
+                }
+            ]
+        )
         self.assertIn("max_output_tokens", str(result))
 
 
@@ -421,8 +433,10 @@ class CollapsePreviousReviewsTests(unittest.TestCase):
 
     def test_graphql_error_is_a_warning_not_a_crash(self):
         responses = [[review(1)], {"errors": [{"message": "forbidden"}]}]
-        with mock.patch.object(ai_review, "request_json", side_effect=responses), \
-                mock.patch("builtins.print") as printed:
+        with (
+            mock.patch.object(ai_review, "request_json", side_effect=responses),
+            mock.patch("builtins.print") as printed,
+        ):
             ai_review.collapse_previous_reviews("org/repo", "5", "tok", keep_id=5)
         self.assertIn("::warning::", printed.call_args.args[0])
 
@@ -464,15 +478,15 @@ class GetConversationTests(unittest.TestCase):
             comment("xamspanda", "Not changing the trigger", "2026-10-12T11:00:00Z"),
             comment("dependabot[bot]", "bot noise", "2026-10-12T11:30:00Z"),
         ]
-        inline = [comment("Carlos-Luc", "Why 300s?", "2026-10-12T13:00:00Z",
-                          path=".github/scripts/ai_review.py", line=98)]
+        inline = [
+            comment("Carlos-Luc", "Why 300s?", "2026-10-12T13:00:00Z", path=".github/scripts/ai_review.py", line=98)
+        ]
         _, discussion = self.conversation(reviews, issue_comments, inline)
 
         self.assertNotIn("bot noise", discussion)
         self.assertNotIn(ai_review.REVIEW_MARKER, discussion)
         self.assertNotIn("RyanR04", discussion)
-        order = [discussion.index(text) for text in
-                 ("Not changing the trigger", "Looks good to me", "Why 300s?")]
+        order = [discussion.index(text) for text in ("Not changing the trigger", "Looks good to me", "Why 300s?")]
         self.assertEqual(order, sorted(order))
         self.assertIn("@xamspanda", discussion)
         self.assertIn("comment on .github/scripts/ai_review.py:98", discussion)
@@ -486,9 +500,10 @@ class GetConversationTests(unittest.TestCase):
 
     def test_long_discussion_keeps_the_latest(self):
         # One comment per minute, so note 099 is the newest.
-        comments = [comment("xamspanda", f"note {i:03}" + "x" * 500,
-                            f"2026-10-12T{10 + i // 60:02}:{i % 60:02}:00Z")
-                    for i in range(100)]
+        comments = [
+            comment("xamspanda", f"note {i:03}" + "x" * 500, f"2026-10-12T{10 + i // 60:02}:{i % 60:02}:00Z")
+            for i in range(100)
+        ]
         _, discussion = self.conversation([], comments)
         self.assertLessEqual(len(discussion), ai_review.MAX_DISCUSSION_CHARS + 40)
         self.assertTrue(discussion.startswith("(earlier discussion omitted)"))
@@ -498,15 +513,17 @@ class GetConversationTests(unittest.TestCase):
 
 class BuildInputContextTests(unittest.TestCase):
     def test_includes_commits_previous_review_and_discussion(self):
-        text = ai_review.build_input("t", "b", "+x", False, commits="abc1 Fix bug",
-                                     previous_review="Must fix: X", discussion="@a: done")
+        text = ai_review.build_input(
+            "t", "b", "+x", False, commits="abc1 Fix bug", previous_review="Must fix: X", discussion="@a: done"
+        )
         for part in ("Fix bug", "Your previous review", "Must fix: X", "@a: done"):
             self.assertIn(part, text)
         self.assertLess(text.index("@a: done"), text.index("Diff:"))
 
     def test_all_pr_content_is_framed_as_data_before_it_appears(self):
-        text = ai_review.build_input("TITLE", "BODY", "+DIFF", False, commits="COMMITS",
-                                     previous_review="PREVIOUS", discussion="DISCUSSION")
+        text = ai_review.build_input(
+            "TITLE", "BODY", "+DIFF", False, commits="COMMITS", previous_review="PREVIOUS", discussion="DISCUSSION"
+        )
         framing = text.index("not instructions")
         for part in ("TITLE", "BODY", "COMMITS", "DISCUSSION", "+DIFF"):
             self.assertLess(framing, text.index(part))

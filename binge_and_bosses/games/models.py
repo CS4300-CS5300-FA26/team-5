@@ -4,7 +4,8 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 # Create your models here.
 
-#Game Model
+
+# Game Model
 class Game(models.Model):
     # The game's IGDB id
     igdb_id = models.IntegerField(unique=True, null=True, blank=True)
@@ -17,14 +18,14 @@ class Game(models.Model):
     game_genre = models.TextField(blank=True)
     game_platforms = models.TextField(blank=True)
 
-class Catalog(models.Model):
 
+class Catalog(models.Model):
     class Status(models.TextChoices):
-        NOT_STARTED = 'not_started', 'Not Started'
-        PLAYING = 'playing', 'Playing'
-        COMPLETED = 'completed', 'Completed'
-        ON_HOLD = 'on_hold', 'On Hold'
-        DROPPED = 'dropped', 'Dropped'
+        NOT_STARTED = "not_started", "Not Started"
+        PLAYING = "playing", "Playing"
+        COMPLETED = "completed", "Completed"
+        ON_HOLD = "on_hold", "On Hold"
+        DROPPED = "dropped", "Dropped"
 
     class Meta:
         constraints = [
@@ -35,13 +36,13 @@ class Catalog(models.Model):
             ),
         ]
 
-    games = models.ForeignKey(Game,on_delete=models.CASCADE)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
+    games = models.ForeignKey(Game, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NOT_STARTED)
     rating = models.PositiveSmallIntegerField(
-        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)],
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
     )
     review = models.TextField(max_length=1000, blank=True)
     review_edited = models.BooleanField(default=False)
-
-

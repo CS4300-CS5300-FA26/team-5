@@ -3,13 +3,15 @@ from django.conf import settings
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
+
 # Create your models here.
 def avatar_upload_path(instance, filename):
     """
-        Store each avatar as avatars/user_<ID>.<file_extention> so filenames are predictable
+    Store each avatar as avatars/user_<ID>.<file_extention> so filenames are predictable
     """
     ext = filename.rsplit(".", 1)[-1].lower()
     return f"avatars/user_{instance.user_id}.{ext}"
+
 
 class Profile(models.Model):
     # One profile per user
@@ -22,18 +24,20 @@ class Profile(models.Model):
     def __str__(self):
         return f"Profile for {self.user}"
 
+
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def create_profile(sender, instance, created, **kwargs):
     """
-        Automatically create a profile whenever a new user signs up
+    Automatically create a profile whenever a new user signs up
     """
     if created:
         Profile.objects.create(user=instance)
 
+
 @receiver(post_delete, sender=Profile)
 def delete_avatar_file(sender, instance, **kwargs):
     """
-        Remove the avatar profile when a user profile is deleted
+    Remove the avatar profile when a user profile is deleted
     """
     if instance.avatar:
         instance.avatar.delete(save=False)

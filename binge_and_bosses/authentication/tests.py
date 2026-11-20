@@ -2,15 +2,14 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
+
 # Create your tests here.
 class SignupTests(TestCase):
     """
-        Test for the registration functionality
+    Test for the registration functionality
     """
-    duplicate_message = (
-        "Unable to create an account with those details. "
-        "Try logging in or resetting your password."
-    )
+
+    duplicate_message = "Unable to create an account with those details. Try logging in or resetting your password."
 
     def setUp(self):
         self.url = reverse("signup")
@@ -18,12 +17,12 @@ class SignupTests(TestCase):
             "username": "test_user",
             "email": "test_user@example.com",
             "password1": "SuperSecureP@$swo0RD",
-            "password2": "SuperSecureP@$swo0RD"
+            "password2": "SuperSecureP@$swo0RD",
         }
 
     def test_signup_page_200(self):
         """
-            Test that the signup page loads and uses the correct template
+        Test that the signup page loads and uses the correct template
         """
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
@@ -31,22 +30,21 @@ class SignupTests(TestCase):
 
     def test_successful_signup(self):
         """
-            Test that when entering valid data, the user is in the database
+        Test that when entering valid data, the user is in the database
         """
         self.client.post(self.url, self.valid_registration_details)
         self.assertTrue(get_user_model().objects.filter(username="test_user").exists())
 
     def test_successful_signup_redirect(self):
         """
-            Test that a valid signup redirects to the library page
+        Test that a valid signup redirects to the library page
         """
         response = self.client.post(self.url, self.valid_registration_details)
         self.assertRedirects(response, reverse("library"), fetch_redirect_response=False)
 
-
     def test_successful_login_after_signup(self):
         """
-            Test that once the user signs up, the user is logged in as the newly created user
+        Test that once the user signs up, the user is logged in as the newly created user
         """
         self.client.post(self.url, self.valid_registration_details)
         user = get_user_model().objects.get(username="test_user")
@@ -54,13 +52,13 @@ class SignupTests(TestCase):
 
     def test_mismatched_passwords_fail(self):
         """
-            Test that if the user enters 2 different passwords, the user is not created
+        Test that if the user enters 2 different passwords, the user is not created
         """
         invalid_registration_details = {
             "username": "bad_user",
             "email": "bad_user@example.com",
             "password1": "Thisisthefirstpassword",
-            "password2": "thisisthefirstpassword"
+            "password2": "thisisthefirstpassword",
         }
         response = self.client.post(self.url, invalid_registration_details)
 
@@ -70,7 +68,7 @@ class SignupTests(TestCase):
 
     def test_unique_usernames(self):
         """
-            Ensure that the username of a new user is unique to that user
+        Ensure that the username of a new user is unique to that user
         """
         get_user_model().objects.create_user(username="test_user", password="mesaapassword")
         response = self.client.post(self.url, self.valid_registration_details)
@@ -87,7 +85,7 @@ class SignupTests(TestCase):
 
     def test_unique_email(self):
         """
-            Ensure that the email of a new user is unique to that user
+        Ensure that the email of a new user is unique to that user
         """
         get_user_model().objects.create_user(
             username="test_email", email="test_user@example.com", password="luke_I_am_your_Password"
@@ -103,21 +101,17 @@ class SignupTests(TestCase):
         self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_duplicate_signup_errors_are_identical(self):
-        user = get_user_model().objects.create_user(
-            username="existing_player", email="taken@example.com"
-        )
-        email_taken = self.client.post(self.url, {
-            **self.valid_registration_details, "email": user.email
-        })
+        user = get_user_model().objects.create_user(username="existing_player", email="taken@example.com")
+        email_taken = self.client.post(self.url, {**self.valid_registration_details, "email": user.email})
         for username, email in (
             (user.username, "new@example.com"),
             (user.username, user.email),
             (user.username.upper(), "new@example.com"),
         ):
             with self.subTest(username=username, email=email):
-                response = self.client.post(self.url, {
-                    **self.valid_registration_details, "username": username, "email": email
-                })
+                response = self.client.post(
+                    self.url, {**self.valid_registration_details, "username": username, "email": email}
+                )
                 self.assertEqual(response.context["form"].errors, email_taken.context["form"].errors)
                 self.assertEqual(response.context["form"].errors, {"__all__": [self.duplicate_message]})
                 self.assertContains(response, self.duplicate_message, count=1)
@@ -125,29 +119,30 @@ class SignupTests(TestCase):
                 self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_invalid_email_error_is_unchanged(self):
-        response = self.client.post(self.url, {
-            **self.valid_registration_details, "email": "not-an-email"
-        })
+        response = self.client.post(self.url, {**self.valid_registration_details, "email": "not-an-email"})
         self.assertEqual(response.context["form"].errors, {"email": ["Enter a valid email address."]})
         self.assertContains(response, "Enter a valid email address.")
         self.assertEqual(get_user_model().objects.count(), 0)
 
     def test_duplicate_username_preserves_other_validation_errors(self):
         get_user_model().objects.create_user(username="test_user", email="taken@example.com")
-        response = self.client.post(self.url, {
-            **self.valid_registration_details, "email": "not-an-email",
-            "password1": "Sh0rt!", "password2": "Sh0rt!"
-        })
-        self.assertEqual(response.context["form"].errors, {
-            "__all__": [self.duplicate_message],
-            "email": ["Enter a valid email address."],
-            "password2": ["This password is too short. It must contain at least 8 characters."],
-        })
+        response = self.client.post(
+            self.url,
+            {**self.valid_registration_details, "email": "not-an-email", "password1": "Sh0rt!", "password2": "Sh0rt!"},
+        )
+        self.assertEqual(
+            response.context["form"].errors,
+            {
+                "__all__": [self.duplicate_message],
+                "email": ["Enter a valid email address."],
+                "password2": ["This password is too short. It must contain at least 8 characters."],
+            },
+        )
         self.assertEqual(get_user_model().objects.count(), 1)
 
     def test_password_requirements(self):
         """
-            Ensure that weak passwords arent allowed
+        Ensure that weak passwords arent allowed
         """
         data = {**self.valid_registration_details, "password1": "password", "password2": "password"}
         response = self.client.post(self.url, data)
@@ -157,14 +152,12 @@ class SignupTests(TestCase):
 
         # Make sure the user didnt get created with a weak password
         self.assertFalse(get_user_model().objects.filter(username="test_user").exists())
-        self.assertEqual(response.context["form"].errors, {
-            "password2": ["This password is too common."]
-        })
+        self.assertEqual(response.context["form"].errors, {"password2": ["This password is too common."]})
         self.assertContains(response, "This password is too common.")
 
     def test_password_was_hashed(self):
         """
-            Check that the password was hashed and is not stored in plaintext
+        Check that the password was hashed and is not stored in plaintext
         """
         self.client.post(self.url, self.valid_registration_details)
         user = get_user_model().objects.get(username="test_user")
@@ -177,27 +170,27 @@ class SignupTests(TestCase):
 
     def test_missing_fields_fail(self):
         """
-            Check that when submitting an empty form, it should not create a user
+        Check that when submitting an empty form, it should not create a user
         """
         response = self.client.post(self.url, {})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(get_user_model().objects.count(), 0)
 
+
 class LoginTests(TestCase):
-    '''
-        Tests for the login functionality
-    '''
+    """
+    Tests for the login functionality
+    """
+
     def setUp(self):
         self.url = reverse("login")
         self.user = get_user_model().objects.create_user(
-            username="user_a",
-            email="usera@example.com",
-            password="TesTINGp#ass0r0d"
+            username="user_a", email="usera@example.com", password="TesTINGp#ass0r0d"
         )
 
     def test_login_page_200(self):
         """
-            Test that the login page resolves and is the login page template
+        Test that the login page resolves and is the login page template
         """
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
@@ -205,12 +198,9 @@ class LoginTests(TestCase):
 
     def test_login_correct_creds(self):
         """
-            Test a login with correct credentials
+        Test a login with correct credentials
         """
-        response = self.client.post(self.url, {
-            "username": "user_a",
-            "password": "TesTINGp#ass0r0d"
-        })
+        response = self.client.post(self.url, {"username": "user_a", "password": "TesTINGp#ass0r0d"})
 
         # Check that we redirect back to user's library
         self.assertRedirects(response, "/library/", fetch_redirect_response=False)
@@ -220,12 +210,9 @@ class LoginTests(TestCase):
 
     def test_login_incorrect_pass(self):
         """
-            Test that the login does not log a user in when inputting the wrong password
+        Test that the login does not log a user in when inputting the wrong password
         """
-        response = self.client.post(self.url, {
-            "username": "user_a",
-            "password": "a_wrong_pass!"
-        })
+        response = self.client.post(self.url, {"username": "user_a", "password": "a_wrong_pass!"})
 
         # Check that the login did not redirect but re-rendered
         self.assertEqual(response.status_code, 200)
@@ -235,48 +222,38 @@ class LoginTests(TestCase):
 
     def test_login_with_unregistered_user(self):
         """
-            Test that putting an unregistered username does not log the user in
+        Test that putting an unregistered username does not log the user in
         """
-        response = self.client.post(self.url, {
-            "username": "unknown",
-            "password": "TesTINGp#ass0r0d"
-        })
+        response = self.client.post(self.url, {"username": "unknown", "password": "TesTINGp#ass0r0d"})
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_login_error_does_not_reveal_registered_username(self):
         """
-            Test that a wrong password and an unregistered username show the same error,
-            so the message doesn't reveal whether a username is registered
+        Test that a wrong password and an unregistered username show the same error,
+        so the message doesn't reveal whether a username is registered
         """
-        wrong_password = self.client.post(self.url, {
-            "username": "user_a",
-            "password": "a_wrong_pass!"
-        })
-        unregistered = self.client.post(self.url, {
-            "username": "unknown",
-            "password": "TesTINGp#ass0r0d"
-        })
+        wrong_password = self.client.post(self.url, {"username": "user_a", "password": "a_wrong_pass!"})
+        unregistered = self.client.post(self.url, {"username": "unknown", "password": "TesTINGp#ass0r0d"})
 
         self.assertContains(wrong_password, "Invalid username or password.")
         self.assertContains(unregistered, "Invalid username or password.")
 
+
 class LogoutTest(TestCase):
     def test_logout_clears_session(self):
         """
-            Test that when you logout, you are *really* logged out
+        Test that when you logout, you are *really* logged out
         """
-        user = get_user_model().objects.create_user(
-            username="user_a", password="CutMyLif3IntoP@sswords"
-        )
+        user = get_user_model().objects.create_user(username="user_a", password="CutMyLif3IntoP@sswords")
         self.client.force_login(user)
         self.client.post(reverse("logout"))
         self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_library_redirects_anon_user(self):
         """
-            Test that we cannot simply access library page as an unauthenticated user
-            and it redirects to the login page
+        Test that we cannot simply access library page as an unauthenticated user
+        and it redirects to the login page
         """
         response = self.client.get(reverse("library"))
         self.assertRedirects(response, f"{reverse('login')}?next={reverse('library')}", fetch_redirect_response=False)
