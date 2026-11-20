@@ -18,7 +18,7 @@
         </div>
     {% else %}
         {% if query %}
-            <a class="details-back" href="{% url 'game_search' %}?q={{ query|urlencode:"" }}">‹ Back to results</a>
+            <a class="details-back" href="{% url 'game_search' %}?q={{ query|urlencode:"" }}{% if mode %}&amp;mode={{ mode }}{% endif %}">‹ Back to results</a>
         {% endif %}
 
         <div class="details">

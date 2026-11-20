@@ -2,6 +2,7 @@
     Behave hooks. Scenarios tagged @fake_igdb get fake IGDB answers, so they never call the real API.
     Steps read the fake games from context.fake_games (context.fake_game is the first one), and can
     change the answers through the mocks context.search_game and context.get_game_details.
+    Search by description is faked too (context.search_by_description), so no scenario calls OpenAI.
 """
 import copy
 from unittest.mock import Mock, patch
@@ -53,11 +54,17 @@ def before_scenario(context, scenario):
     def details(game_id):
         return next((game for game in context.fake_games if game["id"] == int(game_id)), None)
 
+    def describe(text):
+        # Every description finds the Pokemon games, the way "a monster-catching RPG" would
+        return search("Pokemon"), ["Role-playing (RPG)", "Game Boy"]
+
     context.search_game = Mock(side_effect=search)
     context.get_game_details = Mock(side_effect=details)
+    context.search_by_description = Mock(side_effect=describe)
     # Patch every place that imported an IGDB function
     for target, fake in [
         ("games.views.search_game", context.search_game),
+        ("games.views.search_by_description", context.search_by_description),
         ("games.catalog.get_game_details", context.get_game_details),
     ]:
         patcher = patch(target, fake)

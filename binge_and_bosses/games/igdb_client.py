@@ -11,13 +11,19 @@ from django.conf import settings
 from django.core.cache import cache
 
 TOKEN_URL = "https://id.twitch.tv/oauth2/token"
-API_URL = "https://api.igdb.com/v4/games"
+BASE_URL = "https://api.igdb.com/v4/"
+API_URL = BASE_URL + "games"
 COVER_URL = "https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg"
 TOKEN_CACHE_KEY = "igdb_access_token"
 FIELDS = "name,summary,first_release_date,total_rating,cover.image_id,genres.name,platforms.name"
 # Main games, standalone expansions, remakes, remasters, expanded games and ports.
 # Leaves out mods, DLC, bundles and alternate editions (version_parent), which crowd out the real game.
-RELEASES_ONLY = "where game_type = (0,4,8,9,10,11) & version_parent = null"
+RELEASES = "game_type = (0,4,8,9,10,11) & version_parent = null"
+RELEASES_ONLY = f"where {RELEASES}"
+# The kinds of names search by description can filter on, each an IGDB endpoint and a /games field
+VOCABULARY = ("genres", "themes", "game_modes", "platforms")
+# A game must have all of these it is asked for (any one of them if none has all); platforms only need one
+ALL_OF = ("genres", "themes", "game_modes")
 
 
 def search_game(game_name):
@@ -60,19 +66,73 @@ def get_game_details(game_id):
 
 
 
-def _query(body):
+def vocabulary():
+    """IGDB's genre, theme, game mode and platform names, as {kind: {name: id}}, or None if IGDB fails."""
+    names = cache.get("igdb_vocabulary")
+    if names is None:
+        names = {}
+        for kind in VOCABULARY:
+            rows = _query("fields name; limit 500;", kind)
+            if rows is None:
+                return None
+            names[kind] = {row["name"]: row["id"] for row in rows}
+        cache.set("igdb_vocabulary", names, timeout=24 * 3600)
+    return names
+
+
+def similar_games(title):
+    """IDs IGDB lists as similar to the best-known game with this title: [] if there's none, None if IGDB fails."""
+    matches = search_game(title)
+    if not matches:
+        return matches
+    rows = _query(f"fields similar_games; where id = {int(matches[0]['id'])};")
+    if rows is None:
+        return None
+    return rows[0].get("similar_games", []) if rows else []
+
+
+def find_games(filters):
+    """Up to 10 of the best-known games that match filters: lists of IGDB ids for each VOCABULARY kind,
+    'ids' (only these games, or None for any) and 'released_after'/'released_before' years (or None)."""
+    games = _find(filters, all_of=True)
+    if games == [] and any(len(filters[kind]) > 1 for kind in ALL_OF):
+        games = _find(filters, all_of=False)
+    return games
+
+
+def _find(filters, all_of):
+    conditions = [RELEASES]
+    for kind in VOCABULARY:
+        if filters[kind]:
+            ids = ",".join(str(int(i)) for i in filters[kind])
+            conditions.append(f"{kind} = [{ids}]" if all_of and kind in ALL_OF else f"{kind} = ({ids})")
+    if filters["ids"] is not None:
+        conditions.append(f"id = ({','.join(str(int(i)) for i in filters['ids'])})")
+    if filters["released_after"]:
+        conditions.append(f"first_release_date >= {_new_year(filters['released_after'])}")
+    if filters["released_before"]:
+        conditions.append(f"first_release_date < {_new_year(filters['released_before'] + 1)}")
+    games = _query(f"fields {FIELDS}; where {' & '.join(conditions)}; sort total_rating_count desc; limit 10;")
+    return None if games is None else [_game(game) for game in games]
+
+
+def _new_year(year):
+    return int(datetime(int(year), 1, 1, tzinfo=timezone.utc).timestamp())
+
+
+def _query(body, endpoint="games"):
     try:
-        response = _post(body, _token())
+        response = _post(body, _token(), endpoint)
         if response.status_code == HTTPStatus.UNAUTHORIZED:   # the token was revoked or expired early
-            response = _post(body, _token(refresh=True))
+            response = _post(body, _token(refresh=True), endpoint)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException:
         return None
 
 
-def _post(body, token):
-    return requests.post(API_URL, data=body, timeout=10, headers={
+def _post(body, token, endpoint="games"):
+    return requests.post(BASE_URL + endpoint, data=body, timeout=10, headers={
         "Client-ID": settings.IGDB_CLIENT_ID,
         "Authorization": f"Bearer {token}",
     })

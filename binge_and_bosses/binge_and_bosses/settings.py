@@ -30,6 +30,9 @@ SECRET_KEY = config('SECRET_KEY')
 # IGDB game data: the Client ID and Secret of a Twitch developer app (dev.twitch.tv/console/apps)
 IGDB_CLIENT_ID = config('IGDB_CLIENT_ID')
 IGDB_CLIENT_SECRET = config('IGDB_CLIENT_SECRET')
+# Search by description: an OpenAI API key (platform.openai.com/api-keys). Without one, only title search works.
+OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
+OPENAI_MODEL = config('OPENAI_MODEL', default='gpt-6-luna')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # debug set to false for production

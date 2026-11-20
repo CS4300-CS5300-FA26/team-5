@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 from .models import Catalog, Game
 from .igdb_client import search_game
+from .describe import search_by_description
 from .catalog import get_or_import
 from .forms import ReviewForm
 # Create your views here.
@@ -107,18 +108,30 @@ def save_review(request, game_id):
 
 
 #return search results from IGDB based on user input, return error on empty
+def _search_mode(request):
+    """'describe' for search by description, '' for search by title."""
+    return "describe" if request.GET.get("mode") == "describe" else ""
+
+
 def game_search(request):
     query = request.GET.get("q", "").strip()
-    games = search_game(query) if query else []
+    mode = _search_mode(request)
+    wanted = []
+    if not query:
+        games = []
+    elif mode:
+        games, wanted = search_by_description(query) or (None, [])
+    else:
+        games = search_game(query)
     last_search = request.session.get("last_search", {})
     if games:
         # Keep what search.html shows, so the results survive an IGDB outage.
-        request.session["last_search"] = {"q": query, "games": [
+        request.session["last_search"] = {"q": query, "mode": mode, "wanted": wanted, "games": [
             {"id": g["id"], "name": g["name"], "cover": g["cover"], "released": g["released"]}
             for g in games
         ]}
-    elif games is None and last_search.get("q") == query:
-        games = last_search["games"]
+    elif games is None and (last_search.get("q"), last_search.get("mode", "")) == (query, mode):
+        games, wanted = last_search["games"], last_search.get("wanted", [])
     error = games is None
     games = games or []
 
@@ -132,6 +145,8 @@ def game_search(request):
     return render(request, "games/search.html", {
         "games": games,
         "query": query,
+        "mode": mode,
+        "wanted": wanted,
         "error": error,
         "owned": owned,
     })
@@ -145,13 +160,15 @@ def game_details(request, game_id):
 
     if game is None and "q" in request.GET:
         messages.error(request, "Could not load game details. Try again.")
-        return redirect(reverse("game_search", query={"q": request.GET["q"]}))
+        back = {"q": request.GET["q"], "mode": _search_mode(request)}
+        return redirect(reverse("game_search", query={key: value for key, value in back.items() if value}))
 
     players = Catalog.objects.filter(games__igdb_id=game_id)
     return render(request, "games/details.html", {
         "game": game,
         "error": game is None,
         "query": request.GET.get("q", ""),
+        "mode": _search_mode(request),
         "entry": entry,
         "in_library": entry is not None,
         "statuses": Catalog.Status.choices,
