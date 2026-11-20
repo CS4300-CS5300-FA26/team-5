@@ -44,6 +44,11 @@ IGDB_CLIENT_SECRET=<CLIENT_SECRET_HERE>
 ```
 Django won't start without all three. IGDB uses Twitch accounts: turn on two-factor login on your Twitch account, register an app at [dev.twitch.tv/console/apps](https://dev.twitch.tv/console/apps) (OAuth Redirect URL `http://localhost`, client type Confidential), and copy its Client ID and a new Client Secret. See [IGDB's getting started guide](https://api-docs.igdb.com/#getting-started). For running tests only, `IGDB_CLIENT_ID=test-id` and `IGDB_CLIENT_SECRET=test-secret` are enough, but searches on the running site need real credentials.
 
+Search by description also needs an OpenAI API key (from [platform.openai.com/api-keys](https://platform.openai.com/api-keys)). It's optional: without one, Django still starts and search by title still works.
+```.env
+OPENAI_API_KEY=<OPENAI_API_KEY_HERE>
+```
+
 You can generate a secret key by running
 ```
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
@@ -198,3 +203,4 @@ A PR appears in the first matching category; add its manual label before generat
 | 11/17/2026 | Claude Code (Claude Opus 5.5) | Checked that bingeandbosses.com and www serve the app over HTTPS (#39), pointed the README, deployment docs and deploy job at it, and made Heroku redirect HTTP to HTTPS with secure cookies. Wrote the settings tests first and saw them fail. Ran the unit tests, Behave and coverage locally. Submitted in a pull request for teammate review. |
 | 11/17/2026 | Claude Code (Claude Opus 5.5) | Removed the two whitespace-only lines that failed `lint` on `main` after #90, and restored the 11/15 Gemini and 11/16 Codex log rows that #90's merge mixed together. Ran `ruff check`. Submitted in a pull request for teammate review. |
 | 11/17/2026 | Claude Code (Claude Opus 5.5) | Diagnosed the 500 errors on production after the Cloudinary config vars were set (releases v25 to v27), changed the Cloudinary settings so static files and `collectstatic` keep working, and wrote two settings tests first and saw them fail. Ran the unit tests, Behave, coverage and Ruff locally. Submitted in a pull request for teammate review. |
+| 11/19/2026 | Claude Code (Claude Opus 5.5) | Researched where AI fits in the project (Jev, recommendations and search), then built search by description: an OpenAI model (`gpt-6-luna`) turns a description into IGDB genres, themes, game modes, platforms, years and a game to compare with, and IGDB finds the games. Wrote the tests first and saw them fail. Ran the unit tests, Behave, coverage and Ruff locally, and checked six descriptions against the real OpenAI and IGDB APIs with a separate dev Twitch app. |

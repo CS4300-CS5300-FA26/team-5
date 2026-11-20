@@ -15,6 +15,7 @@ The root [Procfile](../Procfile) declares the web process and a release command.
 The Heroku app needs these config vars:
 
 - `SECRET_KEY`, `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` (all required at startup; CI's dummy values can't make real IGDB requests)
+- `OPENAI_API_KEY` for search by description (optional: without it, describe searches show an error and title search still works). `OPENAI_MODEL` picks the model and defaults to `gpt-6-luna`.
 - `DEBUG=False`
 - `ALLOWED_HOSTS` containing `bingeandbosses.com`, `www.bingeandbosses.com` and `binge-and-bosses-team5-4e736711771e.herokuapp.com`
 - `CSRF_TRUSTED_ORIGINS` containing `https://bingeandbosses.com`, `https://www.bingeandbosses.com` and `https://binge-and-bosses-team5-4e736711771e.herokuapp.com`

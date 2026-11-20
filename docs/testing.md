@@ -55,6 +55,8 @@ IGDB client unit tests override the cache with Django's local-memory backend, so
 ## Tests that use IGDB
 Tests must use fake IGDB responses and never call the real API. `games/tests.py` patches `games.igdb_client.requests.post` for client tests (both the Twitch token request and the IGDB query go through it), `games.views.search_game` for search view tests and `games.catalog.get_game_details` for game details. Behave scenarios tagged `@fake_igdb` get fake IGDB answers from `features/environment.py`; steps change them through `context.search_game` and `context.get_game_details`. The dummy `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` values satisfy settings; they aren't working credentials.
 
+Tests never call OpenAI either. `games/test_describe.py` patches `games.describe.OpenAI` and the IGDB functions that search by description uses, and patches `games.views.search_by_description` for the search page. Behave scenarios tagged `@fake_igdb` also get a fake `context.search_by_description`. `OPENAI_API_KEY` can stay unset when running the tests.
+
 ## Writing a test
 Tests live in each app's `tests.py`. Each test is a method whose name starts with `test_`. [games/tests.py](../binge_and_bosses/games/tests.py) is a short example:
 

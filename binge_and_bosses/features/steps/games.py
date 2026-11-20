@@ -8,6 +8,9 @@ from django.urls import reverse
 
 
 def matching_games(context):
+    # A description finds what the fake search by description returns; a title finds the games named like it
+    if getattr(context, "mode", "") == "describe":
+        return context.search_by_description(context.query)[0]
     return [game for game in context.fake_games if context.query.lower() in game["name"].lower()]
 
 
@@ -21,9 +24,22 @@ def search_without_matches(context):
     search_for_title(context, "no-such-game")
 
 
+@given('I describe "{description}"')
+def describe_a_game(context, description):
+    context.query = description
+    context.mode = "describe"
+
+
+@given("the description can't be read")
+def description_fails(context):
+    context.search_by_description.side_effect = None
+    context.search_by_description.return_value = None
+
+
 @when("results load")
 def load_results(context):
-    context.response = context.test.client.get(reverse("game_search"), {"q": context.query})
+    params = {"q": context.query, "mode": getattr(context, "mode", "")}
+    context.response = context.test.client.get(reverse("game_search"), params)
 
 
 @then("I see games with matching titles and cover art")
@@ -36,6 +52,13 @@ def matching_titles_and_covers(context):
         context.test.assertIsNotNone(page.find("img", attrs={
             "src": game["cover"], "alt": game["name"],
         }))
+
+
+@then("I see what the search looked for")
+def see_what_search_looked_for(context):
+    page = BeautifulSoup(context.response.content, "html.parser")
+    labels = [pill.get_text() for pill in page.select(".search-wanted .pill")]
+    context.test.assertEqual(labels, ["Role-playing (RPG)", "Game Boy"])
 
 
 @given("search results are on the screen")

@@ -11,6 +11,7 @@ dependencies = [
     "django-cloudinary-storage>=0.3.0",
     "djangorestframework>=3.18.3",
     "gunicorn>=26.2.0",
+    "openai>=3.57.0",
     "pillow>=13.0.0",
     "psycopg2-binary>=2.9.13",
     "python-decouple>=3.8",
