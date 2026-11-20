@@ -156,3 +156,40 @@ class HttpsSettingsTests(TestCase):
         self.assertFalse(redirect)
         self.assertFalse(session_secure)
         self.assertFalse(csrf_secure)
+
+
+class CloudinarySettingsTests(TestCase):
+    """Turning on Cloudinary for uploads must not break the Heroku build or static files."""
+
+    def run_with_cloudinary(self, *args):
+        # Settings are read once at startup, so each check runs in a fresh process.
+        return subprocess.run(
+            [sys.executable, *args],
+            cwd=settings.BASE_DIR,
+            env={
+                **os.environ,
+                "DJANGO_SETTINGS_MODULE": "binge_and_bosses.settings",
+                "DEBUG": "False",
+                "REDIS_URL": "redis://127.0.0.1:1/0",
+                "CLOUDINARY_CLOUD_NAME": "test-cloud",
+                "CLOUDINARY_API_KEY": "test-key",
+                "CLOUDINARY_API_SECRET": "test-secret",
+            },
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def test_collectstatic_runs_with_cloudinary_vars(self):
+        result = self.run_with_cloudinary("manage.py", "collectstatic", "--noinput", "--dry-run")
+        self.assertEqual(result.returncode, 0, result.stderr[-500:])
+
+    def test_static_tags_work_with_cloudinary_vars_and_no_manifest(self):
+        # Heroku may build the slug before the Cloudinary vars exist, so no manifest is written.
+        code = (
+            "import django; django.setup(); from django.templatetags.static import static;"
+            " print(static('css/navbar.css'))"
+        )
+        result = self.run_with_cloudinary("-c", code)
+        self.assertEqual(result.returncode, 0, result.stderr[-500:])
+        self.assertEqual(result.stdout.strip(), "/static/css/navbar.css")
