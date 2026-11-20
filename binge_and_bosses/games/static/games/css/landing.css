@@ -2,7 +2,7 @@
    Colors come from Bootstrap's variables so the pages match the nav bar and follow its dark mode. */
 .landing {
     --accent: var(--bs-primary);
-    --accent-press: #084298;              /* same pressed shadow as .auth-signup in navbar.css */
+    --accent-press: #084298;              /* the ledge under .btn-arcade */
     --ink: var(--bs-emphasis-color);
     --muted: var(--bs-secondary-color);
     --line: var(--bs-border-color);
@@ -403,12 +403,6 @@
     letter-spacing: -0.01em;
 }
 
-.home-search {
-    display: flex;
-    gap: 0.75rem;
-    max-width: 40rem;
-}
-
 .home-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -544,8 +538,7 @@
 }
 
 .library-top .hud,
-.library-sort .hud,
-.search-count { color: var(--muted); }
+.library-sort .hud { color: var(--muted); }
 
 .library-sort {
     display: flex;
@@ -623,71 +616,222 @@
     font-size: 0.8125rem;
 }
 
-/* Search page (games/search.html): results look like step 2 on the landing page */
-.landing .search-count { margin-bottom: 0.75rem; }   /* beats .landing p */
+/* Search page (games/search.html): the query as the heading, tabs for titles or AI, then a grid of covers.
+   The search box itself is in the top bar (navbar.css). */
+.search {
+    --lift: 0 1px 2px rgb(0 0 0 / 0.06), 0 12px 28px -16px rgb(0 0 0 / 0.5);
 
-.search-results {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.75rem;   /* .landing's gap suits the long landing page, not this one */
 }
 
-.search-results article {
+.search-top {
     display: grid;
-    grid-template-columns: 7rem minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.5rem 1rem 0.5rem 0.5rem;
-    background: var(--sunk);
-    border-radius: 0.75rem;
+    gap: 0.5rem;
 }
 
-.search-results article:hover { box-shadow: inset 0 0 0 2px var(--accent); }
-
-.search-results .cover {
-    aspect-ratio: 16 / 9;
-    border-radius: 0.4rem;
-}
-
-.search-results article > div {
-    display: grid;
-    gap: 0.25rem;
-    min-width: 0;
+.search-eyebrow {
+    color: var(--muted);
     font-size: 0.875rem;
+    font-weight: 500;
 }
 
-.search-cta {
-    color: var(--accent);
+.search-top h1 {
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    letter-spacing: -0.02em;
+    overflow-wrap: anywhere;
+}
+
+.search-hint {
+    max-width: 40rem;
+    color: var(--muted);
+}
+
+.search-hint a {
+    color: var(--ai-ink);
+    font-weight: 500;
+    text-decoration-color: rgba(139, 92, 246, 0.35);
+    text-underline-offset: 0.2em;
+}
+
+/* Tabs: the same query by title or by AI, with the count on the right */
+.search-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.75rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.search-tabs a {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.625rem 0.875rem;
+    color: var(--muted);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.search-tabs a:hover { color: var(--ink); }
+
+.search-tabs a[aria-current="page"] { color: var(--ink); }
+
+.search-tabs a[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    right: 0.5rem;
+    bottom: -1px;
+    left: 0.5rem;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--ink);
+}
+
+.search-tabs .search-tab-ai svg { color: #8b5cf6; }
+.search-tabs .search-tab-ai[aria-current="page"] { color: var(--ai-ink); }
+.search-tabs .search-tab-ai[aria-current="page"]::after { background: var(--ai); }
+
+.search-count {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
+.search-found {
+    display: grid;
+    gap: 1.5rem;
+}
+
+/* Baseline, not center: the lead and the pills use different sizes, and centering their line boxes puts the
+   words on different lines with some system fonts */
+.search-wanted {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.search-wanted-lead {
+    margin-right: 0.25rem;
+    background: var(--ai);
+    background-clip: text;
+    color: transparent;
     font-size: 0.875rem;
     font-weight: 600;
 }
 
-.search-results .home-panel { grid-column: 1 / -1; }
-
-/* Search by title or by description: the choice sits on its own line under the box */
-.search-form { flex-wrap: wrap; }
-.search-form input[name="q"] { flex: 1 1 14rem; }
-.search-mode {
-    display: flex;
-    flex-basis: 100%;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin: 0;
-    padding: 0;
+.search-wanted .pill {
+    padding: 0.3rem 0.7rem;
     border: 0;
-    color: var(--muted);
+    background: var(--ai-soft);
+    color: var(--ai-ink);
+    font: 500 0.8125rem/1.2 var(--bs-body-font-family);
+    letter-spacing: 0;
+    text-transform: none;
 }
-.search-mode label { display: flex; gap: 0.375rem; align-items: center; }
 
-.search-wanted {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.375rem;
-    align-items: center;
-    color: var(--muted);
+/* Trim the line box to the capital letters, so the padding is the same above and below the word whatever the
+   font's ascent and descent */
+@supports (text-box: trim-both cap alphabetic) {
+    .search-wanted .pill {
+        padding-block: 0.5rem;
+        text-box: trim-both cap alphabetic;
+    }
 }
-.search-wanted .pill { --c: var(--accent); }
+
+.search-results {
+    grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+    gap: 2rem 1.25rem;
+}
+
+.search-results article {
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+}
+
+.search-cover {
+    position: relative;
+    margin-bottom: 0.5rem;
+}
+
+.search-results .cover {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border-radius: 0.625rem;
+}
+
+.search-results .cover {
+    background-color: var(--sunk);   /* while the image loads */
+    box-shadow: var(--lift);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-results article:hover .cover,
+.search-results article:has(a:focus-visible) .cover {
+    transform: translateY(-4px);
+    box-shadow: 0 0 0 2px var(--accent), 0 18px 32px -16px rgb(0 0 0 / 0.55);
+}
+
+.search-results h2 {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.9375rem;
+    line-height: 1.3;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.search-results h2 a {
+    color: var(--ink);
+    text-decoration: none;
+}
+
+.search-results h2 a:focus-visible { outline: none; }   /* the cover shows the focus ring */
+
+.search-year {
+    color: var(--muted);
+    font-size: 0.8125rem;
+}
+
+.search-owned {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    background: rgb(15 23 42 / 0.78);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    font-size: 0.6875rem;
+    font-weight: 600;
+}
+
+.search-owned::before { content: "✓ "; }
+
+.search-empty {
+    display: grid;
+    grid-column: 1 / -1;
+    gap: 0.375rem;
+    padding: 3rem 1.5rem;
+    border: 1px dashed var(--line);
+    border-radius: 1rem;
+    color: var(--muted);
+    text-align: center;
+}
+
+.search-empty strong {
+    color: var(--ink);
+    font-size: 1.0625rem;
+}
 
 .search-credit {
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
     color: var(--muted);
     font-size: 0.8125rem;
 }
@@ -969,8 +1113,7 @@
 
 @media (max-width: 767.98px) {
     .landing-hero,
-    .home-grid,
-    .search-results { grid-template-columns: minmax(0, 1fr); }
+    .home-grid { grid-template-columns: minmax(0, 1fr); }
 
     /* Phones: a small cover beside the title, then the save file, the game and its reviews */
     .details {
@@ -997,15 +1140,18 @@
     .landing-steps ol,
     .legend { grid-template-columns: minmax(0, 1fr); }
 
-    .search-results article {
-        grid-template-columns: 5rem minmax(0, 1fr) auto;
-        gap: 0.75rem;
+    .search-results {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.5rem 1rem;
     }
+
+    .search-tabs a { padding-inline: 0.625rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .caret { animation: none; }
     .btn-arcade,
     .home-covers .cover,
-    .library-grid .cover { transition: none; }
+    .library-grid .cover,
+    .search-results .cover { transition: none; }
 }

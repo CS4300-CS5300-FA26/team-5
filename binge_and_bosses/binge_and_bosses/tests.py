@@ -1,8 +1,11 @@
 import json
 import os
+import re
 import subprocess
 import sys
+from unittest.mock import patch
 
+from bs4 import BeautifulSoup
 from django.conf import settings
 from django.test import TestCase
 from django.contrib.auth import get_user_model
@@ -14,6 +17,9 @@ class NavBarUnauthenticated(TestCase):
     """
         What unauthenticated user's will see for the navbar
     """
+    def nav(self, url="/"):
+        return BeautifulSoup(self.client.get(url).content, "html.parser").select_one("nav")
+
     def test_navbar_brand_exists_and_links(self):
         """
             Test that on the navbar at the index, there exists
@@ -27,19 +33,15 @@ class NavBarUnauthenticated(TestCase):
     def test_login_link_exists(self):
         """
             Test that on the navbar at the index, there exists
-            the 'login' link that will redirect to '/accounts/login'
+            the 'Log in' link that will redirect to '/accounts/login'
         """
-        response = self.client.get("/")
-        self.assertContains(response, reverse("login"))
-        self.assertContains(response, "Login")
+        self.assertIsNotNone(self.nav().find("a", href=reverse("login"), string=re.compile("Log in")))
 
     def test_signup_link_exists(self):
         """
             Test that the signup link in the navbar exists
         """
-        response = self.client.get("/")
-        self.assertContains(response, reverse("signup"))
-        self.assertContains(response, "Signup")
+        self.assertIsNotNone(self.nav().find("a", href=reverse("signup"), string=re.compile("Sign up")))
 
     def test_logout_and_greeting_are_hidden(self):
         """
@@ -48,11 +50,7 @@ class NavBarUnauthenticated(TestCase):
         """
         response = self.client.get("/")
         self.assertNotContains(response, reverse("logout"))
-        self.assertNotContains(response, "Welcome,")
-
-    def test_login_link_not_active(self):
-        response = self.client.get("/")
-        self.assertNotContains(response, 'auth-login-logout active')
+        self.assertIsNone(self.nav().select_one("[data-account-menu]"))
 
     def test_settings_dropdown_is_hidden(self):
         """
@@ -62,6 +60,55 @@ class NavBarUnauthenticated(TestCase):
         self.assertNotContains(response, "Settings")
         self.assertNotContains(response, reverse("profiles:change_username"))
         self.assertNotContains(response, reverse("profiles:change_password"))
+
+    def test_same_links_as_a_player(self):
+        """
+            Test that visitors see the same Library and Friends links as players; they lead to the login page
+        """
+        links = [a["href"] for a in self.nav().select(".topbar-links a")]
+        self.assertEqual(links, [reverse("library"), reverse("friends:index")])
+
+
+class NavBarSearchTests(TestCase):
+    """
+        The search box sits in the navbar on every page, with the AI mode switch
+    """
+    def nav(self, url, params=None):
+        return BeautifulSoup(self.client.get(url, params).content, "html.parser").select_one("nav")
+
+    def test_every_page_has_the_search_box(self):
+        for url in ("/", reverse("login"), reverse("signup"), reverse("game_search")):
+            with self.subTest(url=url):
+                form = self.nav(url).select_one('form[role="search"]')
+                box = form.select_one('input[name="q"]')
+
+                self.assertEqual(form["action"], reverse("game_search"))
+                self.assertEqual(form["method"], "get")
+                self.assertIsNotNone(form.find("label", attrs={"for": box["id"]}))
+                self.assertIsNotNone(form.select_one('input[type="checkbox"][name="mode"][value="describe"]'))
+
+    def test_search_page_keeps_the_query_and_the_mode(self):
+        with patch("games.views.search_by_description", return_value=([], [])):
+            form = self.nav(reverse("game_search"), {"q": "zelda but darker", "mode": "describe"}).select_one("form")
+
+        self.assertEqual(form.select_one('input[name="q"]')["value"], "zelda but darker")
+        self.assertTrue(form.select_one('input[name="mode"]').has_attr("checked"))
+
+    def test_other_pages_start_empty_in_title_mode(self):
+        form = self.nav("/", {"q": "zelda"}).select_one("form")
+
+        self.assertFalse(form.select_one('input[name="q"]').get("value"))
+        self.assertFalse(form.select_one('input[name="mode"]').has_attr("checked"))
+
+    def test_every_page_has_the_search_script_and_loading_panel(self):
+        html = BeautifulSoup(self.client.get(reverse("login")).content, "html.parser")
+        loading = html.select_one("main [data-search-loading]")
+
+        self.assertTrue(loading.has_attr("hidden"))
+        self.assertEqual(loading["role"], "status")
+        self.assertTrue(loading.select("[data-search-loading-step]"))
+        self.assertTrue(any(script.get("src", "").endswith("js/search.js") for script in html.select("script")))
+
 
 class NavBarAuthenticated(TestCase):
     """
@@ -74,12 +121,15 @@ class NavBarAuthenticated(TestCase):
         )
         self.client.force_login(self.user)
 
-    def test_greeting_appears(self):
+    def nav(self):
+        return BeautifulSoup(self.client.get("/").content, "html.parser").select_one("nav")
+
+    def test_account_menu_names_the_player(self):
         """
-            Test that the greeting appears in the navbar when authenticated
+            Test that the account menu in the navbar names who is logged in
         """
-        response = self.client.get("/")
-        self.assertContains(response, "Welcome, tester")
+        menu = self.nav().select_one("[data-account-menu]")
+        self.assertIn("tester", menu.get_text())
 
     def test_logout_form_is_shown(self):
         """
@@ -87,15 +137,16 @@ class NavBarAuthenticated(TestCase):
         """
         response = self.client.get("/")
         self.assertContains(response, f'action="{reverse("logout")}"')
-        self.assertContains(response, "Logout")
+        self.assertContains(response, "Log out")
         self.assertContains(response, "csrfmiddlewaretoken")
 
     def test_login_link_is_hidden(self):
         """
-            Test that the login button no longer exists once authenticated
+            Test that the login and sign up buttons no longer exist once authenticated
         """
-        response = self.client.get("/")
-        self.assertNotContains(response, "Login")
+        nav = self.nav()
+        self.assertIsNone(nav.find("a", href=reverse("login")))
+        self.assertIsNone(nav.find("a", href=reverse("signup")))
 
     def test_library_link_is_shown(self):
         """
@@ -104,14 +155,6 @@ class NavBarAuthenticated(TestCase):
         response = self.client.get("/")
         self.assertContains(response, reverse("library"))
         self.assertContains(response, "Library")
-
-    def test_search_link_is_shown(self):
-        """
-            Test that both the word Search and the link to library are present
-        """
-        response = self.client.get("/")
-        self.assertContains(response, reverse("game_search"))
-        self.assertContains(response, "Search")
 
     def test_settings_link_visible(self):
         """
@@ -122,6 +165,14 @@ class NavBarAuthenticated(TestCase):
         self.assertContains(response, reverse("profiles:change_username"))
         self.assertContains(response, "Change Username")
         self.assertContains(response, "Change Password")
+
+    def test_current_page_is_marked(self):
+        """
+            Test that the navbar marks the page you are on
+        """
+        page = BeautifulSoup(self.client.get(reverse("library")).content, "html.parser")
+        current = page.select_one('nav .topbar-links a[aria-current="page"]')
+        self.assertEqual(current["href"], reverse("library"))
 
 class HttpsSettingsTests(TestCase):
     """Heroku sets DYNO on every dyno; there the site is HTTPS only. Locally it stays plain HTTP."""
