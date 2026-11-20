@@ -96,3 +96,13 @@ def default_cover(context):
     context.test.assertIsNotNone(page.find("img", attrs={
         "src": "/static/games/cover-placeholder.svg", "alt": "No cover available",
     }))
+
+
+@then("each result shows its year, genres, score, summary and platforms")
+def result_details(context):
+    page = BeautifulSoup(context.response.content, "html.parser")
+    cards = {card.h2.get_text(strip=True): card.get_text(" ", strip=True) for card in page.select("article")}
+    for game in matching_games(context):
+        for expected in [game["released"][:4], ", ".join(game["genres"]), f'{game["rating"]:.1f}',
+                         game["summary"], ", ".join(game["platforms"])]:
+            context.test.assertIn(expected, cards[game["name"]])
