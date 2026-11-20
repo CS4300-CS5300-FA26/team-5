@@ -50,17 +50,19 @@ class LandingPageTests(TestCase):
         self.assertEqual(covers, [
             "https://images.igdb.com/igdb/image/upload/t_cover_big/coaknx.jpg",   # Hades II
             "https://images.igdb.com/igdb/image/upload/t_cover_big/co9gam.jpg",   # Clair Obscur: Expedition 33
+            "https://images.igdb.com/igdb/image/upload/t_cover_big/cobfzp.jpg",   # Hollow Knight
             "https://images.igdb.com/igdb/image/upload/t_cover_big/cobebu.jpg",   # Hollow Knight: Silksong
+            "https://images.igdb.com/igdb/image/upload/t_cover_big/cobebu.jpg",
         ])
         self.assertIn("IGDB", page.select_one("main").get_text())
 
     def test_demos_use_the_play_statuses_from_story_12(self):
         page = BeautifulSoup(self.client.get(reverse("index")).content, "html.parser")
-        pills = [pill.get_text() for pill in page.select(".landing-steps .pills .pill")]
+        menu = [item.get_text() for item in page.select(".landing-steps .status-menu span")]
         legend = [dt.get_text() for dt in page.select(".landing-hero .legend dt")]
 
         statuses = ["Not Started", "Playing", "Completed", "On Hold", "Dropped"]
-        self.assertEqual(pills, statuses)
+        self.assertEqual(menu, statuses)
         self.assertEqual(sorted(legend), sorted(statuses))
         self.assertNotIn("Finished", page.get_text())
 

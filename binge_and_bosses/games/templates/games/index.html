@@ -53,18 +53,30 @@
     <section class="landing-steps" aria-labelledby="how-it-works">
         <h2 id="how-it-works" class="visually-hidden">How it works</h2>
         <ol>
-            <li>
-                <span class="hud">Step 1</span>
+            <li style="--step: 1">
+                <span class="hud step-label">Step 1</span>
                 <h3>Find it</h3>
-                <div class="demo" aria-hidden="true">
-                    <span class="demo-input">hollow kni<span class="caret"></span></span>
-                    <span class="demo-result"><span>Hollow Knight</span><span>2017</span></span>
-                    <span class="demo-result"><span>Hollow Knight: Silksong</span><span>2025</span></span>
+                <div class="demo demo-find" aria-hidden="true">
+                    <span class="demo-search">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                        <span class="demo-query">hard bug metroidvania<span class="caret"></span></span>
+                        <span class="demo-ai"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg>AI</span>
+                    </span>
+                    <span class="demo-hit">
+                        <img class="cover" style="--h: 220" src="https://images.igdb.com/igdb/image/upload/t_cover_big/cobfzp.jpg" alt="">
+                        <span><b>Hollow Knight</b><span class="demo-muted">Main game · 2017</span></span>
+                        <span class="demo-score">4.6</span>
+                    </span>
+                    <span class="demo-hit">
+                        <img class="cover" style="--h: 200" src="https://images.igdb.com/igdb/image/upload/t_cover_big/cobebu.jpg" alt="">
+                        <span><b>Hollow Knight: Silksong</b><span class="demo-muted">Main game · 2025</span></span>
+                        <span class="demo-score">4.6</span>
+                    </span>
                 </div>
-                <p>Search any game by title and open its details page.</p>
+                <p>Search by title, or turn on AI mode and describe the game you want.</p>
             </li>
-            <li>
-                <span class="hud">Step 2</span>
+            <li style="--step: 2">
+                <span class="hud step-label">Step 2</span>
                 <h3>Add it</h3>
                 <div class="demo demo-add" aria-hidden="true">
                     <img class="cover" style="--h: 200" src="https://images.igdb.com/igdb/image/upload/t_cover_big/cobebu.jpg" alt="">
@@ -76,28 +88,28 @@
                 </div>
                 <p>One click puts it in your library as Not Started.</p>
             </li>
-            <li>
-                <span class="hud">Step 3</span>
+            <li style="--step: 3">
+                <span class="hud step-label">Step 3</span>
                 <h3>Track it</h3>
                 <div class="demo" aria-hidden="true">
                     <b>Hollow Knight: Silksong</b>
-                    <span class="pills">
-                        <span class="pill" style="--c: var(--status-not-started-ink)">Not Started</span>
-                        <span class="pill on" style="--c: var(--status-playing)">Playing</span>
-                        <span class="pill" style="--c: var(--status-completed-ink)">Completed</span>
-                        <span class="pill" style="--c: var(--status-on-hold-ink)">On Hold</span>
-                        <span class="pill" style="--c: var(--status-dropped-ink)">Dropped</span>
+                    <span class="status-menu">
+                        <span class="status-not_started">Not Started</span>
+                        <span class="status-playing on">Playing</span>
+                        <span class="status-completed">Completed</span>
+                        <span class="status-on_hold">On Hold</span>
+                        <span class="status-dropped">Dropped</span>
                     </span>
                 </div>
                 <p>Move it from Not Started to Playing, Completed, On Hold or Dropped as you go.</p>
             </li>
-            <li>
-                <span class="hud">Step 4</span>
+            <li style="--step: 4">
+                <span class="hud step-label">Step 4</span>
                 <h3>Rate it</h3>
                 <div class="demo" aria-hidden="true">
                     <span class="stars stars-lg">★★★★<span class="off">★</span></span>
-                    <span class="demo-input demo-muted">The boss rush alone is worth it…</span>
-                    <span class="demo-count">412 / 1,000</span>
+                    <span class="demo-input demo-review">The boss rush alone is worth it. Took me 40 tries on the last fight and I'd do it again…</span>
+                    <span class="demo-count">88 / 1,000</span>
                 </div>
                 <p>Give it 1 to 5 stars and write a review other players can read.</p>
             </li>
