@@ -14,7 +14,9 @@ from importlib.util import find_spec
 from pathlib import Path
 from decouple import config
 from decouple import Csv
+
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -37,6 +39,14 @@ IGDB_CLIENT_SECRET = config("IGDB_CLIENT_SECRET")
 DEBUG = config("DEBUG", default=False, cast=bool)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
 CSRF_TRUSTED_ORIGINS = config("CSRF_TRUSTED_ORIGINS", default="", cast=Csv())
+
+# Heroku sets DYNO on every dyno. There the site is HTTPS only: Heroku's router
+# ends TLS and says so in X-Forwarded-Proto. Local runs stay on plain HTTP.
+if config('DYNO', default=''):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 # Application definition
 
@@ -127,6 +137,31 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Local Docker Redis is the default only when DEBUG is enabled.
+REDIS_URL = config("REDIS_URL", default="").strip()
+if not REDIS_URL:
+    if not DEBUG:
+        raise ImproperlyConfigured("REDIS_URL is required when DEBUG=False.")
+    REDIS_URL = "redis://127.0.0.1:6379/0"
+
+REDIS_OPTIONS = {"socket_connect_timeout": 2, "socket_timeout": 2}
+if REDIS_URL.startswith("rediss://"):
+    # Heroku KVS uses self-signed certificates. Opt out explicitly for that service.
+    REDIS_OPTIONS["ssl_cert_reqs"] = (
+        "required" if config("REDIS_SSL_VERIFY", default=True, cast=bool) else None
+    )
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+        "TIMEOUT": 300,
+        "KEY_PREFIX": "bingeandbosses",
+        "OPTIONS": REDIS_OPTIONS,
+    }
+}
+
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
@@ -161,3 +196,24 @@ MAILERS = {
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Cloud storage
+CLOUDINARY_CLOUD_NAME = config("CLOUDINARY_CLOUD_NAME", default="")
+
+if CLOUDINARY_CLOUD_NAME:
+    # After staticfiles, so Django's collectstatic wins. The package's own command
+    # reads STATICFILES_STORAGE, which Django 6 removed, and breaks the Heroku build.
+    INSTALLED_APPS += ["cloudinary_storage", "cloudinary"]
+
+    CLOUDINARY_STORAGE = {
+        "CLOUD_NAME": CLOUDINARY_CLOUD_NAME,
+        "API_KEY": config("CLOUDINARY_API_KEY"),
+        "API_SECRET": config("CLOUDINARY_API_SECRET"),
+    }
+
+    # Cloudinary only replaces upload storage. Static storage stays the default, because
+    # Heroku builds the slug (and runs collectstatic) before these vars may exist.
+    STORAGES = {
+        "default": {"BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
