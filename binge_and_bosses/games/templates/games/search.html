@@ -22,9 +22,25 @@
         <p class="alert alert-danger" role="alert">Could not load games. Try again.</p>
     {% elif query %}
         <section aria-labelledby="search-count">
-            <p id="search-count" class="search-count hud">{{ games|length }} result{{ games|length|pluralize }} for “{{ query }}”</p>
+            <div class="search-bar">
+                <p id="search-count" class="search-count hud">
+                    {% if page.has_other_pages %}{{ page.start_index }}–{{ page.end_index }} of {% endif %}{{ page.paginator.count }} result{{ page.paginator.count|pluralize }} for “{{ query }}”
+                </p>
+                {% if page.paginator.count > page_sizes.0 %}
+                    <form class="search-size" method="get">
+                        <input type="hidden" name="q" value="{{ query }}">
+                        <label class="hud" for="search-per-page">Show</label>
+                        <select id="search-per-page" class="form-select form-select-sm" name="per_page" onchange="this.form.submit()">
+                            {% for size in page_sizes %}
+                                <option value="{{ size }}"{% if size == per_page %} selected{% endif %}>{{ size }}</option>
+                            {% endfor %}
+                        </select>
+                        <noscript><button class="btn btn-sm btn-primary" type="submit">Go</button></noscript>
+                    </form>
+                {% endif %}
+            </div>
             <ul class="search-results">
-                {% for game in games %}
+                {% for game in page %}
                     <li>
                         <article>
                             {% if game.cover %}
@@ -49,6 +65,29 @@
                     <li class="home-panel home-muted">No games found</li>
                 {% endfor %}
             </ul>
+            {% if page.has_other_pages %}
+                <nav class="search-pages" aria-label="Search result pages">
+                    {# Both buttons are always shown, so they stay in the same place on every page #}
+                    {% if page.has_previous %}
+                        <a class="search-page-button" href="?{{ page_query }}&page={{ page.previous_page_number }}">‹ Previous</a>
+                    {% else %}
+                        <span class="search-page-button" aria-disabled="true">‹ Previous</span>
+                    {% endif %}
+                    <form method="get">
+                        <input type="hidden" name="q" value="{{ query }}">
+                        <input type="hidden" name="per_page" value="{{ per_page }}">
+                        <label class="hud" for="search-page">Page</label>
+                        <input id="search-page" class="form-control form-control-sm" type="number" name="page"
+                               value="{{ page.number }}" min="1" max="{{ page.paginator.num_pages }}" required>
+                        <span class="hud">of {{ page.paginator.num_pages }}</span>
+                    </form>
+                    {% if page.has_next %}
+                        <a class="search-page-button" href="?{{ page_query }}&page={{ page.next_page_number }}">Next ›</a>
+                    {% else %}
+                        <span class="search-page-button" aria-disabled="true">Next ›</span>
+                    {% endif %}
+                </nav>
+            {% endif %}
         </section>
     {% endif %}
 

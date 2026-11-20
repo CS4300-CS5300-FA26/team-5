@@ -1,7 +1,10 @@
 
+from urllib.parse import urlencode
+
 from django.contrib import messages
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Avg, Count, F, Max, Q
 from django.db.models.functions import Lower
 from django.urls import reverse
@@ -106,6 +109,10 @@ def save_review(request, game_id):
     return redirect("game_details", game_id=game_id)
 
 
+# Search page sizes for the "Show" menu. The first one is the default.
+SEARCH_PAGE_SIZES = [10, 25, 50, 100]
+
+
 #return search results from IGDB based on user input, return error on empty
 def game_search(request):
     query = request.GET.get("q", "").strip()
@@ -120,17 +127,23 @@ def game_search(request):
     elif games is None and last_search.get("q") == query:
         games = last_search["games"]
     error = games is None
-    games = games or []
 
-    # Mark the results this player already owns
+    per_page = request.GET.get("per_page", "")
+    per_page = int(per_page) if per_page.isdigit() and int(per_page) in SEARCH_PAGE_SIZES else SEARCH_PAGE_SIZES[0]
+    page = Paginator(games or [], per_page).get_page(request.GET.get("page"))
+
+    # Mark the results on this page that this player already owns
     owned = set()
-    if games and request.user.is_authenticated:
+    if page.object_list and request.user.is_authenticated:
         owned = set(Catalog.objects.filter(
-            user=request.user, games__igdb_id__in=[g["id"] for g in games],
+            user=request.user, games__igdb_id__in=[g["id"] for g in page.object_list],
         ).values_list("games__igdb_id", flat=True))
 
     return render(request, "games/search.html", {
-        "games": games,
+        "page": page,
+        "per_page": per_page,
+        "page_sizes": SEARCH_PAGE_SIZES,
+        "page_query": urlencode({"q": query, "per_page": per_page}),   # for the page links
         "query": query,
         "error": error,
         "owned": owned,
