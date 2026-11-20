@@ -58,7 +58,7 @@ finally:
     cache.delete(key)
 ```
 
-Then check login, library, game search, and game details on the production URL. Record the deployed commit and outcomes before calling the deployment smoke test complete. A successful CI run uses fake upstream responses and isolated caches; it does not establish a live production Redis connection. Redis outages can still fail game requests; cache-outage fallback is separate work.
+Then check login, library, game search, and game details on the production URL. Record the deployed commit and outcomes before calling the deployment smoke test complete. A successful CI run uses fake upstream responses and isolated caches; it does not establish a live production Redis connection. If Redis is down or times out (2 seconds), search, game details and the Twitch token skip the cache and call IGDB directly, so the site gets slower but keeps working. Each failed read or write logs a warning from `games.igdb_client`, so outages show up in `heroku logs`.
 
 
 

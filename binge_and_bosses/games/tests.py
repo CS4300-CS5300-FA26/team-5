@@ -11,6 +11,7 @@ from .models import Game, Catalog
 from .catalog import get_or_import
 
 from unittest.mock import patch,Mock
+import redis
 import requests
 from django.conf import settings
 from django.core.cache import cache
@@ -388,6 +389,39 @@ class IgdbClientTests(TestCase):
         self.games = []
 
         self.assertIsNone(igdb_client.get_game_details(999999999))
+
+    def break_cache(self):
+        """Every cache read and write fails, as when Redis is down or times out."""
+        error = redis.exceptions.ConnectionError("Redis is down")
+        for method in ("get", "set"):
+            patcher = patch.object(igdb_client.cache, method, side_effect=error)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def test_search_calls_igdb_when_redis_is_down(self):
+        self.break_cache()
+
+        with self.assertLogs("games.igdb_client", "WARNING"):
+            games = igdb_client.search_game("hollow knight")
+
+        self.assertEqual(games[0]["name"], "Hollow Knight")
+
+    def test_details_call_igdb_when_redis_is_down(self):
+        self.break_cache()
+
+        with self.assertLogs("games.igdb_client", "WARNING"):
+            game = igdb_client.get_game_details(14593)
+
+        self.assertEqual(game["name"], "Hollow Knight")
+
+    def test_token_is_fetched_when_redis_is_down(self):
+        self.break_cache()
+
+        with self.assertLogs("games.igdb_client", "WARNING") as logs:
+            igdb_client.search_game("hollow knight")
+
+        self.assertEqual(self.tokens_issued, 1)
+        self.assertTrue(any("igdb_access_token" in line for line in logs.output))
 
 
 class GameSearchandDetailsViewTests(TestCase):
