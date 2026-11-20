@@ -246,10 +246,14 @@ class BrandLogoTests(TestCase):
                 self.assertEqual(brand.get_text(strip=True), "Binge and Bosses")
 
 
-@override_settings(CACHES={"default": {
-    "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-    "LOCATION": "igdb-client-tests",
-}})
+@override_settings(
+    CACHES={
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "igdb-client-tests",
+        }
+    }
+)
 class IgdbClientTests(TestCase):
     """games/igdb_client.py: gets a Twitch token, queries IGDB and returns games in our own shape."""
 

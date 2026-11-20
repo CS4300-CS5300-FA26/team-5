@@ -42,8 +42,8 @@ CSRF_TRUSTED_ORIGINS = config("CSRF_TRUSTED_ORIGINS", default="", cast=Csv())
 
 # Heroku sets DYNO on every dyno. There the site is HTTPS only: Heroku's router
 # ends TLS and says so in X-Forwarded-Proto. Local runs stay on plain HTTP.
-if config('DYNO', default=''):
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+if config("DYNO", default=""):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
@@ -147,9 +147,7 @@ if not REDIS_URL:
 REDIS_OPTIONS = {"socket_connect_timeout": 2, "socket_timeout": 2}
 if REDIS_URL.startswith("rediss://"):
     # Heroku KVS uses self-signed certificates. Opt out explicitly for that service.
-    REDIS_OPTIONS["ssl_cert_reqs"] = (
-        "required" if config("REDIS_SSL_VERIFY", default=True, cast=bool) else None
-    )
+    REDIS_OPTIONS["ssl_cert_reqs"] = "required" if config("REDIS_SSL_VERIFY", default=True, cast=bool) else None
 
 CACHES = {
     "default": {
@@ -160,7 +158,6 @@ CACHES = {
         "OPTIONS": REDIS_OPTIONS,
     }
 }
-
 
 
 # Internationalization

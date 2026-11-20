@@ -124,6 +124,7 @@ class NavBarAuthenticated(TestCase):
         self.assertContains(response, "Change Username")
         self.assertContains(response, "Change Password")
 
+
 class HttpsSettingsTests(TestCase):
     """Heroku sets DYNO on every dyno; there the site is HTTPS only. Locally it stays plain HTTP."""
 

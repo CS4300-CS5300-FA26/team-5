@@ -484,7 +484,7 @@ class ChangeAvatarTests(TestCase):
 
     def test_deleting_user_deletes_avatar_file(self):
         """
-            Test that deleting a user also deletes their avatar file from the disk
+        Test that deleting a user also deletes their avatar file from the disk
         """
         self.login("dee")
         self.upload()
@@ -496,7 +496,7 @@ class ChangeAvatarTests(TestCase):
 
     def test_deleting_profile_deletes_avatar_file(self):
         """
-            Test that when deleiting a profile directly it also removes the avatar file from the disk
+        Test that when deleiting a profile directly it also removes the avatar file from the disk
         """
         self.login("dee")
         self.upload()
@@ -505,4 +505,3 @@ class ChangeAvatarTests(TestCase):
 
         profile.delete()
         self.assertFalse(path.exists())
-

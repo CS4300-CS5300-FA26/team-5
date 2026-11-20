@@ -49,6 +49,7 @@ Run the following without printing credentials or cached access tokens:
 ```python
 from uuid import uuid4
 from django.core.cache import cache
+
 key = f"deployment_check:{uuid4().hex}"
 try:
     cache.set(key, "connected", timeout=30)

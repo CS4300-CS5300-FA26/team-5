@@ -35,11 +35,10 @@ def search_game(game_name):
             return None
         games.sort(key=lambda game: game.get("total_rating_count", 0), reverse=True)
         game_search_result = [_game(game) for game in games[:5]]
-        cache.set(cache_key,game_search_result,timeout=3600)
+        cache.set(cache_key, game_search_result, timeout=3600)
         return game_search_result
 
     return games_search
-
 
 
 def get_game_details(game_id):
@@ -53,12 +52,11 @@ def get_game_details(game_id):
     if specific_game_detail is None:
         games = _query(f"fields {FIELDS}; where id = {int(game_id)};")
         specific_game_detail = _game(games[0]) if games else None
-        cache.set(cache_key,specific_game_detail,timeout=3600)
+        cache.set(cache_key, specific_game_detail, timeout=3600)
         return specific_game_detail
 
     # If not just return specific_game_detail
     return specific_game_detail
-
 
 
 def _query(body):
